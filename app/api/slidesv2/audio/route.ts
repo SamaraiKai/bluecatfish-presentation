@@ -7,9 +7,9 @@ const supabase = createClient(
 );
 
 const BUCKET = "slide-audio";
-const FOLDER = "sections_v8";
+const FOLDER = "sections_v9";
 
-const TRANSITION_PHRASES = [
+const IMBETWEEN_PHRASES = [
   "This means...",
   "In other words...",
   "Put simply...",
@@ -111,10 +111,10 @@ export async function POST(req: Request) {
       audioUrls[`layout_${template}`] = await generateAndUpload(text, `${FOLDER}/layout-${template}.mp3`);
     }
     
-    for (let t = 0; t < TRANSITION_PHRASES.length; t++) {
-      audioUrls[`transition${t}`] = await generateAndUpload(
-        TRANSITION_PHRASES[t],
-        `${FOLDER}/transition-${t}.mp3`
+    for (let t = 0; t < IMBETWEEN_PHRASES.length; t++) {
+      audioUrls[`imbetween${t}`] = await generateAndUpload(
+        IMBETWEEN_PHRASES[t],
+        `${FOLDER}/imbetween-${t}.mp3`
       );
     }
     
