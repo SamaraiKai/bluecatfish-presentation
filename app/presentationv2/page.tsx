@@ -967,7 +967,7 @@ export default function AIPresentation() {
     }
   };
 
-  const playReviewAudio = (wrongIndices: number[]) => {
+  const playReviewAudio = (sectionIndex: number, wrongIndices: number[]) => {
     if (wrongIndices.length === 0) return;
   
     const introKey =
@@ -978,8 +978,7 @@ export default function AIPresentation() {
         play(audioUrls["review_outro"], "review_outro", "", () => {});
         return;
       }
-      const q = wrongIndices[i];
-      const key = `review_q${q}`;
+      const key = `section${sectionIndex}_review_q${wrongIndices[i]}`;
       play(audioUrls[key], key, "", () => chain(i + 1));
     };
   
