@@ -689,8 +689,8 @@ function SectionImageBlock({
 
                   <div className="flex justify-center mb-3">
                     <button
-                      onClick={() => playMicroStepAudio(activeSectionIndex, microStep, null)}
-                      className="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-100 blue-700/90 hover:bg-blue-600/90 text-white text-sm font-medium transition-colors"
+                      onClick={() => playMicroStepAudio(currentSectionIndex, microStep, null)}
+                      className="flex items-center gap-2 px-4 py-2 mt-4 rounded-full bg-blue-600/90 hover:bg-blue-300/90 text-white text-sm font-medium transition-colors"
                     >
                       🔁 Replay
                     </button>
