@@ -438,7 +438,7 @@ function QuizSlide({
               >
                 Submit
               </button>
-          )
+          )}
         </div>
       </div>
     </div>
