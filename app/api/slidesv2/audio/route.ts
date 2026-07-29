@@ -7,7 +7,7 @@ const supabase = createClient(
 );
 
 const BUCKET = "slide-audio";
-const FOLDER = "sections_v9.5";
+const FOLDER = "sections_v9.6";
 
 const IMBETWEEN_PHRASES = [
   "This means...",
