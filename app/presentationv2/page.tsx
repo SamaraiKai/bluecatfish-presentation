@@ -662,16 +662,48 @@ function SectionImageBlock({
                       </div>
                     )}
                 
-                    {microStep === 2 && (
-                      <div className="space-y-3">
-                        {currentSection.breakdown.keyTerms.map((kt, idx) => (
-                          <div key={idx} className="bg-blue-700/20 rounded-xl p-5 border border-blue-600/40">
-                            <div className="font-bold text-blue-800 mb-1 text-xl">{kt.term}</div>
-                            <div className="text-black text-md">{kt.definition}</div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                    {microStep === 2 && (() => {
+                      const terms = currentSection.breakdown.keyTerms;
+                      const isKeyTermsActive =
+                        (currentKey?.endsWith('_keyterms') ?? false) && isSpeaking && duration > 0;
+
+                      let activeIdx = -1;
+                      if (isKeyTermsActive) {
+                        const lengths = terms.map((kt) => (kt.term + ' ' + kt.definition).length);
+                        const totalChars = lengths.reduce((a, b) => a + b, 0);
+                        const targetChars = (currentTime / duration) * totalChars;
+                        let cumulative = 0;
+                        for (let i = 0; i < terms.length; i++) {
+                          cumulative += lengths[i];
+                          if (cumulative >= targetChars) {
+                            activeIdx = i;
+                            break;
+                          }
+                        }
+                        if (activeIdx === -1) activeIdx = terms.length - 1;
+                      }
+                    
+                      return (
+                        <div className="space-y-3">
+                          {terms.map((kt, idx) => {
+                            const isActive = idx === activeIdx;
+                            return (
+                              <div 
+                                key={idx} 
+                                className={`rounded-xl p-5 border transition-all duration-300" ${
+                                  isActive
+                                    ? 'bg-blue-300 border-cyan-400 ring-2 ring-cyan-300 scale-105 shadow-lg'
+                                    : 'bg-blue-700/20 border-blue-600/40'
+                                }`}
+                              >
+                              <div className="font-bold text-blue-800 mb-1 text-xl">{kt.term}</div>
+                              <div className="text-black text-md">{kt.definition}</div>
+                            </div>
+                            );
+                          })}
+                        </div>
+                      );
+                  })()}
                 
                     {microStep === 3 && (
                       <div className="bg-amber-900/30 rounded-xl p-5 border border-amber-700/40">
@@ -684,7 +716,7 @@ function SectionImageBlock({
                           className="text-xl text-black leading-relaxed mb-4"
                         />
                       </div>
-                    )}
+                      )}
                   </div>
 
                   <div className="flex justify-center mb-3">
