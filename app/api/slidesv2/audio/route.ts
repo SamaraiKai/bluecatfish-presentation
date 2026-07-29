@@ -123,13 +123,15 @@ export async function POST(req: Request) {
       );
     }
 
-    for (let q = 0; q < QUIZ_DATA.length; q++) {
-      const question = QUIZ_DATA[q];
-      const correct = question.options[question.correctAnswer];
-      audioUrls[`review_q${q}`] = await generateAndUpload(
-        `The correct answer is ${correct}. ${question.explanation}`,
-        `${FOLDER}/review_q${q + 1}.mp3`
-      );
+    for (let q = 0; q < sections.length; q++) {
+      const quiz = sections[i].quiz ?? [];
+      for (let q = 0; q < quiz.length; q++) {
+        const correct = quiz[q].options[quiz[q].correctAnswer];
+        audioUrls[`section${i}_review_q${q}`] = await generateAndUpload(
+          `The correct answer is ${correct}. ${quiz[q].explanation ?? ""}`,
+          `${FOLDER}/section${i + 1}_review_q${q + 1}.mp3`
+        );
+      }
     }
 
     audioUrls["review_intro_one"] = await generateAndUpload(
