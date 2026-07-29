@@ -701,7 +701,7 @@ function SectionImageBlock({
                   <div className="flex justify-center mb-3">
                     <button
                       onClick={() => playMicroStepAudio(activeSectionIndex, microStep, null)}
-                      className="flex items-center gap-2 px-4 py-2 mt-4 rounded-full bg-blue-600/90 hover:bg-blue-300/90 text-white text-sm font-medium transition-colors"
+                      className="flex items-center gap-2 px-4 py-2 mt-4 rounded-full bg-blue-600/90 hover:bg-blue-400/90 text-white text-sm font-medium transition-colors"
                     >
                       🔁 Replay
                     </button>
@@ -905,15 +905,6 @@ export default function AIPresentation() {
         });
         return;
       }
-      
-      if (step.audioKey) {
-        play(audioUrls[step.audioKey], step.audioKey, text, () => {
-          autoAdvanceFrom(sectionIndex, stepIndex);
-        });
-      } else {
-        if (keyTermsTimerRef.current) clearTimeout(keyTermsTimerRef.current);
-        keyTermsTimerRef.current = setTimeout(() => autoAdvanceFrom(sectionIndex, stepIndex), 8000);
-      }
       if (stepIndex === 2) {
         const termKey = (t: number) => `section${sectionIndex}_keyterm${t}`;
       
@@ -934,6 +925,14 @@ export default function AIPresentation() {
           });
         });
         return;
+      }
+      if (step.audioKey) {
+        play(audioUrls[step.audioKey], step.audioKey, text, () => {
+          autoAdvanceFrom(sectionIndex, stepIndex);
+        });
+      } else {
+        if (keyTermsTimerRef.current) clearTimeout(keyTermsTimerRef.current);
+        keyTermsTimerRef.current = setTimeout(() => autoAdvanceFrom(sectionIndex, stepIndex), 8000);
       }
     };
   
