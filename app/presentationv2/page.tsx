@@ -200,18 +200,28 @@ function ReviewSlide({
   missedQuestions,
   section,
   onContinue,
+  currentKey,
 }: {
-  missedQuestions: { question: string; options: string[]; correctAnswer: number; userAnswer: number | null }[];
+  missedQuestions: { index: number; question: string; options: string[]; correctAnswer: number; userAnswer: number | null; explanation: string }[];
   section: SectionWithBreakdown;
   onContinue: () => void;
+  currentKey: string | null;
 }) {
   return (
     <div className="bg-gradient-to-br from-mist-400 via-mist-300 to-mist-400 rounded-3xl border border-slate-200 shadow-2xl p-8 max-w-2xl mx-auto text-center">
       <h3 className="text-2xl font-bold text-slate-900 mb-4">Let's Review</h3>
         
         <div className="space-y-5 mb-6">
-          {missedQuestions.map((q, idx) => (
-            <div key={idx} className="bg-red-50 rounded-2xl p-5 border border-red-200">
+          {missedQuestions.map((q, idx) => {
+            const isActive = currentKey?.endsWith(`_review_q${q.index}`) ?? false;
+            return (
+            <div key={idx} 
+              className={`rounded-2xl p-5 border transition-all duration-300 ${
+                isActive
+                  ? 'bg-blue-300 border-cyan-400 ring-2 ring-cyan-300 scale-105 shadow-lg'
+                  : 'bg-red-50 border-red-200'
+              }`}
+            >
               <p className="text-slate-900 font-semibold mb-2">{q.question}</p>
               <p className="text-red-600 text-sm mb-1">
                 You answered: {q.userAnswer !== null ? q.options[q.userAnswer] : '(no answer)'}
@@ -223,7 +233,8 @@ function ReviewSlide({
                 <p className="text-blue-900 text-sm">{q.explanation}</p>
               </div>
             </div>
-          ))}
+          );
+        })}
         </div>
       
       <div className="flex justify-end">
@@ -359,7 +370,6 @@ function QuizSlide({
     const missed = quiz
       .map((q, i) => ({ ...q, index: i, userAnswer: answers[i] }))
       .filter((q, i) => answers[i] !== q.correctAnswer);
-    console.log("missed from QuizSlide:", missed);
     onSubmitResult(passed, missed);
   };
   
@@ -1337,6 +1347,7 @@ export default function AIPresentation() {
               missedQuestions={missedQuestions}
               section={currentSection}
               onContinue={handleReviewContinue}
+              currentKey={currentKey}
             />
           ) : showQuiz ? (
             <QuizSlide 
