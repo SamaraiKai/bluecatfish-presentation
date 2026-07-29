@@ -123,6 +123,28 @@ export async function POST(req: Request) {
       );
     }
 
+    for (let q = 0; q < QUIZ_DATA.length; q++) {
+      const question = QUIZ_DATA[q];
+      const correct = question.options[question.correctAnswer];
+      audioUrls[`review_q${q}`] = await generateAndUpload(
+        `The correct answer is ${correct}. ${question.explanation}`,
+        `${FOLDER}/review_q${q + 1}.mp3`
+      );
+    }
+
+    audioUrls["review_intro_one"] = await generateAndUpload(
+      "Almost perfect. Let's look at the one you missed.",
+      `${FOLDER}/review_intro_one.mp3`
+    );
+    audioUrls["review_intro_some"] = await generateAndUpload(
+      "Let's go back over the ones you missed.",
+      `${FOLDER}/review_intro_some.mp3`
+    );
+    audioUrls["review_outro"] = await generateAndUpload(
+      "That's the review. Ready to keep going?",
+      `${FOLDER}/review_outro.mp3`
+    );
+    
     audioUrls['wrapup'] = await generateAndUpload(WRAP_UP_TEXT, `${FOLDER}/wrapup.mp3`);
     audioUrls['quizFail'] = await generateAndUpload(FAIL_TEXT, `${FOLDER}/quiz-fail.mp3`);
     // Per-section narration + breakdown audio
