@@ -359,6 +359,7 @@ function QuizSlide({
     const missed = quiz
       .map((q, i) => ({ ...q, index: i, userAnswer: answers[i] }))
       .filter((q, i) => answers[i] !== q.correctAnswer);
+    console.log("missed from QuizSlide:", missed);
     onSubmitResult(passed, missed);
   };
   
