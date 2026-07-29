@@ -123,7 +123,20 @@ export async function POST(req: Request) {
       );
     }
 
-    for (let q = 0; q < sections.length; q++) {
+    for (let idx = 0; idx < transition_lines.length; idx++) {
+        audioUrls[`ordinal${idx}`] = await generateAndUpload(
+          transition_lines[idx],
+          `${FOLDER}/ordinal${idx}.mp3`
+        );
+      }
+      
+      // and the intro line, also once
+      audioUrls["keytermIntro"] = await generateAndUpload(
+        "Let's go over some key terms.",
+        `${FOLDER}/keyterm_intro.mp3`
+      );
+    
+    for (let i = 0; i < sections.length; i++) {
       const quiz = sections[i].quiz ?? [];
       for (let q = 0; q < quiz.length; q++) {
         const correct = quiz[q].options[quiz[q].correctAnswer];
@@ -169,19 +182,6 @@ export async function POST(req: Request) {
           `${FOLDER}/section${i + 1}_overview.mp3`
         );
       }
-
-      for (let idx = 0; idx < transition_lines.length; idx++) {
-        audioUrls[`ordinal${idx}`] = await generateAndUpload(
-          transition_lines[idx],
-          `${FOLDER}/ordinal${idx}.mp3`
-        );
-      }
-      
-      // and the intro line, also once
-      audioUrls["keytermIntro"] = await generateAndUpload(
-        "Let's go over some key terms.",
-        `${FOLDER}/keyterm_intro.mp3`
-      );
       
       if (section.stats?.length === 2) {
         const fact1Text = `One fun fact is ${section.stats[0].value}: ${section.stats[0].label}.`;
