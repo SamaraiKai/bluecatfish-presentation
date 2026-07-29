@@ -146,7 +146,7 @@ function getMicroStepText(section: SectionWithBreakdown, stepIndex: number): str
       return `${section.content}${statsLine}`;
     }
     case 1: return section.breakdown.simple;
-    case 2: return ''; // key terms — list, not narrated
+    case 2: return section.breakdown.keyterms;
     case 3: return section.breakdown.realWorldExample;
     default: return '';
   }
@@ -668,19 +668,28 @@ function SectionImageBlock({
                         (currentKey?.endsWith('_keyterms') ?? false) && isSpeaking && duration > 0;
 
                       let activeIdx = -1;
-                      if (isKeyTermsActive) {
-                        const lengths = terms.map((kt) => (kt.term + ' ' + kt.definition).length);
-                        const totalChars = lengths.reduce((a, b) => a + b, 0);
+                      if (isKeyTermsActive && terms.length === 3) {
+                        const intro = `Let's go over some key terms. `;
+                        const segments = [
+                          `First, ${terms[0].term}: ${terms[0].definition}. `,
+                          `Next, ${terms[1].term}: ${terms[1].definition}. `,
+                          `Finally, ${terms[2].term}: ${terms[2].definition}.`,
+                        ];
+                        
+                        const totalChars = intro.length + segments.reduce((sum, s) => sum + s.length, 0);
                         const targetChars = (currentTime / duration) * totalChars;
-                        let cumulative = 0;
-                        for (let i = 0; i < terms.length; i++) {
-                          cumulative += lengths[i];
-                          if (cumulative >= targetChars) {
-                            activeIdx = i;
-                            break;
+                        
+                        let cumulative = intro.length;
+                        if (targetChars >= cumulative) {
+                          for (let i = 0; i < segments.length; i++) {
+                            cumulative += segments[i].length;
+                            if (targetChars <= cumulative) {
+                              activeIdx = i;
+                              break;
+                            }
                           }
+                          if (activeIdx === -1) activeIdx = segments.length - 1;
                         }
-                        if (activeIdx === -1) activeIdx = terms.length - 1;
                       }
                     
                       return (
