@@ -575,6 +575,7 @@ function SectionImageBlock({
 
   function MiniSlideshowBlock({
     currentSection,
+    activeSectionIndex,
     microStep,
     microSteps,
     goToMicroStep,
@@ -699,7 +700,7 @@ function SectionImageBlock({
 
                   <div className="flex justify-center mb-3">
                     <button
-                      onClick={() => playMicroStepAudio(currentSectionIndex, microStep, null)}
+                      onClick={() => playMicroStepAudio(activeSectionIndex, microStep, null)}
                       className="flex items-center gap-2 px-4 py-2 mt-4 rounded-full bg-blue-600/90 hover:bg-blue-300/90 text-white text-sm font-medium transition-colors"
                     >
                       🔁 Replay
@@ -942,7 +943,7 @@ export default function AIPresentation() {
       play(audioUrls[key], key, '', playActualStep);
     } else if (transitionType === 'analogy') {
       const idx = Math.floor(Math.random() * 3);
-      const key = `exampleTransition${idx}`;
+      const key = `imbetween${idx}`;
       play(audioUrls[key], key, '', playActualStep);
     } else {
       playActualStep();
