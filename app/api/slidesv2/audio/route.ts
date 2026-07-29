@@ -20,11 +20,13 @@ const LAYOUT_DESCRIPTIONS = {
   split: "As we go through the lesson, you'll see the content on your left and the image on your right.",
 };
 
-const EXAMPLE_TRANSITION_PHRASES = [
+const TRANSITION_PHRASES = [
   "A good analogy is...",
   "Think of it this way...",
   "Here's a way to picture it...",
 ];
+
+const transition_lines = ["First.", "Next.", "Finally."];
 
 const WRAP_UP_TEXT = "When you're ready, answer the quiz to head to the next section.";
 
@@ -109,10 +111,10 @@ export async function POST(req: Request) {
       audioUrls[`layout_${template}`] = await generateAndUpload(text, `${FOLDER}/layout-${template}.mp3`);
     }
     
-    for (let t = 0; t < EXAMPLE_TRANSITION_PHRASES.length; t++) {
-      audioUrls[`exampleTransition${t}`] = await generateAndUpload(
-        EXAMPLE_TRANSITION_PHRASES[t],
-        `${FOLDER}/example-transition-${t}.mp3`
+    for (let t = 0; t < TRANSITION_PHRASES.length; t++) {
+      audioUrls[`transition${t}`] = await generateAndUpload(
+        TRANSITION_PHRASES[t],
+        `${FOLDER}/transition-${t}.mp3`
       );
     }
     
@@ -144,6 +146,19 @@ export async function POST(req: Request) {
         );
       }
 
+      for (let idx = 0; idx < transition_lines.length; idx++) {
+        audioUrls[`ordinal${idx}`] = await generateAndUpload(
+          transition_lines[idx],
+          `${FOLDER}/ordinal${idx}.mp3`
+        );
+      }
+      
+      // and the intro line, also once
+      audioUrls["keytermIntro"] = await generateAndUpload(
+        "Let's go over some key terms.",
+        `${FOLDER}/keyterm_intro.mp3`
+      );
+      
       if (section.stats?.length === 2) {
         const fact1Text = `One fun fact is ${section.stats[0].value}: ${section.stats[0].label}.`;
         const fact2Text = `Another fact is ${section.stats[1].value}: ${section.stats[1].label}.`;
@@ -166,12 +181,13 @@ export async function POST(req: Request) {
       }
       if (section.breakdown?.keyTerms?.length === 3) {
         const kt = section.breakdown.keyTerms;
-        const keyTermsText = `Let's go over some key terms. First, ${kt[0].term}: ${kt[0].definition}. Next, ${kt[1].term}: ${kt[1].definition}. Finally, ${kt[2].term}: ${kt[2].definition}.`;
-    
-        audioUrls[`section${i}_keyterms`] = await generateAndUpload(
-          keyTermsText,
-          `${FOLDER}/section${i + 1}_keyterms.mp3`
-        );
+
+        for (let t = 0; t < 3; t++) {
+          audioUrls[`section${i}_keyterm${t}`] = await generateAndUpload(
+            `${kt[t].term}: ${kt[t].definition}.`,
+            `${FOLDER}/section${i + 1}_keyterm${t + 1}.mp3`
+          );
+        }
       }
       if (section.breakdown?.realWorldExample) {
         audioUrls[`section${i}_example`] = await generateAndUpload(
