@@ -67,9 +67,6 @@ export async function POST(request: NextRequest) {
         match_count: 4,
       }
     );
-    console.log("QUERY EMBEDDING LENGTH:", queryEmbedding.length);
-    console.log("DOC COUNT:", docs?.length);
-    console.log("DOCS:", docs);
     if (error) {
       console.error('Supabase RPC error:', error);
     }
