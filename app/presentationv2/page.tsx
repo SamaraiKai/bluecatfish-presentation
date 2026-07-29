@@ -432,22 +432,16 @@ function QuizSlide({
             </>
           ) : (
               <button
-                onClick={() => {
-                  setSubmitted(true);
-                  const missed = quiz
-                    .map((q, i) => ({ ...q, userAnswer: answers[i] }))
-                    .filter((q, i) => answers[i] !== q.correctAnswer);
-                  onSubmitResult(score === quiz.length, missed);
-                }}
+                onClick={handleSubmit}
                 disabled={!allAnswered}
                 className="ml-auto px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-xl font-semibold transition-colors"
               >
                 Submit
               </button>
-          )}
+          )
         </div>
       </div>
-    </div>,
+    </div>
   );
 }
 
