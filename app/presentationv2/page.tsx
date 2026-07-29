@@ -146,7 +146,7 @@ function getMicroStepText(section: SectionWithBreakdown, stepIndex: number): str
       return `${section.content}${statsLine}`;
     }
     case 1: return section.breakdown.simple;
-    case 2: return section.breakdown.keyterms;
+    case 2: return section.breakdown.keyTerms;
     case 3: return section.breakdown.realWorldExample;
     default: return '';
   }
@@ -662,57 +662,26 @@ function SectionImageBlock({
                       </div>
                     )}
                 
-                    {microStep === 2 && (() => {
-                      const terms = currentSection.breakdown.keyTerms;
-                      const isKeyTermsActive =
-                        (currentKey?.endsWith('_keyterms') ?? false) && isSpeaking && duration > 0;
-
-                      let activeIdx = -1;
-                      if (isKeyTermsActive && terms.length === 3) {
-                        const intro = `Let's go over some key terms. `;
-                        const segments = [
-                          `First, ${terms[0].term}: ${terms[0].definition}. `,
-                          `Next, ${terms[1].term}: ${terms[1].definition}. `,
-                          `Finally, ${terms[2].term}: ${terms[2].definition}.`,
-                        ];
-                        
-                        const totalChars = intro.length + segments.reduce((sum, s) => sum + s.length, 0);
-                        const targetChars = (currentTime / duration) * totalChars;
-                        
-                        let cumulative = intro.length;
-                        if (targetChars >= cumulative) {
-                          for (let i = 0; i < segments.length; i++) {
-                            cumulative += segments[i].length;
-                            if (targetChars <= cumulative) {
-                              activeIdx = i;
-                              break;
-                            }
-                          }
-                          if (activeIdx === -1) activeIdx = segments.length - 1;
-                        }
-                      }
-                    
-                      return (
-                        <div className="space-y-3">
-                          {terms.map((kt, idx) => {
-                            const isActive = idx === activeIdx;
-                            return (
-                              <div 
-                                key={idx} 
-                                className={`rounded-xl p-5 border transition-all duration-300" ${
-                                  isActive
-                                    ? 'bg-blue-300 border-cyan-400 ring-2 ring-cyan-300 scale-105 shadow-lg'
-                                    : 'bg-blue-700/20 border-blue-600/40'
-                                }`}
-                              >
+                    {microStep === 2 && (
+                      <div className="space-y-3">
+                        {currentSection.breakdown.keyTerms.map((kt, idx) => {
+                          const isActive = currentKey?.endsWith(`_keyterm${idx}`) ?? false;
+                          return (
+                            <div
+                              key={idx}
+                              className={`rounded-xl p-5 border transition-all duration-300 ${
+                                isActive
+                                  ? 'bg-blue-300 border-cyan-400 ring-2 ring-cyan-300 scale-105 shadow-lg'
+                                  : 'bg-blue-700/20 border-blue-600/40'
+                              }`}
+                            >
                               <div className="font-bold text-blue-800 mb-1 text-xl">{kt.term}</div>
                               <div className="text-black text-md">{kt.definition}</div>
                             </div>
-                            );
-                          })}
-                        </div>
-                      );
-                  })()}
+                          );
+                        })}
+                      </div>
+                    )}
                 
                     {microStep === 3 && (
                       <div className="bg-amber-900/30 rounded-xl p-5 border border-amber-700/40">
