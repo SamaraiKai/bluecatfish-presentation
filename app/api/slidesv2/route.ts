@@ -160,7 +160,7 @@ async function assignUniqueImages(sections: any[], sectionTopics: string[]) {
 
 export async function POST(req: Request) {
   try {
-    const cacheKey = `bluecatfish_sections_ai_v8`;
+    const cacheKey = `bluecatfish_sections_ai_v9`;
 
     const cachedRaw = await getValue(cacheKey);
     if (cachedRaw) {
