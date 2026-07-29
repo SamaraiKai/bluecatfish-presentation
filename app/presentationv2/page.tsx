@@ -336,7 +336,7 @@ function QuizSlide({
   quiz: { question: string; options: string[]; correctAnswer: number }[];
   onContinue: () => void;
   onReview: () => void;
-  onSubmitResult: (passed: boolean, missed: { question: string; options: string[]; correctAnswer: number; userAnswer: number | null; explanation: string }[]) => void;
+  onSubmitResult: ( passed: boolean, missed: { index: number; question: string; options: string[]; correctAnswer: number; userAnswer: number | null; explanation: string }[]) => void;
 }) {
   const [answers, setAnswers] = useState<(number | null)[]>(quiz.map(() => null));
   const [submitted, setSubmitted] = useState(false);
@@ -357,7 +357,7 @@ function QuizSlide({
     setSubmitted(true);
     const passed = score === quiz.length;
     const missed = quiz
-      .map((q, i) => ({ ...q, userAnswer: answers[i] }))
+      .map((q, i) => ({ ...q, index: i, userAnswer: answers[i] }))
       .filter((q, i) => answers[i] !== q.correctAnswer);
     onSubmitResult(passed, missed);
   };
@@ -866,7 +866,7 @@ export default function AIPresentation() {
   const [selectedTemplate, setSelectedTemplate] = useState<'classic' | 'split' | null>(null);
   const [completedQuizzes, setCompletedQuizzes] = useState<Set<number>>(new Set());
   const [showReview, setShowReview] = useState(false);
-  const [missedQuestions, setMissedQuestions] = useState<{ question: string; options: string[]; correctAnswer: number; userAnswer: number | null }[]>([]);
+  const [missedQuestions, setMissedQuestions] = useState<{ index: number; question: string; options: string[]; correctAnswer: number; userAnswer: number | null }[]>([]);
   const [loadingPhase, setLoadingPhase] = useState<'content' | 'audio'>('content');
   const [sectionScores, setSectionScores] = useState<Record<number, number>>({});
   const keyTermsTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -967,6 +967,31 @@ export default function AIPresentation() {
     }
   };
 
+  const playReviewAudio = (wrongIndices: number[]) => {
+    if (wrongIndices.length === 0) return;
+  
+    const introKey =
+      wrongIndices.length === 1 ? "review_intro_one" : "review_intro_some";
+  
+    const chain = (i: number) => {
+      if (i >= wrongIndices.length) {
+        play(audioUrls["review_outro"], "review_outro", "", () => {});
+        return;
+      }
+      const q = wrongIndices[i];
+      const key = `review_q${q}`;
+      play(audioUrls[key], key, "", () => chain(i + 1));
+    };
+  
+    play(audioUrls[introKey], introKey, "", () => chain(0));
+  };
+
+  useEffect(() => {
+    if (isReviewMode) {
+      playReviewAudio(activeSection, missedQuestions.map((q) => q.index));
+    }
+  }, [showReview]);
+  
   const handleTemplateSelect = (template: 'classic' | 'split') => {
     setSelectedTemplate(template);
     setActiveSection(0);
