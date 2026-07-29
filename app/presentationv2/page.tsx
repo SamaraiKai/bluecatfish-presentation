@@ -132,7 +132,7 @@ function getMicroSteps(sectionIndex: number): MicroStep[] {
   return [
     { label: 'Overview', audioKey: `section${sectionIndex}_overview` },
     { label: 'Simple Explanation', audioKey: `section${sectionIndex}_simple` },
-    { label: 'Key Terms', audioKey: `section${sectionIndex}_keyterms` },
+    { label: 'Key Terms', audioKey: null  },
     { label: 'Real World Example', audioKey: `section${sectionIndex}_example` },
   ];
 }
@@ -665,7 +665,7 @@ function SectionImageBlock({
                     {microStep === 2 && (
                       <div className="space-y-3">
                         {currentSection.breakdown.keyTerms.map((kt, idx) => {
-                          const isActive = currentKey?.endsWith(`_keyterm${idx}`) ?? false;
+                          const isActive = currentKey?.includes(`_keyterm${idx}`) ?? false;
                           return (
                             <div
                               key={idx}
@@ -912,6 +912,27 @@ export default function AIPresentation() {
       } else {
         if (keyTermsTimerRef.current) clearTimeout(keyTermsTimerRef.current);
         keyTermsTimerRef.current = setTimeout(() => autoAdvanceFrom(sectionIndex, stepIndex), 8000);
+      }
+      if (stepIndex === 2) {
+        const termKey = (t: number) => `section${sectionIndex}_keyterm${t}`;
+      
+        play(audioUrls["keytermIntro"], "keytermIntro", "", () => {
+          // ordinal audio is shared, but we pass a section-specific key so the card highlights
+          play(audioUrls["ordinal0"], `${termKey(0)}_ord`, "", () => {
+            play(audioUrls[termKey(0)], termKey(0), "", () => {
+              play(audioUrls["ordinal1"], `${termKey(1)}_ord`, "", () => {
+                play(audioUrls[termKey(1)], termKey(1), "", () => {
+                  play(audioUrls["ordinal2"], `${termKey(2)}_ord`, "", () => {
+                    play(audioUrls[termKey(2)], termKey(2), "", () => {
+                      autoAdvanceFrom(sectionIndex, 2);
+                    });
+                  });
+                });
+              });
+            });
+          });
+        });
+        return;
       }
     };
   
