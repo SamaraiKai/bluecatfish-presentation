@@ -987,7 +987,7 @@ export default function AIPresentation() {
   };
 
   useEffect(() => {
-    if (isReviewMode) {
+    if (showReview) {
       playReviewAudio(activeSection, missedQuestions.map((q) => q.index));
     }
   }, [showReview]);
