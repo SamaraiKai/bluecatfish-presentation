@@ -943,11 +943,11 @@ export default function AIPresentation() {
   
     if (transitionType === 'means') {
       const idx = Math.floor(Math.random() * 3);
-      const key = `transition${idx}`;
+      const key = `imbetween${idx}`;
       play(audioUrls[key], key, '', playActualStep);
     } else if (transitionType === 'analogy') {
       const idx = Math.floor(Math.random() * 3);
-      const key = `imbetween${idx}`;
+      const key = `transition${idx}`;
       play(audioUrls[key], key, '', playActualStep);
     } else {
       playActualStep();
