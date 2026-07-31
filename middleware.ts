@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
 // Routes that DON'T require login — everything else is protected by default
-const PUBLIC_PATHS = ["/login", "/auth/callback", "/presentationv2", "/admin"];
+const PUBLIC_PATHS = ["/login", "/auth/callback", "/presentationv2", "/imageIngest", "imageIngest"];
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
