@@ -71,7 +71,7 @@ export default function AdminPage() {
         alignItems: 'center',
         justifyContent: 'center',
         flexDirection: 'column',
-        background: dragging ? '#f0f0f0' : 'white',
+        background: dragging ? 'dark-grey' : 'grey',
         textAlign: 'center',
         padding: 20,
       }}
