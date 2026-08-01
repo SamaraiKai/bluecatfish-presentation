@@ -107,7 +107,9 @@ const useAudioPlayer = () => {
 
   const resume = useCallback(() => {
     if (audioRef.current && isPaused) {
-      audioRef.current.play();
+      audioRef.current.play().catch((e) => {
+        if (e.name !== "AbortError") console.warn("Audio playback failed:", e);
+      });
       setIsPaused(false);
     }
   }, [isPaused]);
