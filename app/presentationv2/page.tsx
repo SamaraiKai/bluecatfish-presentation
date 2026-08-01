@@ -1280,7 +1280,7 @@ export default function AIPresentation() {
           </div>
           
           {/* camera toggle */}
-          <div className="flex flex-col items-center gap-2 h-20">
+          <div className="flex flex-col items-center gap-2 h-20 mt-[5px]">
             <button
               onClick={() => setCameraEnabled((v) => !v)}
               className="px-4 py-2 rounded-full bg-blue-600 text-white text-sm"
