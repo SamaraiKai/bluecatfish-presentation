@@ -1025,7 +1025,7 @@ export default function AIPresentation() {
     handleQuizContinue();
   };
   
-  const { play, pause, resume, stop, isSpeaking, isPaused, currentKey, currentText, currentTime, duration } = useAudioPlayer();
+  const { play, pause, resume, stop, isSpeaking, isPaused, currentKey, currentText, currentTime, duration, pauseAudio, resumeAudio } = useAudioPlayer();
   const { messages, isLoading, input, setInput, sendMessage } = useAIChat(currentSection, missedQuestions);
   const [introText, setIntroText] = useState('');
 
