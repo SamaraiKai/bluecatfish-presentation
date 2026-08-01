@@ -1116,6 +1116,15 @@ export default function AIPresentation() {
     }
   };
 
+  const [cameraEnabled, setCameraEnabled] = useState(false);
+  const { present, error } = useFacePresence(cameraEnabled);
+  
+  useEffect(() => {
+    if (!cameraEnabled) return;
+    if (!present) pauseAudio();
+    else resumeAudio();
+  }, [present, cameraEnabled]);
+  
   const handleQuizContinue = () => {
     setCompletedQuizzes((prev) => new Set([...prev, activeSection]));
     setShowQuiz(false);
@@ -1263,6 +1272,21 @@ export default function AIPresentation() {
                 {PRESENTATION.title}
               </p>
             </div>
+          </div>
+          
+          {/* camera toggle */}
+          <div className="flex flex-col items-center gap-2 h-20">
+            <button
+              onClick={() => setCameraEnabled((v) => !v)}
+              className="px-4 py-2 rounded-full bg-blue-600 text-white text-sm"
+            >
+              {cameraEnabled ? "Camera on" : "Enable camera"}
+            </button>
+            {cameraEnabled && (
+              <div className="px-3 py-1 rounded-full text-xs font-semibold bg-white shadow">
+                {error ? `⚠️ ${error}` : present ? "👤 Face detected" : "🚫 No face"}
+              </div>
+            )}
           </div>
           
           <div className="flex items-center gap-3">
