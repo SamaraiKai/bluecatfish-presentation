@@ -50,6 +50,8 @@ const useAudioPlayer = () => {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const pauseAudio = () => audioRef.current?.pause();
+  const resumeAudio = () => audioRef.current?.play().catch(() => {});
 
   const play = useCallback((url: string | undefined, key: string, text: string = '', onComplete?: () => void) => {
     if (!url) {
@@ -120,7 +122,7 @@ const useAudioPlayer = () => {
     setCurrentKey(null);
   }, []);
 
-  return { play, pause, resume, stop, isSpeaking, isPaused, currentKey, currentText, currentTime, duration };
+  return { play, pause, resume, stop, isSpeaking, isPaused, currentKey, currentText, currentTime, duration, pauseAudio, resumeAudio };
 };
 
 // ===================== MICRO-STEP (mini-slideshow) CONFIG =====================
