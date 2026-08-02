@@ -5,7 +5,9 @@ import Link from 'next/link';
 import { createPortal } from 'react-dom';
 import { useFacePresence } from "@/components/hooks/useFacePresence";
 
-// ===================== TYPES =====================
+/* ============================================================================
+ * TYPES
+ * ========================================================================== */
 interface Message {
   role: 'user' | 'ai';
   text: string;
@@ -25,12 +27,19 @@ interface SectionWithBreakdown {
   };
 }
 
-// ===================== STATIC INTRO/CONCLUSION SCRIPTS =====================
+type MicroStep = {
+  label: string;
+  audioKey: string | null;
+};
+
+/* ============================================================================
+ * CONSTANTS
+ * ========================================================================== */
+
 const LECTURE_SCRIPTS = {
   conclusion: `So to summarize what we've learned today: Blue Catfish are an invasive species that were introduced for recreational fishing but have since become a major ecological threat. They eat enormous quantities of native species, make up the majority of fish biomass in many rivers, and have no natural predators to keep their numbers in check. However, there's hope. By commercial harvesting and encouraging consumption of Blue Catfish, we can reduce their population while enjoying a sustainable and delicious food source. Thank you for joining me in this presentation about the Chesapeake Bay's Blue Catfish invasion. Remember, sometimes the solution to an ecological problem can be found on our dinner plates.`
 };
 
-// ===================== STATIC PRESENTATION SHELL =====================
 // Sections are no longer hardcoded — they're fetched from /api/slides2 on load.
 const PRESENTATION = {
   title: "Why Are Blue Catfish Invasive?",
@@ -41,7 +50,31 @@ const PRESENTATION = {
   }
 };
 
-// ===================== AUDIO PLAYER HOOK (updated) =====================
+/* ============================================================================
+ * MICRO-STEP CONFIG
+ * ========================================================================== */
+function getMicroSteps(sectionIndex: number): MicroStep[] {
+  return [
+    { label: 'Overview', audioKey: `section${sectionIndex}_overview` },
+    { label: 'Simple Explanation', audioKey: `section${sectionIndex}_simple` },
+    { label: 'Key Terms', audioKey: null  },
+    { label: 'Real World Example', audioKey: `section${sectionIndex}_example` },
+  ];
+}
+
+function getMicroStepText(section: SectionWithBreakdown, stepIndex: number): string {
+    switch (stepIndex) {
+      case 0: return section.content;
+      case 1: return section.breakdown.simple;
+      case 2: return '';
+      case 3: return section.breakdown.realWorldExample;
+      default: return '';
+    }
+  }
+
+/* ============================================================================
+ * HOOKS
+ * ========================================================================== */
 const useAudioPlayer = () => {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -50,6 +83,7 @@ const useAudioPlayer = () => {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  
   const pauseAudio = () => audioRef.current?.pause();
   const resumeAudio = () => audioRef.current?.play().catch(() => {});
 
@@ -124,71 +158,22 @@ const useAudioPlayer = () => {
     setCurrentKey(null);
   }, []);
 
-  return { play, pause, resume, stop, isSpeaking, isPaused, currentKey, currentText, currentTime, duration, pauseAudio, resumeAudio };
+  return { 
+    play, 
+    pause, 
+    resume, 
+    stop, 
+    isSpeaking, 
+    isPaused, 
+    currentKey, 
+    currentText, 
+    currentTime, 
+    duration, 
+    pauseAudio, 
+    resumeAudio, 
+  };
 };
 
-// ===================== MICRO-STEP (mini-slideshow) CONFIG =====================
-type MicroStep = {
-  label: string;
-  audioKey: string | null;
-};
-
-function getMicroSteps(sectionIndex: number): MicroStep[] {
-  return [
-    { label: 'Overview', audioKey: `section${sectionIndex}_overview` },
-    { label: 'Simple Explanation', audioKey: `section${sectionIndex}_simple` },
-    { label: 'Key Terms', audioKey: null  },
-    { label: 'Real World Example', audioKey: `section${sectionIndex}_example` },
-  ];
-}
-
-// ===================== Highlight Text =====================
-function HighlightedText({
-  text,
-  currentTime,
-  duration,
-  isSpeaking,
-  isActive, // true only if THIS text is what's currently playing
-  className,
-}: {
-  text: string;
-  currentTime: number;
-  duration: number;
-  isSpeaking: boolean;
-  isActive: boolean;
-  className?: string;
-}) {
-  const words = text ? text.split(/\s+/) : [];
-  const activeIndex =
-    isActive && isSpeaking && duration > 0
-      ? (() => {
-          const totalChars = words.reduce((sum, w) => sum + w.length, 0);
-          const targetChars = (currentTime / duration) * totalChars;
-          let cumulative = 0;
-          for (let i = 0; i < words.length; i++) {
-            cumulative += words[i].length;
-            if (cumulative >= targetChars) return i;
-          }
-          return words.length - 1;
-        })()
-      : -1;
-
-  return (
-    <p className={className}>
-      {words.map((word, i) => (
-        <span
-          key={i}
-          className={i === activeIndex ? 'bg-cyan-400/40 rounded px-1 transition-colors' : 'transition-colors'}
-        >
-          {word}{' '}
-        </span>
-      ))}
-    </p>
-  );
-}
-
-
-// ===================== AI CHAT HOOK =====================
 const useAIChat = (currentSection: SectionWithBreakdown | undefined, missedQuestions: { question: string; options: string[]; correctAnswer: number; explanation: string }[]) => {
   const [messages, setMessages] = useState<Message[]>([
     { role: 'ai', text: `Good day! I'm ${PRESENTATION.professor.name}, and I'll be your guide through today's lecture on the Blue Catfish invasion in the Chesapeake Bay. Feel free to ask me any questions as we go through the material. What would you like to explore first?` }
@@ -241,7 +226,53 @@ const useAIChat = (currentSection: SectionWithBreakdown | undefined, missedQuest
   return { messages, isLoading, input, setInput, sendMessage };
 };
 
-// ===================== ANIMATED STAT VALUE =====================
+/* ============================================================================
+ * SMALL PRESENTATIONAL HELPERS
+ * ========================================================================== */
+function HighlightedText({
+  text,
+  currentTime,
+  duration,
+  isSpeaking,
+  isActive, // true only if THIS text is what's currently playing
+  className,
+}: {
+  text: string;
+  currentTime: number;
+  duration: number;
+  isSpeaking: boolean;
+  isActive: boolean;
+  className?: string;
+}) {
+  const words = text ? text.split(/\s+/) : [];
+  const activeIndex =
+    isActive && isSpeaking && duration > 0
+      ? (() => {
+          const totalChars = words.reduce((sum, w) => sum + w.length, 0);
+          const targetChars = (currentTime / duration) * totalChars;
+          let cumulative = 0;
+          for (let i = 0; i < words.length; i++) {
+            cumulative += words[i].length;
+            if (cumulative >= targetChars) return i;
+          }
+          return words.length - 1;
+        })()
+      : -1;
+
+  return (
+    <p className={className}>
+      {words.map((word, i) => (
+        <span
+          key={i}
+          className={i === activeIndex ? 'bg-cyan-400/40 rounded px-1 transition-colors' : 'transition-colors'}
+        >
+          {word}{' '}
+        </span>
+      ))}
+    </p>
+  );
+}
+
 function AnimatedStatValue({ value }: { value: string }) {
   const match = value.match(/^(\d+(?:\.\d+)?)/);
   const targetNum = match ? parseFloat(match[1]) : null;
@@ -277,8 +308,9 @@ function AnimatedStatValue({ value }: { value: string }) {
   return <>{display}{suffix}</>;
 }
 
-// ===================== TEMPLATE SELECTOR =====================
-// Shown as the very first screen, before the intro.
+/* ============================================================================
+ * SCREEN COMPONENTS
+ * ========================================================================== */
 function TemplateSelector({ onSelect }: { onSelect: (template: 'classic' | 'split') => void }) {
   return (
     <div className="h-screen w-screen flex flex-col items-center justify-center bg-gradient-to-br from-mist-50 to-mist-400 p-8">
@@ -316,6 +348,51 @@ function TemplateSelector({ onSelect }: { onSelect: (template: 'classic' | 'spli
   );
 }
 
+function ConclusionScreen({
+    onRestart,
+    sectionScores,
+    totalQuestions,
+  }: {
+    onRestart: () => void;
+    sectionScores: Record<number, number>;
+    totalQuestions: number;
+  }) {
+    const totalScore = Object.values(sectionScores).reduce((sum, s) => sum + s, 0);
+    
+    return (
+      <div className="flex flex-col items-center justify-center text-center py-16 px-8">
+        <div className="text-6xl mb-6">🎓</div>
+        <h2 className="text-3xl md:text-4xl font-bold text-black mb-4">
+          Lesson Complete!
+        </h2>
+        <p className="text-blue-700 text-lg max-w-xl mb-8 leading-relaxed">
+          You've made it through the full story of the Blue Catfish invasion in the Chesapeake Bay —
+          from how they got here, to why they've thrived, to how we might turn the problem into a solution.
+        </p>
+        <p className="text-2xl font-bold text-cyan-500 mb-8">
+        Final Score: {totalScore} / {totalQuestions}
+        </p>
+  
+        <div className="flex flex-col sm:flex-row gap-4">
+          <button
+            onClick={onRestart}
+            className="px-6 py-3 bg-blue-800/60 hover:bg-blue-700/70 text-white rounded-xl font-semibold transition-colors border border-blue-500/30"
+          >
+            ↺ Restart Lesson
+          </button>
+        </div>
+  
+        <p className="text-blue-700/70 text-sm mt-8">
+          Still curious about something? Use <span className="text-cyan-500 font-medium">Ask AI</span> up top —
+          Professor Marine is happy to go deeper on anything from the lesson.
+        </p>
+      </div>
+    );
+  }
+
+/* ============================================================================
+ * SLIDE BLOCKS
+ * ========================================================================== */
 function SectionImageBlock({
     currentSection,
     activeSection,
@@ -400,378 +477,289 @@ function SectionImageBlock({
           );
         }
 
-  function MiniSlideshowBlock({
-    currentSection,
-    activeSectionIndex,
-    microStep,
-    microSteps,
-    goToMicroStep,
-    nextMicroStep,
-    prevMicroStep,
-    showQuiz,
-    handleQuizContinue,
-    currentTime,
-    duration,
-    isSpeaking,
-    currentKey,
-    playMicroStepAudio,
-  }: {
-    currentSection: SectionWithBreakdown;
-    activeSectionIndex: number;
-    microStep: number;
-    microSteps: MicroStep[];
-    goToMicroStep: (i: number) => void;
-    nextMicroStep: () => void;
-    prevMicroStep: () => void;
-    showQuiz: boolean;
-    handleQuizContinue: () => void;
-    currentTime: number;
-    duration: number;
-    isSpeaking: boolean;
-    currentKey: string | null;
-  }) {
-    return (
-              <div className="p-8 md:p-12 flex flex-col justify-center bg-gradient-to-br from-mauve-200/70 to-mauve-300/70 rounded-3xl border border-white-500/30">
-                {/* Animated Title */}
-                <h2 className="text-3xl md:text-4xl font-bold text-black mb-4 animate-[slideInRight_0.6s_ease-out]">
-                  {currentSection.title}
-                </h2>
-                
-                {/* Animated Underline */}
-                <div className="h-1 w-0 bg-gradient-to-r from-cyan-700 to-blue-700 rounded-full mb-6 animate-[expandWidth_0.8s_ease-out_0.3s_forwards]" />
-                
-                {/* ===================== MINI-SLIDESHOW (replaces old Confused button + modal) ===================== */}
-                <div className="mt-6 pt-5 border-t border-blue-700/40">
-                  {/* Step content */}
-                  <div key={microStep} className="min-h-[160px] animate-[fadeIn_0.8s_ease-out]">
-                    {microStep === 0 && (
-                      <div>
-                        <HighlightedText
-                          text={currentSection.content}
-                          currentTime={currentTime}
-                          duration={duration}
-                          isSpeaking={isSpeaking}
-                          isActive={currentKey === `section${0}_overview` || currentKey?.endsWith('_overview')}
-                          className="text-xl text-black leading-relaxed mb-4"
-                        />
-                        <div className="grid grid-cols-2 gap-4">
-                          {currentSection.stats.map((stat, idx) => {
-                            const factKey = idx === 0 ? '_fact1' : '_fact2';
-                            const isActive = currentKey?.endsWith(factKey) ?? false;
-
-                            return (
-                            <div 
-                              key={idx} 
-                              className={`rounded-xl p-5 text-center border transition-all duration-300 ${
-                                isActive
-                                  ? 'bg-blue-300 border-cyan-400 ring-2 ring-cyan-300 scale-105 shadow-lg'
-                                  : 'bg-blue-600/50 border-cyan-500/30'
-                              }`}
-                            >
-                              <div className="text-2xl font-bold text-blue-800 mb-1"><AnimatedStatValue value={stat.value}/></div>
-                              <div className="text-base text-black">{stat.label}</div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                    
-                    {microStep === 1 && (
-                      <div className="bg-blue-700/20 rounded-xl p-5 border border-blue-500/40">
-                        <HighlightedText
-                          text={currentSection.breakdown.simple}
-                          currentTime={currentTime}
-                          duration={duration}
-                          isSpeaking={isSpeaking}
-                          isActive={currentKey === `section${0}_simple` || currentKey?.endsWith('_simple')}
-                          className="text-xl text-black leading-relaxed mb-4"
-                        />
-                      </div>
-                    )}
-                
-                    {microStep === 2 && (
-                      <div className="space-y-3">
-                        {currentSection.breakdown.keyTerms.map((kt, idx) => {
-                          const isActive = currentKey?.includes(`_keyterm${idx}`) ?? false;
-                          return (
-                            <div
-                              key={idx}
-                              className={`rounded-xl p-5 border transition-all duration-300 ${
-                                isActive
-                                  ? 'bg-blue-300 border-cyan-400 ring-2 ring-cyan-300 scale-105 shadow-lg'
-                                  : 'bg-blue-700/20 border-blue-600/40'
-                              }`}
-                            >
-                              <div className="font-bold text-blue-800 mb-1 text-xl">{kt.term}</div>
-                              <div className="text-black text-md">{kt.definition}</div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                
-                    {microStep === 3 && (
-                      <div className="bg-amber-900/30 rounded-xl p-5 border border-amber-700/40">
-                        <HighlightedText
-                          text={currentSection.breakdown.realWorldExample}
-                          currentTime={currentTime}
-                          duration={duration}
-                          isSpeaking={isSpeaking}
-                          isActive={currentKey === `section${0}_example` || currentKey?.endsWith('_example')}
-                          className="text-xl text-black leading-relaxed mb-4"
-                        />
-                      </div>
-                      )}
-                  </div>
-
-                  <div className="flex justify-center mb-3">
-                    <button
-                      onClick={() => playMicroStepAudio(activeSectionIndex, microStep, null)}
-                      className="flex items-center gap-2 px-4 py-2 mt-4 rounded-full bg-blue-600/90 hover:bg-blue-400/90 text-white text-sm font-medium transition-colors"
-                    >
-                      🔁 Replay
-                    </button>
-                  </div>
-                  
-                  {/* Mini-slideshow navigation — always visible */}
-                  <div className="flex items-center justify-between mt-5">
-                    <button
-                      onClick={prevMicroStep}
-                      disabled={microStep === 0}
-                      className="px-3 py-2 rounded-lg bg-blue-800/70 hover:bg-blue-700/80 disabled:opacity-30 text-white text-sm transition-colors"
-                    >
-                      ←
-                    </button>
-                
-                    <div className="flex gap-2">
-                      {microSteps.map((step, idx) => (
-                        <button
-                          key={idx}
-                          onClick={() => goToMicroStep(idx)}
-                          title={step.label}
-                          className={`w-2.5 h-2.5 rounded-full transition-colors ${
-                            idx === microStep ? 'bg-cyan-500' : 'bg-blue-700/60 hover:bg-blue-500/70'
-                          }`}
-                        />
-                      ))}
-                    </div>
-                
-                    <button
-                      onClick={nextMicroStep}
-                      disabled={microStep === microSteps.length - 1}
-                      className="px-3 py-2 rounded-lg bg-blue-800/50 hover:bg-blue-700/60 disabled:opacity-30 text-white text-sm transition-colors"
-                    >
-                      →
-                    </button>
-                  </div>
-                
-                  <p className="text-center text-xs text-blue-700/80 mt-2">{microSteps[microStep].label}</p>
-                </div>
-                
-            </div>
-        );
-      }
-
-function ClassicLayout(props: {
-    currentSection: SectionWithBreakdown;
-    activeSection: number;
-    totalSections: number;
-    activeSectionIndex: number;
-    microStep: number;
-    microSteps: MicroStep[];
-    goToMicroStep: (i: number) => void;
-    nextMicroStep: () => void;
-    prevMicroStep: () => void;
-    currentTime: number;
-    duration: number;
-    isSpeaking: boolean;
-    showQuiz: boolean;
-    handleQuizContinue: () => void;
-    currentKey: string | null;
-    playMicroStepAudio: (sectionIndex: number, stepIndex: number, transitionType: 'means' | 'analogy' | null) => void;
-  }) {
-    return (
-      <div className="bg-white/5 backdrop-blur-md rounded-3xl border border-white-500/30 shadow-2xl overflow-hidden">
-        <div className="grid md:grid-cols-2 gap-0">
-          <SectionImageBlock
-            currentSection={props.currentSection}
-            activeSection={props.activeSection}
-            totalSections={props.totalSections}
-          />
-          <div className="p-8 md:p-12 flex flex-col justify-center bg-gradient-to-br from-mist-400/50 to-mist-500/50">
-            <MiniSlideshowBlock
-              currentSection={props.currentSection}
-              activeSectionIndex={props.activeSectionIndex}
-              microStep={props.microStep}
-              microSteps={props.microSteps}
-              goToMicroStep={props.goToMicroStep}
-              nextMicroStep={props.nextMicroStep}
-              prevMicroStep={props.prevMicroStep}
-              showQuiz={props.showQuiz}
-              handleQuizContinue={props.handleQuizContinue}
-              currentKey={props.currentKey}
-              currentTime={props.currentTime}
-              duration={props.duration}
-              isSpeaking={props.isSpeaking}
-              playMicroStepAudio={props.playMicroStepAudio}
-            />
-          </div>
-        </div>
-      </div>
-    );
-  }
-  // ===================== TEMPLATE 2: SPLIT (new layout) =====================
-  function SplitLayout(props: {
-    currentSection: SectionWithBreakdown;
-    activeSection: number;
-    totalSections: number;
-    activeSectionIndex: number;
-    microStep: number;
-    microSteps: MicroStep[];
-    goToMicroStep: (i: number) => void;
-    nextMicroStep: () => void;
-    prevMicroStep: () => void;
-    currentKey: string | null;
-    currentTime: number;
-    duration: number;
-    isSpeaking: boolean;
-    showQuiz: boolean;
-    handleQuizContinue: () => void;
-    playMicroStepAudio: (sectionIndex: number, stepIndex: number, transitionType: 'means' | 'analogy' | null) => void;
-    
-  }) {
-    return (
-      <div className="bg-white/5 backdrop-blur-md rounded-3xl border border-white-500/30 shadow-2xl overflow-hidden">
-        <div className="grid md:grid-cols-2 gap-0 min-h-[600px]">
-          {/* Left: mini-slideshow, full height */}
-          <div className="p-8 md:p-12 flex flex-col justify-center bg-gradient-to-br from-mist-400/50 to-mist-500/50">
-            <MiniSlideshowBlock
-              currentSection={props.currentSection}
-              activeSectionIndex={props.activeSectionIndex}
-              microStep={props.microStep}
-              microSteps={props.microSteps}
-              goToMicroStep={props.goToMicroStep}
-              nextMicroStep={props.nextMicroStep}
-              prevMicroStep={props.prevMicroStep}
-              showQuiz={props.showQuiz}
-              handleQuizContinue={props.handleQuizContinue}
-              currentKey={props.currentKey}
-              currentTime={props.currentTime}
-              duration={props.duration}
-              isSpeaking={props.isSpeaking}
-              playMicroStepAudio={props.playMicroStepAudio}
-            />
-          </div>
-  
-          {/* Right: image on top, transcript below, stacked */}
-          <div className="grid md:grid-cols-1 gap-0 min-h-[600px]">
-            <SectionImageBlock
-              currentSection={props.currentSection}
-              activeSection={props.activeSection}
-              totalSections={props.totalSections}
-            />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-function ReviewSlide({
-  missedQuestions,
-  section,
-  onContinue,
+function MiniSlideshowBlock({
+  currentSection,
+  activeSectionIndex,
+  microStep,
+  microSteps,
+  goToMicroStep,
+  nextMicroStep,
+  prevMicroStep,
+  showQuiz,
+  handleQuizContinue,
+  currentTime,
+  duration,
+  isSpeaking,
   currentKey,
+  playMicroStepAudio,
 }: {
-  missedQuestions: { index: number; question: string; options: string[]; correctAnswer: number; userAnswer: number | null; explanation: string }[];
-  section: SectionWithBreakdown;
-  onContinue: () => void;
+  currentSection: SectionWithBreakdown;
+  activeSectionIndex: number;
+  microStep: number;
+  microSteps: MicroStep[];
+  goToMicroStep: (i: number) => void;
+  nextMicroStep: () => void;
+  prevMicroStep: () => void;
+  showQuiz: boolean;
+  handleQuizContinue: () => void;
+  currentTime: number;
+  duration: number;
+  isSpeaking: boolean;
   currentKey: string | null;
 }) {
   return (
-    <div className="bg-gradient-to-br from-mist-400 via-mist-300 to-mist-400 rounded-3xl border border-slate-200 shadow-2xl p-8 max-w-2xl mx-auto text-center">
-      <h3 className="text-2xl font-bold text-slate-900 mb-4">Let's Review</h3>
-        
-        <div className="space-y-5 mb-6">
-          {missedQuestions.map((q, idx) => {
-            const isActive = currentKey?.endsWith(`_review_q${q.index}`) ?? false;
-            return (
-            <div key={idx} 
-              className={`rounded-2xl p-5 border transition-all duration-300 ${
-                isActive
-                  ? 'bg-blue-300 border-cyan-400 ring-2 ring-cyan-300 scale-105 shadow-lg'
-                  : 'bg-red-50 border-red-200'
-              }`}
-            >
-              <p className="text-slate-900 font-semibold mb-2">{q.question}</p>
-              <p className="text-red-600 text-sm mb-1">
-                You answered: {q.userAnswer !== null ? q.options[q.userAnswer] : '(no answer)'}
-              </p>
-              <p className="text-green-700 text-sm font-medium">
-                Correct answer: {q.options[q.correctAnswer]}
-              </p>
-              <div className="bg-blue-50 rounded-xl p-3 border border-blue-200">
-                <p className="text-blue-900 text-sm">{q.explanation}</p>
+        <div className="p-8 md:p-12 flex flex-col justify-center bg-gradient-to-br from-mauve-200/70 to-mauve-300/70 rounded-3xl border border-white-500/30">
+          {/* Animated Title */}
+          <h2 className="text-3xl md:text-4xl font-bold text-black mb-4 animate-[slideInRight_0.6s_ease-out]">
+            {currentSection.title}
+          </h2>
+          
+          {/* Animated Underline */}
+          <div className="h-1 w-0 bg-gradient-to-r from-cyan-700 to-blue-700 rounded-full mb-6 animate-[expandWidth_0.8s_ease-out_0.3s_forwards]" />
+          
+          {/* ===================== MINI-SLIDESHOW (replaces old Confused button + modal) ===================== */}
+          <div className="mt-6 pt-5 border-t border-blue-700/40">
+            {/* Step content */}
+            <div key={microStep} className="min-h-[160px] animate-[fadeIn_0.8s_ease-out]">
+              {microStep === 0 && (
+                <div>
+                  <HighlightedText
+                    text={currentSection.content}
+                    currentTime={currentTime}
+                    duration={duration}
+                    isSpeaking={isSpeaking}
+                    isActive={currentKey === `section${0}_overview` || currentKey?.endsWith('_overview')}
+                    className="text-xl text-black leading-relaxed mb-4"
+                  />
+                  <div className="grid grid-cols-2 gap-4">
+                    {currentSection.stats.map((stat, idx) => {
+                      const factKey = idx === 0 ? '_fact1' : '_fact2';
+                      const isActive = currentKey?.endsWith(factKey) ?? false;
+
+                      return (
+                      <div 
+                        key={idx} 
+                        className={`rounded-xl p-5 text-center border transition-all duration-300 ${
+                          isActive
+                            ? 'bg-blue-300 border-cyan-400 ring-2 ring-cyan-300 scale-105 shadow-lg'
+                            : 'bg-blue-600/50 border-cyan-500/30'
+                        }`}
+                      >
+                        <div className="text-2xl font-bold text-blue-800 mb-1"><AnimatedStatValue value={stat.value}/></div>
+                        <div className="text-base text-black">{stat.label}</div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
+            )}
+              
+              {microStep === 1 && (
+                <div className="bg-blue-700/20 rounded-xl p-5 border border-blue-500/40">
+                  <HighlightedText
+                    text={currentSection.breakdown.simple}
+                    currentTime={currentTime}
+                    duration={duration}
+                    isSpeaking={isSpeaking}
+                    isActive={currentKey === `section${0}_simple` || currentKey?.endsWith('_simple')}
+                    className="text-xl text-black leading-relaxed mb-4"
+                  />
+                </div>
+              )}
+          
+              {microStep === 2 && (
+                <div className="space-y-3">
+                  {currentSection.breakdown.keyTerms.map((kt, idx) => {
+                    const isActive = currentKey?.includes(`_keyterm${idx}`) ?? false;
+                    return (
+                      <div
+                        key={idx}
+                        className={`rounded-xl p-5 border transition-all duration-300 ${
+                          isActive
+                            ? 'bg-blue-300 border-cyan-400 ring-2 ring-cyan-300 scale-105 shadow-lg'
+                            : 'bg-blue-700/20 border-blue-600/40'
+                        }`}
+                      >
+                        <div className="font-bold text-blue-800 mb-1 text-xl">{kt.term}</div>
+                        <div className="text-black text-md">{kt.definition}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+          
+              {microStep === 3 && (
+                <div className="bg-amber-900/30 rounded-xl p-5 border border-amber-700/40">
+                  <HighlightedText
+                    text={currentSection.breakdown.realWorldExample}
+                    currentTime={currentTime}
+                    duration={duration}
+                    isSpeaking={isSpeaking}
+                    isActive={currentKey === `section${0}_example` || currentKey?.endsWith('_example')}
+                    className="text-xl text-black leading-relaxed mb-4"
+                  />
+                </div>
+                )}
             </div>
-          );
-        })}
+
+            <div className="flex justify-center mb-3">
+              <button
+                onClick={() => playMicroStepAudio(activeSectionIndex, microStep, null)}
+                className="flex items-center gap-2 px-4 py-2 mt-4 rounded-full bg-blue-600/90 hover:bg-blue-400/90 text-white text-sm font-medium transition-colors"
+              >
+                🔁 Replay
+              </button>
+            </div>
+            
+            {/* Mini-slideshow navigation — always visible */}
+            <div className="flex items-center justify-between mt-5">
+              <button
+                onClick={prevMicroStep}
+                disabled={microStep === 0}
+                className="px-3 py-2 rounded-lg bg-blue-800/70 hover:bg-blue-700/80 disabled:opacity-30 text-white text-sm transition-colors"
+              >
+                ←
+              </button>
+          
+              <div className="flex gap-2">
+                {microSteps.map((step, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => goToMicroStep(idx)}
+                    title={step.label}
+                    className={`w-2.5 h-2.5 rounded-full transition-colors ${
+                      idx === microStep ? 'bg-cyan-500' : 'bg-blue-700/60 hover:bg-blue-500/70'
+                    }`}
+                  />
+                ))}
+              </div>
+          
+              <button
+                onClick={nextMicroStep}
+                disabled={microStep === microSteps.length - 1}
+                className="px-3 py-2 rounded-lg bg-blue-800/50 hover:bg-blue-700/60 disabled:opacity-30 text-white text-sm transition-colors"
+              >
+                →
+              </button>
+            </div>
+          
+            <p className="text-center text-xs text-blue-700/80 mt-2">{microSteps[microStep].label}</p>
+          </div>
+          
+      </div>
+  );
+}
+
+/* ============================================================================
+ * LAYOUT TEMPLATES
+ * ========================================================================== */
+function ClassicLayout(props: {
+  currentSection: SectionWithBreakdown;
+  activeSection: number;
+  totalSections: number;
+  activeSectionIndex: number;
+  microStep: number;
+  microSteps: MicroStep[];
+  goToMicroStep: (i: number) => void;
+  nextMicroStep: () => void;
+  prevMicroStep: () => void;
+  currentTime: number;
+  duration: number;
+  isSpeaking: boolean;
+  showQuiz: boolean;
+  handleQuizContinue: () => void;
+  currentKey: string | null;
+  playMicroStepAudio: (sectionIndex: number, stepIndex: number, transitionType: 'means' | 'analogy' | null) => void;
+}) {
+  return (
+    <div className="bg-white/5 backdrop-blur-md rounded-3xl border border-white-500/30 shadow-2xl overflow-hidden">
+      <div className="grid md:grid-cols-2 gap-0">
+        <SectionImageBlock
+          currentSection={props.currentSection}
+          activeSection={props.activeSection}
+          totalSections={props.totalSections}
+        />
+        <div className="p-8 md:p-12 flex flex-col justify-center bg-gradient-to-br from-mist-400/50 to-mist-500/50">
+          <MiniSlideshowBlock
+            currentSection={props.currentSection}
+            activeSectionIndex={props.activeSectionIndex}
+            microStep={props.microStep}
+            microSteps={props.microSteps}
+            goToMicroStep={props.goToMicroStep}
+            nextMicroStep={props.nextMicroStep}
+            prevMicroStep={props.prevMicroStep}
+            showQuiz={props.showQuiz}
+            handleQuizContinue={props.handleQuizContinue}
+            currentKey={props.currentKey}
+            currentTime={props.currentTime}
+            duration={props.duration}
+            isSpeaking={props.isSpeaking}
+            playMicroStepAudio={props.playMicroStepAudio}
+          />
         </div>
-      
-      <div className="flex justify-end">
-        <button
-          onClick={onContinue}
-          className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-colors"
-        >
-          Continue →
-        </button>
       </div>
     </div>
   );
 }
 
-function ConclusionScreen({
-    onRestart,
-    sectionScores,
-    totalQuestions,
-  }: {
-    onRestart: () => void;
-    sectionScores: Record<number, number>;
-    totalQuestions: number;
-  }) {
-    const totalScore = Object.values(sectionScores).reduce((sum, s) => sum + s, 0);
-    
-    return (
-      <div className="flex flex-col items-center justify-center text-center py-16 px-8">
-        <div className="text-6xl mb-6">🎓</div>
-        <h2 className="text-3xl md:text-4xl font-bold text-black mb-4">
-          Lesson Complete!
-        </h2>
-        <p className="text-blue-700 text-lg max-w-xl mb-8 leading-relaxed">
-          You've made it through the full story of the Blue Catfish invasion in the Chesapeake Bay —
-          from how they got here, to why they've thrived, to how we might turn the problem into a solution.
-        </p>
-        <p className="text-2xl font-bold text-cyan-500 mb-8">
-        Final Score: {totalScore} / {totalQuestions}
-        </p>
+function SplitLayout(props: {
+  currentSection: SectionWithBreakdown;
+  activeSection: number;
+  totalSections: number;
+  activeSectionIndex: number;
+  microStep: number;
+  microSteps: MicroStep[];
+  goToMicroStep: (i: number) => void;
+  nextMicroStep: () => void;
+  prevMicroStep: () => void;
+  currentKey: string | null;
+  currentTime: number;
+  duration: number;
+  isSpeaking: boolean;
+  showQuiz: boolean;
+  handleQuizContinue: () => void;
+  playMicroStepAudio: (sectionIndex: number, stepIndex: number, transitionType: 'means' | 'analogy' | null) => void;
   
-        <div className="flex flex-col sm:flex-row gap-4">
-          <button
-            onClick={onRestart}
-            className="px-6 py-3 bg-blue-800/60 hover:bg-blue-700/70 text-white rounded-xl font-semibold transition-colors border border-blue-500/30"
-          >
-            ↺ Restart Lesson
-          </button>
+}) {
+  return (
+    <div className="bg-white/5 backdrop-blur-md rounded-3xl border border-white-500/30 shadow-2xl overflow-hidden">
+      <div className="grid md:grid-cols-2 gap-0 min-h-[600px]">
+        {/* Left: mini-slideshow, full height */}
+        <div className="p-8 md:p-12 flex flex-col justify-center bg-gradient-to-br from-mist-400/50 to-mist-500/50">
+          <MiniSlideshowBlock
+            currentSection={props.currentSection}
+            activeSectionIndex={props.activeSectionIndex}
+            microStep={props.microStep}
+            microSteps={props.microSteps}
+            goToMicroStep={props.goToMicroStep}
+            nextMicroStep={props.nextMicroStep}
+            prevMicroStep={props.prevMicroStep}
+            showQuiz={props.showQuiz}
+            handleQuizContinue={props.handleQuizContinue}
+            currentKey={props.currentKey}
+            currentTime={props.currentTime}
+            duration={props.duration}
+            isSpeaking={props.isSpeaking}
+            playMicroStepAudio={props.playMicroStepAudio}
+          />
         </div>
-  
-        <p className="text-blue-700/70 text-sm mt-8">
-          Still curious about something? Use <span className="text-cyan-500 font-medium">Ask AI</span> up top —
-          Professor Marine is happy to go deeper on anything from the lesson.
-        </p>
-      </div>
-    );
-  }
 
+        {/* Right: image on top, transcript below, stacked */}
+        <div className="grid md:grid-cols-1 gap-0 min-h-[600px]">
+          <SectionImageBlock
+            currentSection={props.currentSection}
+            activeSection={props.activeSection}
+            totalSections={props.totalSections}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================================
+ * QUIZ + REVIEW
+ * ========================================================================== */
 function QuizSlide({
   quiz,
   onContinue,
@@ -889,118 +877,117 @@ function QuizSlide({
   );
 }
 
-// ===================== MAIN COMPONENT =====================
-export default function AIPresentation() {
+function ReviewSlide({
+  missedQuestions,
+  section,
+  onContinue,
+  currentKey,
+}: {
+  missedQuestions: { index: number; question: string; options: string[]; correctAnswer: number; userAnswer: number | null; explanation: string }[];
+  section: SectionWithBreakdown;
+  onContinue: () => void;
+  currentKey: string | null;
+}) {
+  return (
+    <div className="bg-gradient-to-br from-mist-400 via-mist-300 to-mist-400 rounded-3xl border border-slate-200 shadow-2xl p-8 max-w-2xl mx-auto text-center">
+      <h3 className="text-2xl font-bold text-slate-900 mb-4">Let's Review</h3>
+        
+        <div className="space-y-5 mb-6">
+          {missedQuestions.map((q, idx) => {
+            const isActive = currentKey?.endsWith(`_review_q${q.index}`) ?? false;
+            return (
+            <div key={idx} 
+              className={`rounded-2xl p-5 border transition-all duration-300 ${
+                isActive
+                  ? 'bg-blue-300 border-cyan-400 ring-2 ring-cyan-300 scale-105 shadow-lg'
+                  : 'bg-red-50 border-red-200'
+              }`}
+            >
+              <p className="text-slate-900 font-semibold mb-2">{q.question}</p>
+              <p className="text-red-600 text-sm mb-1">
+                You answered: {q.userAnswer !== null ? q.options[q.userAnswer] : '(no answer)'}
+              </p>
+              <p className="text-green-700 text-sm font-medium">
+                Correct answer: {q.options[q.correctAnswer]}
+              </p>
+              <div className="bg-blue-50 rounded-xl p-3 border border-blue-200">
+                <p className="text-blue-900 text-sm">{q.explanation}</p>
+              </div>
+            </div>
+          );
+        })}
+        </div>
+      
+      <div className="flex justify-end">
+        <button
+          onClick={onContinue}
+          className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-colors"
+        >
+          Continue →
+        </button>
+      </div>
+    </div>
+  );
+}
 
+/* ============================================================================
+ * MAIN COMPONENT
+ * ========================================================================== */
+export default function AIPresentation() {
+  /* ---------------------------------------------------------------- state */
+
+  // Content loading
   const [sections, setSections] = useState<SectionWithBreakdown[]>([]);
   const [audioUrls, setAudioUrls] = useState<Record<string, string>>({});
   const [isContentLoading, setIsContentLoading] = useState(true);
+  const [loadingPhase, setLoadingPhase] = useState<'content' | 'audio'>('content');
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [introText, setIntroText] = useState('');
 
+  // Navigation
+  const [selectedTemplate, setSelectedTemplate] = useState<'classic' | 'split' | null>(null);
   const [activeSection, setActiveSection] = useState(0);
+  const [microStep, setMicroStep] = useState(0);
+  const [showConclusion, setShowConclusion] = useState(false);
+
+  // Quiz / review
+  const [showQuiz, setShowQuiz] = useState(false);
+  const [showReview, setShowReview] = useState(false);
+  const [completedQuizzes, setCompletedQuizzes] = useState<Set<number>>(new Set());
+  const [sectionScores, setSectionScores] = useState<Record<number, number>>({});
+  const [missedQuestions, setMissedQuestions] = useState<{ index: number; question: string; options: string[]; correctAnswer: number; userAnswer: number | null; explanation: string; }[]>([]);
+
+  // UI
   const [showChat, setShowChat] = useState(false);
   const [isNarrating, setIsNarrating] = useState(false);
-  const [showConclusion, setShowConclusion] = useState(false);
-  const [showQuiz, setShowQuiz] = useState(false);
-  const [selectedTemplate, setSelectedTemplate] = useState<'classic' | 'split' | null>(null);
-  const [completedQuizzes, setCompletedQuizzes] = useState<Set<number>>(new Set());
-  const [showReview, setShowReview] = useState(false);
-  const [missedQuestions, setMissedQuestions] = useState<{ index: number; question: string; options: string[]; correctAnswer: number; userAnswer: number | null }[]>([]);
-  const [loadingPhase, setLoadingPhase] = useState<'content' | 'audio'>('content');
-  const [sectionScores, setSectionScores] = useState<Record<number, number>>({});
+  const [cameraEnabled, setCameraEnabled] = useState(false);
+  
+  // Refs
   const keyTermsTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  /* ---------------------------------------------------------- hook calls */
   const currentSection = sections[activeSection];
 
-
-  const handleTemplateSelect = (template: 'classic' | 'split') => {
-    setSelectedTemplate(template);
-    setActiveSection(0);
-    setShowConclusion(false);
-    playIntroduction(template);
-  };
-
-  const handleRestart = () => {
-    stop();
-    setActiveSection(0);
-    setMicroStep(0);
-    setShowConclusion(false);
-    setShowQuiz(false);
-    setSectionScores({});
-    setCompletedQuizzes(new Set());
-  };
-
-   const handleQuizReview = () => {
-    setShowQuiz(false);
-    setShowReview(true);
-  };
+  const { play, pause, resume, stop, isSpeaking, isPaused, currentKey, currentText, currentTime, duration, pauseAudio, resumeAudio } = useAudioPlayer();
   
-  const handleReviewContinue = () => {
-    setShowReview(false);
-    handleQuizContinue();
-  };
+  const { messages, isLoading, input, setInput, sendMessage } = useAIChat(currentSection, missedQuestions);
 
-  // Reset to step 0 whenever the main section changes
-  useEffect(() => {
-    setMicroStep(0);
-    stop();
-  }, [activeSection]);
+  const { present, error } = useFacePresence(cameraEnabled);
 
-  // ---- Fetch sections, then fetch pre-generated audio for them ----
-  useEffect(() => {
-    async function loadPresentation() {
-      try {
-        setLoadingPhase('content');
-        const sectionsRes = await fetch('/api/slidesv2', { method: 'POST' });
-        const sectionsData = await sectionsRes.json();
+  /* ------------------------------------------------------ derived values */
+  const microSteps = getMicroSteps(activeSection);
 
-        if (sectionsData.error || !sectionsData.sections) {
-          throw new Error(sectionsData.error || 'No sections returned');
-        }
+  const flowSteps = sections.flatMap((_, idx) => [
+    { type: 'section' as const, index: idx },
+    { type: 'quiz' as const, index: idx },
+  ]);
 
-        setSections(sectionsData.sections);
+  const currentFlowIndex = flowSteps.findIndex(
+    (step) => step.index === activeSection && step.type === (showQuiz ? 'quiz' : 'section')
+  );
 
-        const firstTopic = sectionsData.sections[0]?.title || 'the Blue Catfish invasion';
-        const builtIntro = `Hello everyone, and welcome! I'm Professor Marine, and today we're diving into the story of the Blue Catfish invasion in the Chesapeake Bay. By the time we're done, you'll all be experts on the subject. Let's get right into the material — starting with our first topic: ${firstTopic}.`;
-        setIntroText(builtIntro);
-
-        setLoadingPhase('audio');
-        const audioRes = await fetch('/api/slidesv2/audio', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            sections: sectionsData.sections,
-            intro: builtIntro,
-            conclusion: LECTURE_SCRIPTS.conclusion,
-          }),
-        });
-        const audioData = await audioRes.json();
-
-        if (audioData.audioUrls) {
-          setAudioUrls(audioData.audioUrls);
-        }
-      } catch (err: any) {
-        console.error('Failed to load presentation:', err);
-        setLoadError(err.message || 'Failed to load presentation content');
-      } finally {
-        setIsContentLoading(false);
-      }
-    }
-
-    loadPresentation();
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (keyTermsTimerRef.current) clearTimeout(keyTermsTimerRef.current);
-    };
-  }, [activeSection]);
-  
-    // Scroll to bottom of chat
-    useEffect(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages]);
-  
+  /* ----------------------------------------------------- audio handlers */
   const playMicroStepAudio = (sectionIndex: number, stepIndex: number, transitionType: 'means' | 'analogy' | null) => {
     const section = sections[sectionIndex];
     const steps = getMicroSteps(sectionIndex);
@@ -1084,14 +1071,6 @@ export default function AIPresentation() {
     play(audioUrls[introKey], introKey, "", () => chain(0));
   };
 
-  useEffect(() => {
-    if (showReview) {
-      playReviewAudio(activeSection, missedQuestions.map((q) => q.index));
-    }
-  }, [showReview]);
-
-  
-  // ---- Narration handlers ----
   const narrateSection = (index: number) => {
     if (index < sections.length) {
       setMicroStep(0);
@@ -1114,17 +1093,8 @@ export default function AIPresentation() {
     });
     setIsNarrating(true);
   };
-  
-  function getMicroStepText(section: SectionWithBreakdown, stepIndex: number): string {
-    switch (stepIndex) {
-      case 0: return section.content;
-      case 1: return section.breakdown.simple;
-      case 2: return '';
-      case 3: return section.breakdown.realWorldExample;
-      default: return '';
-    }
-  }
-  
+
+  /* ------------------------------------------- micro-step nav handlers */
   const goToMicroStep = (index: number) => {
     if (index < 0 || index >= microSteps.length) return;
     if (keyTermsTimerRef.current) clearTimeout(keyTermsTimerRef.current);
@@ -1152,46 +1122,15 @@ export default function AIPresentation() {
       play(audioUrls['wrapup'], 'wrapup', '');
     }
   };
-  
-  const flowSteps = sections.flatMap((_, idx) => [
-    { type: 'section' as const, index: idx },
-    { type: 'quiz' as const, index: idx },
-  ]);
 
-  const currentFlowIndex = flowSteps.findIndex(
-    (step) => step.index === activeSection && step.type === (showQuiz ? 'quiz' : 'section')
-  );
-  
-  const { play, pause, resume, stop, isSpeaking, isPaused, currentKey, currentText, currentTime, duration, pauseAudio, resumeAudio } = useAudioPlayer();
-  const { messages, isLoading, input, setInput, sendMessage } = useAIChat(currentSection, missedQuestions);
-  const [introText, setIntroText] = useState('');
-
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-
-  const nextSection = () => {
-    setMicroStep(0);
-    if (currentSection.quiz && currentSection.quiz.length === 2) {
-      setShowQuiz(true);
-    } else {
-    handleQuizContinue(); // no valid quiz for this section — just advance
-    }
+  /* --------------------------------------------- section nav handlers */
+  const handleTemplateSelect = (template: 'classic' | 'split') => {
+    setSelectedTemplate(template);
+    setActiveSection(0);
+    setShowConclusion(false);
+    playIntroduction(template);
   };
 
-  // Scroll to bottom of chat
-    useEffect(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages]);
-  
-  const [cameraEnabled, setCameraEnabled] = useState(false);
-  const { present, error } = useFacePresence(cameraEnabled);
-  
-  useEffect(() => {
-    if (!cameraEnabled) return;
-    if (!present) pauseAudio();
-    else resumeAudio();
-  }, [present, cameraEnabled]);
-  
   const handleQuizContinue = () => {
     setCompletedQuizzes((prev) => new Set([...prev, activeSection]));
     setShowQuiz(false);
@@ -1209,6 +1148,25 @@ export default function AIPresentation() {
     }
   };
 
+   const handleQuizReview = () => {
+    setShowQuiz(false);
+    setShowReview(true);
+  };
+  
+  const handleReviewContinue = () => {
+    setShowReview(false);
+    handleQuizContinue();
+  };
+
+  const nextSection = () => {
+    setMicroStep(0);
+    if (currentSection.quiz && currentSection.quiz.length === 2) {
+      setShowQuiz(true);
+    } else {
+    handleQuizContinue(); // no valid quiz for this section — just advance
+    }
+  };
+
   const prevSection = () => {
     setMicroStep(0);
     if (activeSection > 0) {
@@ -1218,13 +1176,101 @@ export default function AIPresentation() {
       setTimeout(() => narrateSection(newIndex), 300);
     }
   };
-
-  const [microStep, setMicroStep] = useState(0);
-  const microSteps = getMicroSteps(activeSection);
   
+  const handleRestart = () => {
+    stop();
+    setActiveSection(0);
+    setMicroStep(0);
+    setShowConclusion(false);
+    setShowQuiz(false);
+    setSectionScores({});
+    setCompletedQuizzes(new Set());
+  };
 
+  /* -------------------------------------------------------------- effects */
+  // Fetch sections, then fetch pre-generated audio for them
+  useEffect(() => {
+    async function loadPresentation() {
+      try {
+        setLoadingPhase('content');
+        const sectionsRes = await fetch('/api/slidesv2', { method: 'POST' });
+        const sectionsData = await sectionsRes.json();
+
+        if (sectionsData.error || !sectionsData.sections) {
+          throw new Error(sectionsData.error || 'No sections returned');
+        }
+
+        setSections(sectionsData.sections);
+
+        const firstTopic = sectionsData.sections[0]?.title || 'the Blue Catfish invasion';
+        const builtIntro = `Hello everyone, and welcome! I'm Professor Marine, and today we're diving into the story of the Blue Catfish invasion in the Chesapeake Bay. By the time we're done, you'll all be experts on the subject. Let's get right into the material — starting with our first topic: ${firstTopic}.`;
+        setIntroText(builtIntro);
+
+        setLoadingPhase('audio');
+        const audioRes = await fetch('/api/slidesv2/audio', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sections: sectionsData.sections,
+            intro: builtIntro,
+            conclusion: LECTURE_SCRIPTS.conclusion,
+          }),
+        });
+        const audioData = await audioRes.json();
+
+        if (audioData.audioUrls) {
+          setAudioUrls(audioData.audioUrls);
+        }
+      } catch (err: any) {
+        console.error('Failed to load presentation:', err);
+        setLoadError(err.message || 'Failed to load presentation content');
+      } finally {
+        setIsContentLoading(false);
+      }
+    }
+
+    loadPresentation();
+  }, []);
+
+  // Reset to step 0 whenever the main section changes
+  useEffect(() => {
+    setMicroStep(0);
+    stop();
+  }, [activeSection]);
+
+  // Clear the key-terms timer when leaving a section
+  useEffect(() => {
+    return () => {
+      if (keyTermsTimerRef.current) clearTimeout(keyTermsTimerRef.current);
+    };
+  }, [activeSection]);
   
-  // ---- Loading / error states before rendering the presentation ----
+  // Scroll to bottom of chat
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  // Scroll to bottom of chat
+    useEffect(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages]);
+
+  // Narrate the review slide when it opens
+  useEffect(() => {
+    if (showReview) {
+      playReviewAudio(activeSection, missedQuestions.map((q) => q.index));
+    }
+  }, [showReview]);
+
+  // Pause narration when the viewer looks away
+  useEffect(() => {
+    if (!cameraEnabled) return;
+    if (!present) pauseAudio();
+    else resumeAudio();
+  }, [present, cameraEnabled]);
+  
+  /* -------------------------------------------------------- early returns */
+  // Loading / error states before rendering the presentation
   if (isContentLoading) {
     return (
       <div className="h-screen w-screen flex flex-col items-center justify-center text-black bg-mist-300 gap-4">
@@ -1252,7 +1298,7 @@ export default function AIPresentation() {
     return <TemplateSelector onSelect={handleTemplateSelect} />;
   }   
   
-  // ===================== RENDER =====================
+  /* ---------------------------------------------------------------- render */
   return (
     <div className="min-h-screen bg-gradient-to-br from-mist-400 via-mist-50 to-mist-400 flex flex-col">
       {/* Header */}
