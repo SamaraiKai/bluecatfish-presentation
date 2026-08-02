@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { createPortal } from 'react-dom';
-import { useFacePresence } from "@/hooks/useFacePresence";
+import { useFacePresence } from "@/components/hooks/useFacePresence";
 
 // ===================== TYPES =====================
 interface Message {
@@ -157,6 +157,7 @@ function getMicroStepText(section: SectionWithBreakdown, stepIndex: number): str
   }
 }
 
+// ===================== Highlight Text =====================
 function HighlightedText({
   text,
   currentTime,
@@ -201,58 +202,6 @@ function HighlightedText({
   );
 }
 
-function ReviewSlide({
-  missedQuestions,
-  section,
-  onContinue,
-  currentKey,
-}: {
-  missedQuestions: { index: number; question: string; options: string[]; correctAnswer: number; userAnswer: number | null; explanation: string }[];
-  section: SectionWithBreakdown;
-  onContinue: () => void;
-  currentKey: string | null;
-}) {
-  return (
-    <div className="bg-gradient-to-br from-mist-400 via-mist-300 to-mist-400 rounded-3xl border border-slate-200 shadow-2xl p-8 max-w-2xl mx-auto text-center">
-      <h3 className="text-2xl font-bold text-slate-900 mb-4">Let's Review</h3>
-        
-        <div className="space-y-5 mb-6">
-          {missedQuestions.map((q, idx) => {
-            const isActive = currentKey?.endsWith(`_review_q${q.index}`) ?? false;
-            return (
-            <div key={idx} 
-              className={`rounded-2xl p-5 border transition-all duration-300 ${
-                isActive
-                  ? 'bg-blue-300 border-cyan-400 ring-2 ring-cyan-300 scale-105 shadow-lg'
-                  : 'bg-red-50 border-red-200'
-              }`}
-            >
-              <p className="text-slate-900 font-semibold mb-2">{q.question}</p>
-              <p className="text-red-600 text-sm mb-1">
-                You answered: {q.userAnswer !== null ? q.options[q.userAnswer] : '(no answer)'}
-              </p>
-              <p className="text-green-700 text-sm font-medium">
-                Correct answer: {q.options[q.correctAnswer]}
-              </p>
-              <div className="bg-blue-50 rounded-xl p-3 border border-blue-200">
-                <p className="text-blue-900 text-sm">{q.explanation}</p>
-              </div>
-            </div>
-          );
-        })}
-        </div>
-      
-      <div className="flex justify-end">
-        <button
-          onClick={onContinue}
-          className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-colors"
-        >
-          Continue →
-        </button>
-      </div>
-    </div>
-  );
-}
 
 // ===================== AI CHAT HOOK =====================
 const useAIChat = (currentSection: SectionWithBreakdown | undefined, missedQuestions: { question: string; options: string[]; correctAnswer: number; explanation: string }[]) => {
@@ -341,123 +290,6 @@ function AnimatedStatValue({ value }: { value: string }) {
   }
   
   return <>{display}{suffix}</>;
-}
-
-function QuizSlide({
-  quiz,
-  onContinue,
-  onReview,
-  onSubmitResult,
-}: {
-  quiz: { question: string; options: string[]; correctAnswer: number }[];
-  onContinue: () => void;
-  onReview: () => void;
-  onSubmitResult: ( passed: boolean, missed: { index: number; question: string; options: string[]; correctAnswer: number; userAnswer: number | null; explanation: string }[]) => void;
-}) {
-  const [answers, setAnswers] = useState<(number | null)[]>(quiz.map(() => null));
-  const [submitted, setSubmitted] = useState(false);
-
-  const selectAnswer = (qIdx: number, optIdx: number) => {
-    if (submitted) return;
-    setAnswers((prev) => {
-      const next = [...prev];
-      next[qIdx] = optIdx;
-      return next;
-    });
-  };
-
-  const allAnswered = answers.every((a) => a !== null);
-  const score = quiz.reduce((total, q, i) => (answers[i] === q.correctAnswer ? total + 1 : total), 0);
-
-  const handleSubmit = () => {
-    setSubmitted(true);
-    const passed = score === quiz.length;
-    const missed = quiz
-      .map((q, i) => ({ ...q, index: i, userAnswer: answers[i] }))
-      .filter((q, i) => answers[i] !== q.correctAnswer);
-    onSubmitResult(passed, missed);
-  };
-  
-  return (
-    <div className="backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-gradient-to-br from-mist-400/70 via-mist-300/70 to-mist-400/70 rounded-3xl max-w-2xl w-full max-h-[85vh] overflow-y-auto border border-white/30 shadow-2xl p-8">
-        <h3 className="text-2xl font-bold text-black mb-1">Quick Check</h3>
-        <p className="text-black text-sm mb-6">Answer both questions to continue</p>
-
-        <div className="space-y-6">
-          {quiz.map((q, qIdx) => (
-            <div key={qIdx} className="bg-gradient-to-br from-mauve-300/30 to-mauve-500/30 rounded-2xl p-5 border border-white/20">
-              <p className="text-black font-semibold mb-4">
-                {qIdx + 1}. {q.question}
-              </p>
-              <div className="space-y-2">
-                {q.options.map((opt, optIdx) => {
-                  const isSelected = answers[qIdx] === optIdx;
-                  const isCorrect = optIdx === q.correctAnswer;
-                  const showResult = submitted;
-
-                  let stateClasses = 'border-white/30 bg-mist-200/30 hover:border-black/20 hover:bg-mist-400/40';
-                  if (showResult && isCorrect) {
-                    stateClasses = 'border-green-500 bg-green-900/30';
-                  } else if (showResult && isSelected && !isCorrect) {
-                    stateClasses = 'border-red-500 bg-red-900/30';
-                  } else if (isSelected) {
-                    stateClasses = 'border-white/70 bg-mist-500/50';
-                  }
-
-                  return (
-                    <button
-                      key={optIdx}
-                      onClick={() => selectAnswer(qIdx, optIdx)}
-                      disabled={submitted}
-                      className={`w-full text-left px-4 py-3 rounded-xl border transition-colors text-black ${stateClasses}`}
-                    >
-                      {opt}
-                      {showResult && isCorrect && <span className="ml-2">✓</span>}
-                      {showResult && isSelected && !isCorrect && <span className="ml-2">✗</span>}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-6 flex items-center justify-between">
-          {submitted ? (
-            <>
-              <p className="text-cyan-400 font-semibold">
-                Score: {score} / {quiz.length}
-              </p>
-              {score === quiz.length ? (
-                <button
-                  onClick={onContinue}
-                  className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-colors"
-                >
-                  Continue →
-                </button>
-              ) : (
-                <button
-                  onClick={onReview}
-                  className="px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-semibold transition-colors"
-                >
-                  Review →
-                </button>
-              )}
-            </>
-          ) : (
-              <button
-                onClick={handleSubmit}
-                disabled={!allAnswered}
-                className="ml-auto px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-xl font-semibold transition-colors"
-              >
-                Submit
-              </button>
-          )}
-        </div>
-      </div>
-    </div>
-  );
 }
 
 // ===================== TEMPLATE SELECTOR =====================
@@ -860,6 +692,176 @@ function ClassicLayout(props: {
     );
   }
 
+function ReviewSlide({
+  missedQuestions,
+  section,
+  onContinue,
+  currentKey,
+}: {
+  missedQuestions: { index: number; question: string; options: string[]; correctAnswer: number; userAnswer: number | null; explanation: string }[];
+  section: SectionWithBreakdown;
+  onContinue: () => void;
+  currentKey: string | null;
+}) {
+  return (
+    <div className="bg-gradient-to-br from-mist-400 via-mist-300 to-mist-400 rounded-3xl border border-slate-200 shadow-2xl p-8 max-w-2xl mx-auto text-center">
+      <h3 className="text-2xl font-bold text-slate-900 mb-4">Let's Review</h3>
+        
+        <div className="space-y-5 mb-6">
+          {missedQuestions.map((q, idx) => {
+            const isActive = currentKey?.endsWith(`_review_q${q.index}`) ?? false;
+            return (
+            <div key={idx} 
+              className={`rounded-2xl p-5 border transition-all duration-300 ${
+                isActive
+                  ? 'bg-blue-300 border-cyan-400 ring-2 ring-cyan-300 scale-105 shadow-lg'
+                  : 'bg-red-50 border-red-200'
+              }`}
+            >
+              <p className="text-slate-900 font-semibold mb-2">{q.question}</p>
+              <p className="text-red-600 text-sm mb-1">
+                You answered: {q.userAnswer !== null ? q.options[q.userAnswer] : '(no answer)'}
+              </p>
+              <p className="text-green-700 text-sm font-medium">
+                Correct answer: {q.options[q.correctAnswer]}
+              </p>
+              <div className="bg-blue-50 rounded-xl p-3 border border-blue-200">
+                <p className="text-blue-900 text-sm">{q.explanation}</p>
+              </div>
+            </div>
+          );
+        })}
+        </div>
+      
+      <div className="flex justify-end">
+        <button
+          onClick={onContinue}
+          className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-colors"
+        >
+          Continue →
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function QuizSlide({
+  quiz,
+  onContinue,
+  onReview,
+  onSubmitResult,
+}: {
+  quiz: { question: string; options: string[]; correctAnswer: number }[];
+  onContinue: () => void;
+  onReview: () => void;
+  onSubmitResult: ( passed: boolean, missed: { index: number; question: string; options: string[]; correctAnswer: number; userAnswer: number | null; explanation: string }[]) => void;
+}) {
+  const [answers, setAnswers] = useState<(number | null)[]>(quiz.map(() => null));
+  const [submitted, setSubmitted] = useState(false);
+
+  const selectAnswer = (qIdx: number, optIdx: number) => {
+    if (submitted) return;
+    setAnswers((prev) => {
+      const next = [...prev];
+      next[qIdx] = optIdx;
+      return next;
+    });
+  };
+
+  const allAnswered = answers.every((a) => a !== null);
+  const score = quiz.reduce((total, q, i) => (answers[i] === q.correctAnswer ? total + 1 : total), 0);
+
+  const handleSubmit = () => {
+    setSubmitted(true);
+    const passed = score === quiz.length;
+    const missed = quiz
+      .map((q, i) => ({ ...q, index: i, userAnswer: answers[i] }))
+      .filter((q, i) => answers[i] !== q.correctAnswer);
+    onSubmitResult(passed, missed);
+  };
+  
+  return (
+    <div className="backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-gradient-to-br from-mist-400/70 via-mist-300/70 to-mist-400/70 rounded-3xl max-w-2xl w-full max-h-[85vh] overflow-y-auto border border-white/30 shadow-2xl p-8">
+        <h3 className="text-2xl font-bold text-black mb-1">Quick Check</h3>
+        <p className="text-black text-sm mb-6">Answer both questions to continue</p>
+
+        <div className="space-y-6">
+          {quiz.map((q, qIdx) => (
+            <div key={qIdx} className="bg-gradient-to-br from-mauve-300/30 to-mauve-500/30 rounded-2xl p-5 border border-white/20">
+              <p className="text-black font-semibold mb-4">
+                {qIdx + 1}. {q.question}
+              </p>
+              <div className="space-y-2">
+                {q.options.map((opt, optIdx) => {
+                  const isSelected = answers[qIdx] === optIdx;
+                  const isCorrect = optIdx === q.correctAnswer;
+                  const showResult = submitted;
+
+                  let stateClasses = 'border-white/30 bg-mist-200/30 hover:border-black/20 hover:bg-mist-400/40';
+                  if (showResult && isCorrect) {
+                    stateClasses = 'border-green-500 bg-green-900/30';
+                  } else if (showResult && isSelected && !isCorrect) {
+                    stateClasses = 'border-red-500 bg-red-900/30';
+                  } else if (isSelected) {
+                    stateClasses = 'border-white/70 bg-mist-500/50';
+                  }
+
+                  return (
+                    <button
+                      key={optIdx}
+                      onClick={() => selectAnswer(qIdx, optIdx)}
+                      disabled={submitted}
+                      className={`w-full text-left px-4 py-3 rounded-xl border transition-colors text-black ${stateClasses}`}
+                    >
+                      {opt}
+                      {showResult && isCorrect && <span className="ml-2">✓</span>}
+                      {showResult && isSelected && !isCorrect && <span className="ml-2">✗</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-6 flex items-center justify-between">
+          {submitted ? (
+            <>
+              <p className="text-cyan-400 font-semibold">
+                Score: {score} / {quiz.length}
+              </p>
+              {score === quiz.length ? (
+                <button
+                  onClick={onContinue}
+                  className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-colors"
+                >
+                  Continue →
+                </button>
+              ) : (
+                <button
+                  onClick={onReview}
+                  className="px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-semibold transition-colors"
+                >
+                  Review →
+                </button>
+              )}
+            </>
+          ) : (
+              <button
+                onClick={handleSubmit}
+                disabled={!allAnswered}
+                className="ml-auto px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-xl font-semibold transition-colors"
+              >
+                Submit
+              </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ===================== MAIN COMPONENT =====================
 export default function AIPresentation() {
 
@@ -880,8 +882,17 @@ export default function AIPresentation() {
   const [loadingPhase, setLoadingPhase] = useState<'content' | 'audio'>('content');
   const [sectionScores, setSectionScores] = useState<Record<number, number>>({});
   const keyTermsTimerRef = useRef<NodeJS.Timeout | null>(null);
-  
-  
+
+  const currentSection = sections[activeSection];
+
+
+  const handleTemplateSelect = (template: 'classic' | 'split') => {
+    setSelectedTemplate(template);
+    setActiveSection(0);
+    setShowConclusion(false);
+    playIntroduction(template);
+  };
+
   const handleRestart = () => {
     stop();
     setActiveSection(0);
@@ -892,8 +903,77 @@ export default function AIPresentation() {
     setCompletedQuizzes(new Set());
   };
 
-  const currentSection = sections[activeSection];
+   const handleQuizReview = () => {
+    setShowQuiz(false);
+    setShowReview(true);
+  };
+  
+  const handleReviewContinue = () => {
+    setShowReview(false);
+    handleQuizContinue();
+  };
 
+  // Reset to step 0 whenever the main section changes
+  useEffect(() => {
+    setMicroStep(0);
+    stop();
+  }, [activeSection]);
+
+  // ---- Fetch sections, then fetch pre-generated audio for them ----
+  useEffect(() => {
+    async function loadPresentation() {
+      try {
+        setLoadingPhase('content');
+        const sectionsRes = await fetch('/api/slidesv2', { method: 'POST' });
+        const sectionsData = await sectionsRes.json();
+
+        if (sectionsData.error || !sectionsData.sections) {
+          throw new Error(sectionsData.error || 'No sections returned');
+        }
+
+        setSections(sectionsData.sections);
+
+        const firstTopic = sectionsData.sections[0]?.title || 'the Blue Catfish invasion';
+        const builtIntro = `Hello everyone, and welcome! I'm Professor Marine, and today we're diving into the story of the Blue Catfish invasion in the Chesapeake Bay. By the time we're done, you'll all be experts on the subject. Let's get right into the material — starting with our first topic: ${firstTopic}.`;
+        setIntroText(builtIntro);
+
+        setLoadingPhase('audio');
+        const audioRes = await fetch('/api/slidesv2/audio', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sections: sectionsData.sections,
+            intro: builtIntro,
+            conclusion: LECTURE_SCRIPTS.conclusion,
+          }),
+        });
+        const audioData = await audioRes.json();
+
+        if (audioData.audioUrls) {
+          setAudioUrls(audioData.audioUrls);
+        }
+      } catch (err: any) {
+        console.error('Failed to load presentation:', err);
+        setLoadError(err.message || 'Failed to load presentation content');
+      } finally {
+        setIsContentLoading(false);
+      }
+    }
+
+    loadPresentation();
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (keyTermsTimerRef.current) clearTimeout(keyTermsTimerRef.current);
+    };
+  }, [activeSection]);
+  
+    // Scroll to bottom of chat
+    useEffect(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages]);
+  
   const playMicroStepAudio = (sectionIndex: number, stepIndex: number, transitionType: 'means' | 'analogy' | null) => {
     const section = sections[sectionIndex];
     const steps = getMicroSteps(sectionIndex);
@@ -958,24 +1038,6 @@ export default function AIPresentation() {
       playActualStep();
     }
   };
-  
-  const autoAdvanceFrom = (sectionIndex: number, fromStep: number) => {
-    const steps = getMicroSteps(sectionIndex);
-    if (fromStep < steps.length - 1) {
-      const next = fromStep + 1;
-      setMicroStep(next);
-
-      if (fromStep === 0) {
-        playMicroStepAudio(sectionIndex, next, 'means');
-      } else if (fromStep === 2) {
-        playMicroStepAudio(sectionIndex, next, 'analogy');
-      } else {
-        playMicroStepAudio(sectionIndex, next, null);
-      }
-    } else {
-      play(audioUrls['wrapup'], 'wrapup', '');
-    }
-  };
 
   const playReviewAudio = (sectionIndex: number, wrongIndices: number[]) => {
     if (wrongIndices.length === 0) return;
@@ -1000,94 +1062,8 @@ export default function AIPresentation() {
       playReviewAudio(activeSection, missedQuestions.map((q) => q.index));
     }
   }, [showReview]);
+
   
-  const handleTemplateSelect = (template: 'classic' | 'split') => {
-    setSelectedTemplate(template);
-    setActiveSection(0);
-    setShowConclusion(false);
-    playIntroduction(template);
-  };
-  
-  const flowSteps = sections.flatMap((_, idx) => [
-    { type: 'section' as const, index: idx },
-    { type: 'quiz' as const, index: idx },
-  ]);
-
-  const currentFlowIndex = flowSteps.findIndex(
-    (step) => step.index === activeSection && step.type === (showQuiz ? 'quiz' : 'section')
-  );
-
-  const handleQuizReview = () => {
-    setShowQuiz(false);
-    setShowReview(true);
-  };
-  
-  const handleReviewContinue = () => {
-    setShowReview(false);
-    handleQuizContinue();
-  };
-  
-  const { play, pause, resume, stop, isSpeaking, isPaused, currentKey, currentText, currentTime, duration, pauseAudio, resumeAudio } = useAudioPlayer();
-  const { messages, isLoading, input, setInput, sendMessage } = useAIChat(currentSection, missedQuestions);
-  const [introText, setIntroText] = useState('');
-
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  // ---- Fetch sections, then fetch pre-generated audio for them ----
-  useEffect(() => {
-    async function loadPresentation() {
-      try {
-        setLoadingPhase('content');
-        const sectionsRes = await fetch('/api/slidesv2', { method: 'POST' });
-        const sectionsData = await sectionsRes.json();
-
-        if (sectionsData.error || !sectionsData.sections) {
-          throw new Error(sectionsData.error || 'No sections returned');
-        }
-
-        setSections(sectionsData.sections);
-
-        const firstTopic = sectionsData.sections[0]?.title || 'the Blue Catfish invasion';
-        const builtIntro = `Hello everyone, and welcome! I'm Professor Marine, and today we're diving into the story of the Blue Catfish invasion in the Chesapeake Bay. By the time we're done, you'll all be experts on the subject. Let's get right into the material — starting with our first topic: ${firstTopic}.`;
-        setIntroText(builtIntro);
-
-        setLoadingPhase('audio');
-        const audioRes = await fetch('/api/slidesv2/audio', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            sections: sectionsData.sections,
-            intro: builtIntro,
-            conclusion: LECTURE_SCRIPTS.conclusion,
-          }),
-        });
-        const audioData = await audioRes.json();
-
-        if (audioData.audioUrls) {
-          setAudioUrls(audioData.audioUrls);
-        }
-      } catch (err: any) {
-        console.error('Failed to load presentation:', err);
-        setLoadError(err.message || 'Failed to load presentation content');
-      } finally {
-        setIsContentLoading(false);
-      }
-    }
-
-    loadPresentation();
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (keyTermsTimerRef.current) clearTimeout(keyTermsTimerRef.current);
-    };
-  }, [activeSection]);
-  
-    // Scroll to bottom of chat
-    useEffect(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages]);
-
   // ---- Narration handlers ----
   const narrateSection = (index: number) => {
     if (index < sections.length) {
@@ -1111,6 +1087,60 @@ export default function AIPresentation() {
     });
     setIsNarrating(true);
   };
+  
+  function getMicroStepText(section: SectionWithBreakdown, stepIndex: number): string {
+    switch (stepIndex) {
+      case 0: return section.content;
+      case 1: return section.breakdown.simple;
+      case 2: return '';
+      case 3: return section.breakdown.realWorldExample;
+      default: return '';
+    }
+  }
+  
+  const goToMicroStep = (index: number) => {
+    if (index < 0 || index >= microSteps.length) return;
+    if (keyTermsTimerRef.current) clearTimeout(keyTermsTimerRef.current);
+    setMicroStep(index);
+    playMicroStepAudio(activeSection, index, null);
+  };
+  
+  const nextMicroStep = () => goToMicroStep(microStep + 1);
+  const prevMicroStep = () => goToMicroStep(microStep - 1);
+  
+  const autoAdvanceFrom = (sectionIndex: number, fromStep: number) => {
+    const steps = getMicroSteps(sectionIndex);
+    if (fromStep < steps.length - 1) {
+      const next = fromStep + 1;
+      setMicroStep(next);
+
+      if (fromStep === 0) {
+        playMicroStepAudio(sectionIndex, next, 'means');
+      } else if (fromStep === 2) {
+        playMicroStepAudio(sectionIndex, next, 'analogy');
+      } else {
+        playMicroStepAudio(sectionIndex, next, null);
+      }
+    } else {
+      play(audioUrls['wrapup'], 'wrapup', '');
+    }
+  };
+  
+  const flowSteps = sections.flatMap((_, idx) => [
+    { type: 'section' as const, index: idx },
+    { type: 'quiz' as const, index: idx },
+  ]);
+
+  const currentFlowIndex = flowSteps.findIndex(
+    (step) => step.index === activeSection && step.type === (showQuiz ? 'quiz' : 'section')
+  );
+  
+  const { play, pause, resume, stop, isSpeaking, isPaused, currentKey, currentText, currentTime, duration, pauseAudio, resumeAudio } = useAudioPlayer();
+  const { messages, isLoading, input, setInput, sendMessage } = useAIChat(currentSection, missedQuestions);
+  const [introText, setIntroText] = useState('');
+
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
 
   const nextSection = () => {
     setMicroStep(0);
@@ -1157,35 +1187,9 @@ export default function AIPresentation() {
     }
   };
 
-  // ===================== IN AIPresentation COMPONENT ====================
   const [microStep, setMicroStep] = useState(0);
   const microSteps = getMicroSteps(activeSection);
   
-  // Reset to step 0 whenever the main section changes
-  useEffect(() => {
-    setMicroStep(0);
-    stop();
-  }, [activeSection]);
-  
-  function getMicroStepText(section: SectionWithBreakdown, stepIndex: number): string {
-    switch (stepIndex) {
-      case 0: return section.content;
-      case 1: return section.breakdown.simple;
-      case 2: return '';
-      case 3: return section.breakdown.realWorldExample;
-      default: return '';
-    }
-  }
-  
-  const goToMicroStep = (index: number) => {
-    if (index < 0 || index >= microSteps.length) return;
-    if (keyTermsTimerRef.current) clearTimeout(keyTermsTimerRef.current);
-    setMicroStep(index);
-    playMicroStepAudio(activeSection, index, null);
-  };
-  
-  const nextMicroStep = () => goToMicroStep(microStep + 1);
-  const prevMicroStep = () => goToMicroStep(microStep - 1);
 
   
   // ---- Loading / error states before rendering the presentation ----
