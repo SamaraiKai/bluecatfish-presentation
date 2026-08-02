@@ -142,21 +142,6 @@ function getMicroSteps(sectionIndex: number): MicroStep[] {
   ];
 }
 
-function getMicroStepText(section: SectionWithBreakdown, stepIndex: number): string {
-  switch (stepIndex) {
-    case 0: {
-      const statsLine = section.stats?.length === 2
-        ? ` For example, ${section.stats[0].label} is ${section.stats[0].value}, and ${section.stats[1].label} is ${section.stats[1].value}.`
-        : '';
-      return `${section.content}${statsLine}`;
-    }
-    case 1: return section.breakdown.simple;
-    case 2: return section.breakdown.keyTerms;
-    case 3: return section.breakdown.realWorldExample;
-    default: return '';
-  }
-}
-
 // ===================== Highlight Text =====================
 function HighlightedText({
   text,
@@ -745,6 +730,48 @@ function ReviewSlide({
   );
 }
 
+function ConclusionScreen({
+    onRestart,
+    sectionScores,
+    totalQuestions,
+  }: {
+    onRestart: () => void;
+    sectionScores: Record<number, number>;
+    totalQuestions: number;
+  }) {
+    const totalScore = Object.values(sectionScores).reduce((sum, s) => sum + s, 0);
+    
+    return (
+      <div className="flex flex-col items-center justify-center text-center py-16 px-8">
+        <div className="text-6xl mb-6">🎓</div>
+        <h2 className="text-3xl md:text-4xl font-bold text-black mb-4">
+          Lesson Complete!
+        </h2>
+        <p className="text-blue-700 text-lg max-w-xl mb-8 leading-relaxed">
+          You've made it through the full story of the Blue Catfish invasion in the Chesapeake Bay —
+          from how they got here, to why they've thrived, to how we might turn the problem into a solution.
+        </p>
+        <p className="text-2xl font-bold text-cyan-500 mb-8">
+        Final Score: {totalScore} / {totalQuestions}
+        </p>
+  
+        <div className="flex flex-col sm:flex-row gap-4">
+          <button
+            onClick={onRestart}
+            className="px-6 py-3 bg-blue-800/60 hover:bg-blue-700/70 text-white rounded-xl font-semibold transition-colors border border-blue-500/30"
+          >
+            ↺ Restart Lesson
+          </button>
+        </div>
+  
+        <p className="text-blue-700/70 text-sm mt-8">
+          Still curious about something? Use <span className="text-cyan-500 font-medium">Ask AI</span> up top —
+          Professor Marine is happy to go deeper on anything from the lesson.
+        </p>
+      </div>
+    );
+  }
+
 function QuizSlide({
   quiz,
   onContinue,
@@ -1151,6 +1178,11 @@ export default function AIPresentation() {
     }
   };
 
+  // Scroll to bottom of chat
+    useEffect(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages]);
+  
   const [cameraEnabled, setCameraEnabled] = useState(false);
   const { present, error } = useFacePresence(cameraEnabled);
   
@@ -1219,48 +1251,6 @@ export default function AIPresentation() {
   if (!selectedTemplate) {
     return <TemplateSelector onSelect={handleTemplateSelect} />;
   }   
-
-  function ConclusionScreen({
-    onRestart,
-    sectionScores,
-    totalQuestions,
-  }: {
-    onRestart: () => void;
-    sectionScores: Record<number, number>;
-    totalQuestions: number;
-  }) {
-    const totalScore = Object.values(sectionScores).reduce((sum, s) => sum + s, 0);
-    
-    return (
-      <div className="flex flex-col items-center justify-center text-center py-16 px-8">
-        <div className="text-6xl mb-6">🎓</div>
-        <h2 className="text-3xl md:text-4xl font-bold text-black mb-4">
-          Lesson Complete!
-        </h2>
-        <p className="text-blue-700 text-lg max-w-xl mb-8 leading-relaxed">
-          You've made it through the full story of the Blue Catfish invasion in the Chesapeake Bay —
-          from how they got here, to why they've thrived, to how we might turn the problem into a solution.
-        </p>
-        <p className="text-2xl font-bold text-cyan-500 mb-8">
-        Final Score: {totalScore} / {totalQuestions}
-        </p>
-  
-        <div className="flex flex-col sm:flex-row gap-4">
-          <button
-            onClick={onRestart}
-            className="px-6 py-3 bg-blue-800/60 hover:bg-blue-700/70 text-white rounded-xl font-semibold transition-colors border border-blue-500/30"
-          >
-            ↺ Restart Lesson
-          </button>
-        </div>
-  
-        <p className="text-blue-700/70 text-sm mt-8">
-          Still curious about something? Use <span className="text-cyan-500 font-medium">Ask AI</span> up top —
-          Professor Marine is happy to go deeper on anything from the lesson.
-        </p>
-      </div>
-    );
-  }
   
   // ===================== RENDER =====================
   return (
