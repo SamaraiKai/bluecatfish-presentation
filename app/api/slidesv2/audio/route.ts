@@ -225,7 +225,7 @@ function buildSharedJobs(): AudioJob[] {
     key: "presence_back",
     text: "Alright, picking up where we left off.",
     fileName: `${FOLDER}/presence-back.mp3`,
-  });the 
+  });
   return jobs;
 }
 
