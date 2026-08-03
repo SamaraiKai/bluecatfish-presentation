@@ -197,7 +197,11 @@ const useAIChat = (currentSection: SectionWithBreakdown | undefined, missedQuest
     setIsLoading(true);
 
     // Placeholder bubble that fills in as tokens arrive
-    setMessages((prev) => [...prev, { role: 'ai', text: '' }]);
+    setMessages((prev) => {
+      const next = [...prev, { role: 'ai', text: '' }]
+      console.log("messages after send:", next);
+      return next;
+    });
     
     const missedContext = missedQuestions.length > 0
       ? ` The student just missed these quiz questions: ${missedQuestions.map(q => `"${q.question}" (they need to understand: ${q.explanation})`).join(' ')} If they ask for help or clarification, prioritize addressing these specific gaps.`
