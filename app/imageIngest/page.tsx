@@ -33,6 +33,9 @@ export default function UploadImagePage() {
         method: "POST",
         body: formData,
       });
+      
+      const raw = await res.text();
+      console.log("status:", res.status, "body:", raw);
 
       const result = await res.json();
 
