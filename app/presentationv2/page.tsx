@@ -1369,13 +1369,11 @@ export default function AIPresentation() {
   
   // Scroll to bottom of chat
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
-  // Scroll to bottom of chat
-    useEffect(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages]);
+    if (!showChat) return;
+    const el = messagesEndRef.current;
+    if (!el || !el.isConnected) return;
+    el.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, showChat]);
 
   // Narrate the review slide when it opens
   useEffect(() => {
