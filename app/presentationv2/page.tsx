@@ -232,6 +232,7 @@ const useAIChat = (currentSection: SectionWithBreakdown | undefined, missedQuest
         if (done) break;
 
         const token = decoder.decode(value, { stream: true });
+        console.log("chunk:", JSON.stringify(token));   // 🔵 debug
         full += token;
         pending += token;
 
