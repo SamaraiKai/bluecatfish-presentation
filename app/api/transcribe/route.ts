@@ -7,7 +7,7 @@ export async function POST(req: Request) {
     if (!file) throw new Error("Missing audio file");
 
     const formData = new FormData();
-    formData.append("file", file, "recording.webm");
+    formData.append("file", file, file.name || "recording.webm");
     formData.append("model", "whisper-1");
 
     const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
