@@ -1724,22 +1724,21 @@ export default function AIPresentation() {
                       : 'bg-mist-300 text-black rounded-bl-none'
                   }`}
                 >
-                  <p className="text-sm">{msg.text}</p>
+                  {msg.text ? (
+                    <p className="text-sm">{msg.text}</p>
+                  ) : (
+                    <span className="flex gap-1 py-1">
+                      <span className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" />
+                      <span className="w-2 h-2 bg-gray-500 rounded-full animate-bounce delay-100" />
+                      <span className="w-2 h-2 bg-gray-500 rounded-full animate-bounce delay-200" />
+                    </span>
+                  )}
                 </div>
               </div>
             ))}
-            {isLoading && (
-              <div className="flex justify-start">
-                <div className="bg-slate-700 rounded-2xl px-4 py-3 flex gap-1">
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100" />
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-200" />
-                </div>
-              </div>
-            )}
             <div ref={messagesEndRef} />
           </div>
-
+          
           {/* Chat Input */}
           <div className="p-4 border-t border-white">
             <div className="flex gap-2">
