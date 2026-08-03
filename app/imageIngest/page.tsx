@@ -37,7 +37,7 @@ export default function UploadImagePage() {
       const raw = await res.text();
       console.log("status:", res.status, "body:", raw);
 
-      const result = await res.json();
+      let result;
       try {
         result = JSON.parse(raw);
       } catch {
