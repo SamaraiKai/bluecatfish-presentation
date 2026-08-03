@@ -10,7 +10,7 @@ const supabase = createClient(
  * CONFIG
  * ========================================================================== */
 const BUCKET = "slide-audio";
-const FOLDER = "sections_v9.6";
+const FOLDER = "sections_v10";
 
 // How many TTS calls to run at once. Higher = faster, but risks rate limits.
 const BATCH_SIZE = 8;
