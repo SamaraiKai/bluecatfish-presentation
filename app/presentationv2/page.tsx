@@ -175,6 +175,7 @@ const useAudioPlayer = () => {
 };
 
 const useAIChat = (currentSection: SectionWithBreakdown | undefined, missedQuestions: { question: string; options: string[]; correctAnswer: number; explanation: string }[]) => {
+  const { status: micStatus, toggleMic } = useVoiceInput((text) => sendMessage(text));
   const [messages, setMessages] = useState<Message[]>([
     { role: 'ai', text: `Good day! I'm ${PRESENTATION.professor.name}, and I'll be your guide through today's lecture on the Blue Catfish invasion in the Chesapeake Bay. Feel free to ask me any questions as we go through the material. What would you like to explore first?` }
   ]);
@@ -1696,6 +1697,20 @@ export default function AIPresentation() {
                 className="w-10 h-10 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white rounded-full flex items-center justify-center transition-colors"
               >
                 →
+              </button>
+              <button
+                onClick={toggleMic}
+                disabled={isLoading}
+                className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
+                  micStatus === "listening"
+                    ? "bg-red-600 animate-pulse text-white"
+                    : micStatus === "processing"
+                    ? "bg-gray-500 text-white"
+                    : "bg-blue-600 hover:bg-blue-700 text-white"
+                }`}
+                title={micStatus === "listening" ? "Stop recording" : "Speak"}
+              >
+                {micStatus === "processing" ? "…" : "🎤"}
               </button>
             </div>
           </div>
