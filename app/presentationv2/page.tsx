@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { createPortal } from 'react-dom';
 import { useFacePresence } from "@/components/hooks/useFacePresence";
 import { useVoiceInput } from '@/components/hooks/useVoiceInput';
+import { useSpeechQueue } from '@/components/hooks/useSpeechQueue';
 
 /* ============================================================================
  * TYPES
@@ -176,7 +177,10 @@ const useAudioPlayer = () => {
 };
 
 const useAIChat = (currentSection: SectionWithBreakdown | undefined, missedQuestions: { question: string; options: string[]; correctAnswer: number; explanation: string }[]) => {
-  const { status: micStatus, toggleMic } = useVoiceInput((text) => sendMessage(text));
+  const { status: micStatus, toggleMic } = useVoiceInput((text) => {
+    stop();
+    sendMessage(text));
+  });
   const [messages, setMessages] = useState<Message[]>([
     { role: 'ai', text: `Good day! I'm ${PRESENTATION.professor.name}, and I'll be your guide through today's lecture on the Blue Catfish invasion in the Chesapeake Bay. Feel free to ask me any questions as we go through the material. What would you like to explore first?` }
   ]);
@@ -190,6 +194,9 @@ const useAIChat = (currentSection: SectionWithBreakdown | undefined, missedQuest
     setInput('');
     setIsLoading(true);
 
+    // Placeholder bubble that fills in as tokens arrive
+    setMessages((prev) => [...prev, { role: 'ai', text: '' }]);
+    
     const missedContext = missedQuestions.length > 0
       ? ` The student just missed these quiz questions: ${missedQuestions.map(q => `"${q.question}" (they need to understand: ${q.explanation})`).join(' ')} If they ask for help or clarification, prioritize addressing these specific gaps.`
       : '';
@@ -201,6 +208,7 @@ const useAIChat = (currentSection: SectionWithBreakdown | undefined, missedQuest
         body: JSON.stringify({
           userText: text,
           topic: 'Blue Catfish invasion in the Chesapeake Bay',
+          stream: true,
           systemPrompt: `You are "${PRESENTATION.professor.name}", a university professor specializing in Marine Biology and Conservation. The student is currently viewing a slide titled "${currentSection.title}" which covers: ${currentSection.content} Answer questions with awareness of what they're currently looking at, and relate your answers back to this section when relevant, like a professor referencing the current lecture slide.`,
           conversation: messages.map(m => ({
             role: m.role === 'ai' ? 'assistant' : 'user',
@@ -209,17 +217,64 @@ const useAIChat = (currentSection: SectionWithBreakdown | undefined, missedQuest
         }),
       });
 
-      const data = await response.json();
+      if (!response.ok || !response.body) {
+        throw new Error('Chat request failed');
+      }
 
-      if (data.reply) {
-        setMessages(prev => [...prev, { role: 'ai', text: data.reply }]);
-      } else {
-        console.error('No reply in response:', data);
-        setMessages(prev => [...prev, { role: 'ai', text: "Sorry, I couldn't generate a response. Please try again." }]);
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+
+      let full = '';        // everything received so far
+      let pending = '';     // text not yet sent to TTS
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const token = decoder.decode(value, { stream: true });
+        full += token;
+        pending += token;
+
+        // Update the last bubble as text arrives
+        setMessages((prev) => {
+          const next = [...prev];
+          next[next.length - 1] = { role: 'ai', text: full };
+          return next;
+        });
+
+        // Cut off any complete sentences and speak them right away
+        let match;
+        while ((match = pending.match(/^([\s\S]*?[.!?])(\s+)([\s\S]*)$/))) {
+          const sentence = match[1].trim();
+          pending = match[3];
+          if (sentence && onSentence) onSentence(sentence);
+        }
+      }
+
+      // Whatever's left over after the stream ends
+      const tail = pending.trim();
+      if (tail && onSentence) onSentence(tail);
+      
+      if (!full.trim()) {
+        setMessages((prev) => {
+          const next = [...prev];
+          next[next.length - 1] = {
+            role: 'ai',
+            text: "Sorry, I couldn't generate a response. Please try again.",
+          };
+          return next;
+        });
       }
     } catch (err) {
       console.error('RAG chat failed:', err);
-      setMessages(prev => [...prev, { role: 'ai', text: "Sorry, I'm having trouble responding right now. Please try again." }]);
+      setMessages((prev) => {
+        const next = [...prev];
+        next[next.length - 1] = {
+          role: 'ai',
+          text: "Sorry, I'm having trouble responding right now. Please try again.",
+        };
+        return next;
+      });
     } finally {
       setIsLoading(false);
     }
@@ -1016,8 +1071,10 @@ export default function AIPresentation() {
   const currentSection = sections[activeSection];
 
   const { play, pause, resume, stop, isSpeaking, isPaused, currentKey, currentText, currentTime, duration, pauseAudio, resumeAudio } = useAudioPlayer();
+
+  const { enqueue, stopSpeaking, isSpeaking: isChatSpeaking } = useSpeechQueue();
   
-  const { messages, isLoading, input, setInput, sendMessage } = useAIChat(currentSection, missedQuestions);
+  const { messages, isLoading, input, setInput, sendMessage } = useAIChat(currentSection, missedQuestions, enqueue);
 
   const { status: micStatus, toggleMic } = useVoiceInput((text) => sendMessage(text));
 
