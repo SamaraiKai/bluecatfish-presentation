@@ -77,6 +77,7 @@ STRICT RULES YOU MUST FOLLOW:
 6. "breakdown.realWorldExample" must explain the concept via an analogy to something unrelated and familiar (e.g. comparing an ecological concept to delivery logistics, sports, cooking, etc.) — NOT another catfish/fish fact. 1-2 sentences.
 7. "quiz" must contain EXACTLY 2 multiple-choice questions testing understanding of THIS section's specific content (not other sections). Each question must have exactly 4 "options" and a "correctAnswer" index (0-3) pointing to the correct option. Base both questions strictly on facts present in the "content", "stats", "breakdown.simple", or the key term definitions — all of these are read aloud to the learner during the lesson. Each question must also include an "explanation" field: 1 short sentence stating the specific fact that makes the correct answer correct, written so a learner who got it wrong immediately understands why — this should directly quote or closely paraphrase the exact source sentence/fact it came from.
 Output ONLY a JSON object with key "section" structured EXACTLY like this:
+8. "quiz" must be a top-level key on the section object, a sibling of "breakdown" — never nested inside "breakdown".
 
 {
   "section": {
@@ -121,6 +122,17 @@ Output ONLY a JSON object with key "section" structured EXACTLY like this:
   const parsed = JSON.parse(content);
   const section = parsed.section ?? parsed;
 
+  // GPT sometimes nests quiz inside breakdown — pull it back out
+  if (!Array.isArray(section.quiz) && Array.isArray(section.breakdown?.quiz)) {
+    section.quiz = section.breakdown.quiz;
+    delete section.breakdown.quiz;
+  }
+
+  if ((!section.quiz || section.quiz.length !== 2) && attempt < 2) {
+    console.warn(`Section ${sectionNum} had ${section.quiz?.length} quiz questions, retrying...`);
+    return generateSingleSection(/* ...same args... */, attempt + 1);
+  }
+  
   const validKeyTerms = section.breakdown?.keyTerms?.length === 3;
   const validStats = section.stats?.length === 2;
   const validQuiz = section.quiz?.length === 2 && section.quiz.every((q: any) => q.options?.length === 4 && typeof q.explanation === 'string');
