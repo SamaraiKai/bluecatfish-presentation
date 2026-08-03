@@ -29,7 +29,7 @@ export default function UploadImagePage() {
       formData.append("file", file);
       formData.append("description", description.trim());
 
-      const res = await fetch("/ingest-image", {
+      const res = await fetch("/image-Ingest", {
         method: "POST",
         body: formData,
       });
