@@ -50,6 +50,8 @@ const REVIEW_INTRO_ONE_TEXT = "Almost perfect. Let's look at the one you missed.
 const REVIEW_INTRO_SOME_TEXT = "Let's go back over the ones you missed.";
 const REVIEW_OUTRO_TEXT = "That's the review. Ready to keep going?";
 
+const presence_away = "Take your time. I'll wait."
+const presence_back = "Alright, picking up where we left off."
 /* ============================================================================
  * HELPERS
  * ========================================================================== */
@@ -214,7 +216,16 @@ function buildSharedJobs(): AudioJob[] {
     text: REVIEW_OUTRO_TEXT,
     fileName: `${FOLDER}/review_outro.mp3`,
   });
- 
+  jobs.push({
+  key: "presence_away",
+  text: "Take your time. I'll wait.",
+  fileName: `${FOLDER}/presence-away.mp3`,
+  });
+  jobs.push({
+    key: "presence_back",
+    text: "Alright, picking up where we left off.",
+    fileName: `${FOLDER}/presence-back.mp3`,
+  });the 
   return jobs;
 }
 
