@@ -2,6 +2,9 @@ import { useRef, useState } from "react";
 
 type Status = "idle" | "listening" | "processing";
 
+const SILENCE_THRESHOLD = 0.015; // RMS below this counts as silence
+const SILENCE_DURATION = 2000;   // ms of silence before auto-stop
+
 function pickMimeType(): string {
   const candidates = [
     "audio/webm;codecs=opus",
@@ -22,6 +25,68 @@ export function useVoiceInput(onTranscript: (text: string) => void) {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
 
+  // silence detection
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const rafRef = useRef<number | null>(null);
+  const silenceStartRef = useRef<number | null>(null);
+  const hasSpokenRef = useRef(false);
+
+  const cleanupAnalyser = () => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = null;
+    audioCtxRef.current?.close().catch(() => {});
+    audioCtxRef.current = null;
+    silenceStartRef.current = null;
+    hasSpokenRef.current = false;
+  };
+
+  const stopListening = () => {
+    cleanupAnalyser();
+    if (mediaRecorderRef.current?.state === "recording") {
+      mediaRecorderRef.current.stop();
+      setStatus("processing");
+    }
+  };
+
+  const watchForSilence = (stream: MediaStream) => {
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    const ctx = new AudioCtx();
+    audioCtxRef.current = ctx;
+
+    const source = ctx.createMediaStreamSource(stream);
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 2048;
+    source.connect(analyser);
+
+    const buffer = new Float32Array(analyser.fftSize);
+
+    const tick = () => {
+      analyser.getFloatTimeDomainData(buffer);
+
+      // root mean square = rough loudness
+      let sum = 0;
+      for (let i = 0; i < buffer.length; i++) sum += buffer[i] * buffer[i];
+      const rms = Math.sqrt(sum / buffer.length);
+
+      if (rms > SILENCE_THRESHOLD) {
+        hasSpokenRef.current = true;
+        silenceStartRef.current = null;
+      } else if (hasSpokenRef.current) {
+        // only start the clock once they've actually said something
+        if (silenceStartRef.current === null) {
+          silenceStartRef.current = performance.now();
+        } else if (performance.now() - silenceStartRef.current > SILENCE_DURATION) {
+          stopListening();
+          return;
+        }
+      }
+
+      rafRef.current = requestAnimationFrame(tick);
+    };
+
+    tick();
+  };
+  
   const startListening = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
