@@ -118,7 +118,7 @@ async function generateAndUpload(text: string, fileName: string): Promise<string
 
   if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
 
-  return publicUrl.(filename);
+  return publicUrl(filename);
 }
 
 /**
