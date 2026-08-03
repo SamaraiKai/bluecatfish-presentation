@@ -38,7 +38,13 @@ export default function UploadImagePage() {
       console.log("status:", res.status, "body:", raw);
 
       const result = await res.json();
-
+      try {
+        result = JSON.parse(raw);
+      } catch {
+        setStatus(`Server returned non-JSON: ${raw.slice(0, 200)}`);
+        return;
+      }
+      
       if (result.error) {
         setStatus(`Error: ${result.error}`);
       } else {
