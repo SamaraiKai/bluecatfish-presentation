@@ -311,6 +311,49 @@ function AnimatedStatValue({ value }: { value: string }) {
 /* ============================================================================
  * SCREEN COMPONENTS
  * ========================================================================== */
+function CameraSelector({ onSelect }: { onSelect: (useCamera: boolean) => void }) {
+  return (
+    <div className="h-screen w-screen flex flex-col items-center justify-center bg-gradient-to-br from-mist-50 to-mist-400 p-8">
+      <h1 className="text-3xl md:text-4xl font-bold text-black mb-2 text-center">
+        Use Your Camera?
+      </h1>
+      <p className="text-blue-500 mb-10 text-center">
+        The camera stays on your device — nothing is recorded or uploaded
+      </p>
+
+      <div className="flex flex-col md:flex-row gap-8">
+        {/* Camera on */}
+        <button
+          onClick={() => onSelect(true)}
+          className="group bg-mist-400/60 hover:bg-mist-200 border border-grey/50 hover:border-white rounded-3xl p-6 w-72 transition-colors text-left"
+        >
+          <div className="flex items-center justify-center h-32 mb-4 bg-blue-700/50 rounded-lg">
+            <span className="text-6xl">📷</span>
+          </div>
+          <h3 className="text-black font-bold text-lg mb-1">Use Camera</h3>
+          <p className="text-blue-500 text-sm">
+            The lesson pauses when you look away and picks up when you're back
+          </p>
+        </button>
+
+        {/* Camera off */}
+        <button
+          onClick={() => onSelect(false)}
+          className="group bg-mist-400/60 hover:bg-mist-200 border border-grey/50 hover:border-white rounded-3xl p-6 w-72 transition-colors text-left"
+        >
+          <div className="flex items-center justify-center h-32 mb-4 bg-blue-600/50 rounded-lg">
+            <span className="text-6xl">🚫</span>
+          </div>
+          <h3 className="text-black font-bold text-lg mb-1">No Camera</h3>
+          <p className="text-blue-500 text-sm">
+            Continue without the camera — everything else works the same
+          </p>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function TemplateSelector({ onSelect }: { onSelect: (template: 'classic' | 'split') => void }) {
   return (
     <div className="h-screen w-screen flex flex-col items-center justify-center bg-gradient-to-br from-mist-50 to-mist-400 p-8">
@@ -961,6 +1004,7 @@ export default function AIPresentation() {
   const [showChat, setShowChat] = useState(false);
   const [isNarrating, setIsNarrating] = useState(false);
   const [cameraEnabled, setCameraEnabled] = useState(false);
+  const [cameraChoiceMade, setCameraChoiceMade] = useState(false);
   
   // Refs
   const keyTermsTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -1124,6 +1168,11 @@ export default function AIPresentation() {
   };
 
   /* --------------------------------------------- section nav handlers */
+  const handleCameraSelect = (useCamera: boolean) => {
+    setCameraEnabled(useCamera);
+    setCameraChoiceMade(true);
+  };
+  
   const handleTemplateSelect = (template: 'classic' | 'split') => {
     setSelectedTemplate(template);
     setActiveSection(0);
@@ -1294,6 +1343,10 @@ export default function AIPresentation() {
     );
   }
 
+  if (!cameraChoiceMade) {
+    return <CameraSelector onSelect={handleCameraSelect} />;
+  }
+  
   if (!selectedTemplate) {
     return <TemplateSelector onSelect={handleTemplateSelect} />;
   }   
