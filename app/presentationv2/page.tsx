@@ -198,7 +198,7 @@ const useAIChat = (currentSection: SectionWithBreakdown | undefined, missedQuest
 
     // Placeholder bubble that fills in as tokens arrive
     setMessages((prev) => {
-      const next = [...prev, { role: 'ai', text: '' }]
+      const next = [...prev, userMessage, { role: 'ai', text: '' }]
       console.log("messages after send:", next);
       return next;
     });
