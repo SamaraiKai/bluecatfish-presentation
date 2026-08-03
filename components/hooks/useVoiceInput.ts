@@ -48,11 +48,12 @@ export function useVoiceInput(onTranscript: (text: string) => void) {
     }
   };
 
-  const watchForSilence = (stream: MediaStream) => {
+  const watchForSilence = async (stream: MediaStream) => {
     const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
     const ctx = new AudioCtx();
     audioCtxRef.current = ctx;
-
+    if (ctx.state === "suspended") await ctx.resume();
+    
     const source = ctx.createMediaStreamSource(stream);
     const analyser = ctx.createAnalyser();
     analyser.fftSize = 2048;
@@ -127,6 +128,7 @@ export function useVoiceInput(onTranscript: (text: string) => void) {
       mr.start();
       mediaRecorderRef.current = mr;
       setStatus("listening");
+      await watchForSilence(stream);
     } catch {
       console.error("Mic permission denied");
       setStatus("idle");
