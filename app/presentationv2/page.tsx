@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { createPortal } from 'react-dom';
 import { useFacePresence } from "@/components/hooks/useFacePresence";
+import { useVoiceInput } from '@/components/hooks/useVoiceInput';
 
 /* ============================================================================
  * TYPES
