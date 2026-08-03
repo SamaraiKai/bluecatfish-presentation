@@ -1019,6 +1019,8 @@ export default function AIPresentation() {
   
   const { messages, isLoading, input, setInput, sendMessage } = useAIChat(currentSection, missedQuestions);
 
+  const { status: micStatus, toggleMic } = useVoiceInput((text) => sendMessage(text));
+
   const { present, error } = useFacePresence(cameraEnabled);
 
   /* ------------------------------------------------------ derived values */
