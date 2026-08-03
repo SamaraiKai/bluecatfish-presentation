@@ -1065,6 +1065,7 @@ export default function AIPresentation() {
   // Refs
   const keyTermsTimerRef = useRef<NodeJS.Timeout | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const presenceAudioRef = useRef<HTMLAudioElement | null>(null);
 
   /* ---------------------------------------------------------- hook calls */
   const currentSection = sections[activeSection];
@@ -1178,6 +1179,15 @@ export default function AIPresentation() {
     play(audioUrls[introKey], introKey, "", () => chain(0));
   };
 
+  const playPresenceCue = (key: 'presence_away' | 'presence_back') => {
+    const url = audioUrls[key];
+    if (!url) return;
+    presenceAudioRef.current?.pause();
+    const a = new Audio(url);
+    presenceAudioRef.current = a;
+    a.play().catch(() => {});
+  };
+  
   const narrateSection = (index: number) => {
     if (index < sections.length) {
       setMicroStep(0);
@@ -1377,8 +1387,20 @@ export default function AIPresentation() {
   // Pause narration when the viewer looks away
   useEffect(() => {
     if (!cameraEnabled) return;
-    if (!present) pauseAudio();
-    else resumeAudio();
+  
+    // don't fire a cue the moment the camera turns on
+    if (firstRunRef.current) {
+      firstRunRef.current = false;
+      return;
+    }
+  
+    if (!present) {
+      pauseAudio();
+      playPresenceCue('presence_away');
+    } else {
+      playPresenceCue('presence_back');
+      resumeAudio();
+    }
   }, [present, cameraEnabled]);
   
   /* -------------------------------------------------------- early returns */
