@@ -130,7 +130,7 @@ Output ONLY a JSON object with key "section" structured EXACTLY like this:
 
   if ((!section.quiz || section.quiz.length !== 2) && attempt < 2) {
     console.warn(`Section ${sectionNum} had ${section.quiz?.length} quiz questions, retrying...`);
-    return generateSingleSection(/* ...same args... */, attempt + 1);
+    return generateSingleSection(ragContext, sectionTopic, sectionNum, attempt + 1);
   }
   
   const validKeyTerms = section.breakdown?.keyTerms?.length === 3;
