@@ -169,9 +169,11 @@ export async function POST(request: NextRequest) {
             try {
               const json = JSON.parse(payload);
               const token = json.choices?.[0]?.delta?.content;
+              console.log("token:", JSON.stringify(token));
               if (token) controller.enqueue(encoder.encode(token));
             } catch {
               // partial JSON across chunk boundary — skip it
+              console.log("parse failed on:", payload.slice(0, 120));
             }
           }
         }
