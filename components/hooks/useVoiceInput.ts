@@ -133,11 +133,6 @@ export function useVoiceInput(onTranscript: (text: string) => void) {
     }
   };
 
-  const stopListening = () => {
-    mediaRecorderRef.current?.stop();
-    setStatus("processing");
-  };
-
   const toggleMic = () => {
     if (status === "listening") stopListening();
     else startListening();
