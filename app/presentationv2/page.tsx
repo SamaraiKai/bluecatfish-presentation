@@ -217,12 +217,15 @@ const useAIChat = (currentSection: SectionWithBreakdown | undefined, missedQuest
         }),
       });
 
+      console.log("status:", response.status, "type:", response.headers.get("content-type"));
+      
       if (!response.ok || !response.body) {
         throw new Error('Chat request failed');
       }
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
+      console.log("reader created");
 
       let full = '';        // everything received so far
       let pending = '';     // text not yet sent to TTS
