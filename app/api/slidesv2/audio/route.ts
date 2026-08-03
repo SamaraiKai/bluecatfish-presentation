@@ -120,7 +120,7 @@ async function generateAndUpload(text: string, fileName: string): Promise<string
 
   if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
 
-  return publicUrl(filename);
+  return publicUrl(fileName);
 }
 
 /**
@@ -218,12 +218,12 @@ function buildSharedJobs(): AudioJob[] {
   });
   jobs.push({
   key: "presence_away",
-  text: "Take your time. I'll wait.",
+  text: presence_away,
   fileName: `${FOLDER}/presence-away.mp3`,
   });
   jobs.push({
     key: "presence_back",
-    text: "Alright, picking up where we left off.",
+    text: presence_back,
     fileName: `${FOLDER}/presence-back.mp3`,
   });
   return jobs;
