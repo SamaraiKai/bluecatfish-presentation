@@ -6,31 +6,58 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+/* ============================================================================
+ * CONFIG
+ * ========================================================================== */
 const BUCKET = "slide-audio";
 const FOLDER = "sections_v9.6";
 
+// How many TTS calls to run at once. Higher = faster, but risks rate limits.
+const BATCH_SIZE = 8;
+
+/* ============================================================================
+ * STATIC SCRIPT TEXT
+ * ========================================================================== */
+const LAYOUT_DESCRIPTIONS = {
+  classic: "As we go through the lesson, you'll see the image on your left and the content on your right.",
+  split: "As we go through the lesson, you'll see the content on your left and the image on your right.",
+};
+
+// Played before a "simple explanation" step
 const IMBETWEEN_PHRASES = [
   "This means...",
   "In other words...",
   "Put simply...",
 ];
 
-const LAYOUT_DESCRIPTIONS = {
-  classic: "As we go through the lesson, you'll see the image on your left and the content on your right.",
-  split: "As we go through the lesson, you'll see the content on your left and the image on your right.",
-};
-
+// Played before a "real world example" step
 const TRANSITION_PHRASES = [
   "A good analogy is...",
   "Think of it this way...",
   "Here's a way to picture it...",
 ];
 
-const transition_lines = ["First.", "Next.", "Finally."];
+// Played between individual key terms
+const ORDINAL_LINES = ["First.", "Next.", "Finally."];
+
+const KEYTERM_INTRO_TEXT = "Let's go over some key terms.";
 
 const WRAP_UP_TEXT = "When you're ready, answer the quiz to head to the next section.";
 
 const FAIL_TEXT = "It seems you didn't answer everything correctly. Let's head to review to cement what you know.";
+
+const REVIEW_INTRO_ONE_TEXT = "Almost perfect. Let's look at the one you missed.";
+const REVIEW_INTRO_SOME_TEXT = "Let's go back over the ones you missed.";
+const REVIEW_OUTRO_TEXT = "That's the review. Ready to keep going?";
+
+/* ============================================================================
+ * HELPERS
+ * ========================================================================== */
+type AudioJob = {
+  key: string;      // the key used in audioUrls, e.g. "section0_overview"
+  text: string;     // what gets spoken
+  fileName: string; // full path within the bucket
+};
 
 function slugify(text: string): string {
   return text
@@ -40,17 +67,27 @@ function slugify(text: string): string {
     .slice(0, 40);
 }
 
-async function generateAndUpload(text: string, fileName: string): Promise<string> {
-  // Skip regenerating if it already exists in Storage
-  const { data: existing } = await supabase.storage
-    .from(BUCKET)
-    .list(FOLDER, { search: fileName.split("/").pop() });
+function publicUrl(fileName: string): string {
+  const { data } = supabase.storage.from(BUCKET).getPublicUrl(fileName);
+  return data.publicUrl;
+}
 
-  if (existing && existing.length > 0) {
-    const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(fileName);
-    return urlData.publicUrl;
+/**
+ * Lists the folder once so we can skip regeneration without a network
+ * round-trip per file.
+ */
+async function listExistingFiles(): Promise<Set<string>> {
+  const { data, error } = await supabase.storage.from(BUCKET).list(FOLDER, {
+    limit: 1000,
+  });
+  if (error) {
+    console.warn("Could not list existing audio files:", error.message);
+    return new Set();
   }
+  return new Set((data ?? []).map((f) => f.name));
+}
 
+async function generateAndUpload(text: string, fileName: string): Promise<string> {
   const ttsResponse = await fetch("https://api.openai.com/v1/audio/speech", {
     method: "POST",
     headers: {
@@ -81,149 +118,249 @@ async function generateAndUpload(text: string, fileName: string): Promise<string
 
   if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
 
-  const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(fileName);
-  return urlData.publicUrl;
+  return publicUrl.(filename);
 }
 
+/**
+ * Runs every job, skipping any whose file already exists, in parallel batches.
+ * A single failed clip is logged and skipped rather than aborting the run.
+ */
+async function runJobs(
+  jobs: AudioJob[],
+  existing: Set<string>
+): Promise<Record<string, string>> {
+  const audioUrls: Record<string, string> = {};
+ 
+  // Already-uploaded files resolve immediately, no API call needed
+  const pending: AudioJob[] = [];
+  for (const job of jobs) {
+    const baseName = job.fileName.split("/").pop()!;
+    if (existing.has(baseName)) {
+      audioUrls[job.key] = publicUrl(job.fileName);
+    } else {
+      pending.push(job);
+    }
+  }
+ 
+  for (let i = 0; i < pending.length; i += BATCH_SIZE) {
+    const batch = pending.slice(i, i + BATCH_SIZE);
+    const results = await Promise.all(
+      batch.map(async (job) => {
+        try {
+          return { key: job.key, url: await generateAndUpload(job.text, job.fileName) };
+        } catch (e) {
+          console.error(`Failed to generate "${job.key}":`, e);
+          return null;
+        }
+      })
+    );
+    for (const r of results) {
+      if (r) audioUrls[r.key] = r.url;
+    }
+  }
+ 
+  return audioUrls;
+}
+
+/* ============================================================================
+ * JOB BUILDERS
+ * ========================================================================== */
+
+/** Clips that never change — generated once and reused across every lesson. */
+function buildSharedJobs(): AudioJob[] {
+  const jobs: AudioJob[] = [];
+ 
+  for (const [template, text] of Object.entries(LAYOUT_DESCRIPTIONS)) {
+    jobs.push({
+      key: `layout_${template}`,
+      text,
+      fileName: `${FOLDER}/layout-${template}.mp3`,
+    });
+  }
+ 
+  IMBETWEEN_PHRASES.forEach((text, t) =>
+    jobs.push({ key: `imbetween${t}`, text, fileName: `${FOLDER}/imbetween-${t}.mp3` })
+  );
+ 
+  TRANSITION_PHRASES.forEach((text, t) =>
+    jobs.push({ key: `transition${t}`, text, fileName: `${FOLDER}/transition-${t}.mp3` })
+  );
+ 
+  ORDINAL_LINES.forEach((text, t) =>
+    jobs.push({ key: `ordinal${t}`, text, fileName: `${FOLDER}/ordinal${t}.mp3` })
+  );
+ 
+  jobs.push({
+    key: "keytermIntro",
+    text: KEYTERM_INTRO_TEXT,
+    fileName: `${FOLDER}/keyterm_intro.mp3`,
+  });
+ 
+  jobs.push({ key: "wrapup", text: WRAP_UP_TEXT, fileName: `${FOLDER}/wrapup.mp3` });
+  jobs.push({ key: "quizFail", text: FAIL_TEXT, fileName: `${FOLDER}/quiz-fail.mp3` });
+ 
+  jobs.push({
+    key: "review_intro_one",
+    text: REVIEW_INTRO_ONE_TEXT,
+    fileName: `${FOLDER}/review_intro_one.mp3`,
+  });
+  jobs.push({
+    key: "review_intro_some",
+    text: REVIEW_INTRO_SOME_TEXT,
+    fileName: `${FOLDER}/review_intro_some.mp3`,
+  });
+  jobs.push({
+    key: "review_outro",
+    text: REVIEW_OUTRO_TEXT,
+    fileName: `${FOLDER}/review_outro.mp3`,
+  });
+ 
+  return jobs;
+}
+
+/** Intro and conclusion narration, which depend on the generated lesson. */
+function buildFramingJobs(
+  sections: any[],
+  intro?: string,
+  conclusion?: string
+): AudioJob[] {
+  const jobs: AudioJob[] = [];
+ 
+  if (intro) {
+    const firstTopicSlug = slugify(sections?.[0]?.title || "default");
+    jobs.push({
+      key: "intro",
+      text: intro,
+      fileName: `${FOLDER}/intro-${firstTopicSlug}.mp3`,
+    });
+  }
+ 
+  if (conclusion) {
+    jobs.push({
+      key: "conclusion",
+      text: conclusion,
+      fileName: `${FOLDER}/conclusion.mp3`,
+    });
+  }
+ 
+  return jobs;
+}
+
+/** Everything tied to a specific section: narration, facts, key terms, quiz. */
+function buildSectionJobs(sections: any[]): AudioJob[] {
+  const jobs: AudioJob[] = [];
+ 
+  for (let i = 0; i < sections.length; i++) {
+    const section = sections[i];
+    const n = i + 1; // filenames are 1-based, keys are 0-based
+ 
+    // --- quiz success ---
+    const nextTitle = sections[i + 1]?.title;
+    jobs.push({
+      key: `section${i}_quizsuccess`,
+      text: nextTitle
+        ? `Great job! You're really learning about Blue Catfish. Let's head to the next section: ${nextTitle}.`
+        : `Great job! You've completed all the sections. Let's wrap things up.`,
+      fileName: `${FOLDER}/section${n}_quizsuccess.mp3`,
+    });
+ 
+    // --- overview ---
+    if (section.content) {
+      jobs.push({
+        key: `section${i}_overview`,
+        text: section.content,
+        fileName: `${FOLDER}/section${n}_overview.mp3`,
+      });
+    }
+ 
+    // --- fun facts ---
+    if (section.stats?.length === 2) {
+      jobs.push({
+        key: `section${i}_fact1`,
+        text: `One fun fact is ${section.stats[0].value}: ${section.stats[0].label}.`,
+        fileName: `${FOLDER}/section${n}_fact1.mp3`,
+      });
+      jobs.push({
+        key: `section${i}_fact2`,
+        text: `Another fact is ${section.stats[1].value}: ${section.stats[1].label}.`,
+        fileName: `${FOLDER}/section${n}_fact2.mp3`,
+      });
+    }
+ 
+    // --- simple explanation ---
+    if (section.breakdown?.simple) {
+      jobs.push({
+        key: `section${i}_simple`,
+        text: section.breakdown.simple,
+        fileName: `${FOLDER}/section${n}_simple.mp3`,
+      });
+    }
+ 
+    // --- key terms (one clip each) ---
+    if (section.breakdown?.keyTerms?.length === 3) {
+      const kt = section.breakdown.keyTerms;
+      for (let t = 0; t < 3; t++) {
+        jobs.push({
+          key: `section${i}_keyterm${t}`,
+          text: `${kt[t].term}: ${kt[t].definition}.`,
+          fileName: `${FOLDER}/section${n}_keyterm${t + 1}.mp3`,
+        });
+      }
+    }
+ 
+    // --- real world example ---
+    if (section.breakdown?.realWorldExample) {
+      jobs.push({
+        key: `section${i}_example`,
+        text: section.breakdown.realWorldExample,
+        fileName: `${FOLDER}/section${n}_example.mp3`,
+      });
+    }
+ 
+    // --- per-question review explanations ---
+    const quiz = section.quiz ?? [];
+    for (let q = 0; q < quiz.length; q++) {
+      const correct = quiz[q].options[quiz[q].correctAnswer];
+      jobs.push({
+        key: `section${i}_review_q${q}`,
+        text: `The correct answer is ${correct}. ${quiz[q].explanation ?? ""}`,
+        fileName: `${FOLDER}/section${n}_review_q${q + 1}.mp3`,
+      });
+    }
+  }
+ 
+  return jobs;
+}
+
+/* ============================================================================
+ * ROUTE
+ * ========================================================================== */
 export async function POST(req: Request) {
   try {
     const { sections, intro, conclusion } = await req.json();
     if (!sections) throw new Error("Missing sections data");
     if (!process.env.OPENAI_API_KEY) throw new Error("Missing OpenAI API key");
 
-    const audioUrls: Record<string, string> = {};
+    const jobs: AudioJob[] = [
+      ...buildSharedJobs(),
+      ...buildFramingJobs(sections, intro, conclusion),
+      ...buildSectionJobs(sections),
+    ];
 
-    // Intro narration
-    if (intro) {
-      const firstTopicSlug = slugify(sections?.[0]?.title || 'default');
-      audioUrls["intro"] = await generateAndUpload(
-        intro,
-        `${FOLDER}/intro-${firstTopicSlug}.mp3`
-        );
-    }
+    const existing = await listExistingFiles();
+    const audioUrls = await runJobs(jobs, existing);
 
-    // Conclusion narration
-    if (conclusion) {
-      audioUrls["conclusion"] = await generateAndUpload(conclusion, `${FOLDER}/conclusion.mp3`);
-    }
-
-    for (const [template, text] of Object.entries(LAYOUT_DESCRIPTIONS)) {
-      audioUrls[`layout_${template}`] = await generateAndUpload(text, `${FOLDER}/layout-${template}.mp3`);
-    }
-    
-    for (let t = 0; t < IMBETWEEN_PHRASES.length; t++) {
-      audioUrls[`imbetween${t}`] = await generateAndUpload(
-        IMBETWEEN_PHRASES[t],
-        `${FOLDER}/imbetween-${t}.mp3`
-      );
-    }
-    
-    for (let t = 0; t < TRANSITION_PHRASES.length; t++) {
-      audioUrls[`transition${t}`] = await generateAndUpload(TRANSITION_PHRASES[t], `${FOLDER}/transition-${t}.mp3`
-      );
-    }
-
-    for (let idx = 0; idx < transition_lines.length; idx++) {
-        audioUrls[`ordinal${idx}`] = await generateAndUpload(
-          transition_lines[idx],
-          `${FOLDER}/ordinal${idx}.mp3`
-        );
-      }
-      
-      // and the intro line, also once
-      audioUrls["keytermIntro"] = await generateAndUpload(
-        "Let's go over some key terms.",
-        `${FOLDER}/keyterm_intro.mp3`
-      );
-    
-    for (let i = 0; i < sections.length; i++) {
-      const quiz = sections[i].quiz ?? [];
-      for (let q = 0; q < quiz.length; q++) {
-        const correct = quiz[q].options[quiz[q].correctAnswer];
-        audioUrls[`section${i}_review_q${q}`] = await generateAndUpload(
-          `The correct answer is ${correct}. ${quiz[q].explanation ?? ""}`,
-          `${FOLDER}/section${i + 1}_review_q${q + 1}.mp3`
-        );
-      }
-    }
-
-    audioUrls["review_intro_one"] = await generateAndUpload(
-      "Almost perfect. Let's look at the one you missed.",
-      `${FOLDER}/review_intro_one.mp3`
-    );
-    audioUrls["review_intro_some"] = await generateAndUpload(
-      "Let's go back over the ones you missed.",
-      `${FOLDER}/review_intro_some.mp3`
-    );
-    audioUrls["review_outro"] = await generateAndUpload(
-      "That's the review. Ready to keep going?",
-      `${FOLDER}/review_outro.mp3`
-    );
-    
-    audioUrls['wrapup'] = await generateAndUpload(WRAP_UP_TEXT, `${FOLDER}/wrapup.mp3`);
-    audioUrls['quizFail'] = await generateAndUpload(FAIL_TEXT, `${FOLDER}/quiz-fail.mp3`);
-    // Per-section narration + breakdown audio
-    for (let i = 0; i < sections.length; i++) {
-      const section = sections[i];
-
-      const nextTitle = sections[i + 1]?.title;
-      const successText = nextTitle
-        ? `Great job! You're really learning about Blue Catfish. Let's head to the next section: ${nextTitle}.`
-        : `Great job! You've completed all the sections. Let's wrap things up.`;
-
-      audioUrls[`section${i}_quizsuccess`] = await generateAndUpload(
-        successText,
-        `${FOLDER}/section${i + 1}_quizsuccess.mp3`
-      );
-      
-      if (section.content) {
-        audioUrls[`section${i}_overview`] = await generateAndUpload(
-          section.content,
-          `${FOLDER}/section${i + 1}_overview.mp3`
-        );
-      }
-      
-      if (section.stats?.length === 2) {
-        const fact1Text = `One fun fact is ${section.stats[0].value}: ${section.stats[0].label}.`;
-        const fact2Text = `Another fact is ${section.stats[1].value}: ${section.stats[1].label}.`;
-      
-        audioUrls[`section${i}_fact1`] = await generateAndUpload(
-          fact1Text,
-          `${FOLDER}/section${i + 1}_fact1.mp3`
-        );
-        audioUrls[`section${i}_fact2`] = await generateAndUpload(
-          fact2Text,
-          `${FOLDER}/section${i + 1}_fact2.mp3`
-        );
-      }
-      
-      if (section.breakdown?.simple) {
-        audioUrls[`section${i}_simple`] = await generateAndUpload(
-          section.breakdown.simple,
-          `${FOLDER}/section${i + 1}_simple.mp3`
-        );
-      }
-      if (section.breakdown?.keyTerms?.length === 3) {
-        const kt = section.breakdown.keyTerms;
-
-        for (let t = 0; t < 3; t++) {
-          audioUrls[`section${i}_keyterm${t}`] = await generateAndUpload(
-            `${kt[t].term}: ${kt[t].definition}.`,
-            `${FOLDER}/section${i + 1}_keyterm${t + 1}.mp3`
-          );
-        }
-      }
-      if (section.breakdown?.realWorldExample) {
-        audioUrls[`section${i}_example`] = await generateAndUpload(
-          section.breakdown.realWorldExample,
-          `${FOLDER}/section${i + 1}_example.mp3`
-        );
-      }
-    }
-
-    return NextResponse.json({ success: true, audioUrls });
+    return NextResponse.json({
+      success: true,
+      audioUrls,
+      generated: Object.keys(audioUrls).length,
+      requested: jobs.length,
+    });
   } catch (err: any) {
     console.error("Audio generation error:", err);
-    return NextResponse.json({ error: err.message || "Failed to generate audio" }, { status: 500 });
+    return NextResponse.json(
+      { error: err.message || "Failed to generate audio" },
+      { status: 500 }
+    );
   }
 }
