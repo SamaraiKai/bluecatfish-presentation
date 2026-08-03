@@ -39,6 +39,7 @@ export async function POST(request: NextRequest) {
     const userText = (body.userText as string | undefined)?.trim();
     const topic = body.topic as string | undefined;
     const style = body.style as string | undefined;
+    const stream = body.stream === true;
 
     if (!userText) {
       return NextResponse.json({ error: 'Missing user text.' }, { status: 400 });
@@ -51,7 +52,7 @@ export async function POST(request: NextRequest) {
 
     // Build a professor-style system prompt if none provided from utils.ts
     const effectiveSystemPrompt = systemPrompt ||
-      `You are "${PRESENTATION.professor.name}", a university professor specializing in Marine Biology and Conservation, teaching a 12-16 year old student about "${topic || 'this topic'}" in a live one-on-one voice session. ` +
+      `You are "Professor Marine", a university professor specializing in Marine Biology and Conservation, teaching a 12-16 year old student about "${topic || 'this topic'}" in a live one-on-one voice session. ` +
       `You are a warm, expert professor teaching a 12-16 year old student about "${topic || 'this topic'}" in a live one-on-one voice session. ` +
       `You LEAD the lesson — you don't wait for questions, you teach proactively. ` +
       `Present one concept, give a real example, then ask the student ONE focused question to check understanding. ` +
@@ -125,19 +126,71 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const data = await response.json();
-    const reply = data?.choices?.[0]?.message?.content?.trim();
+    // Non-streaming path — unchanged, so existing callers keep working
+    if (!stream) {
+      const data = await response.json();
+      const reply = data?.choices?.[0]?.message?.content?.trim();
 
-    if (!reply) {
-      return NextResponse.json({ error: 'OpenAI returned an empty reply.' }, { status: 500 });
-    }
+      if (!reply) {
+        return NextResponse.json({ error: 'OpenAI returned an empty reply.' }, { status: 500 });
+      }
 
     return NextResponse.json({ reply });
+  }
+
+  // Streaming path — unwrap OpenAI's SSE format into plain text chunks
+  const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
+
+  const readable = new ReadableStream({
+    async start(controller) {
+      const reader = response.body!.getReader();
+      let buffer = '';
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() ?? '';
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed.startsWith('data:')) continue;
+
+            const payload = trimmed.slice(5).trim();
+            if (payload === '[DONE]') {
+              controller.close();
+              return;
+            }
+
+            try {
+              const json = JSON.parse(payload);
+              const token = json.choices?.[0]?.delta?.content;
+              if (token) controller.enqueue(encoder.encode(token));
+            } catch {
+              // partial JSON across chunk boundary — skip it
+            }
+          }
+        }
+        controller.close();
+      } catch (e) {
+        console.error('Stream error:', e);
+        controller.error(e);
+      }
+    },
+  });
+    
+    return new Response(readable, {
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Cache-Control': 'no-cache',
+      },
+    });
   } catch (error) {
     console.error('Error generating conversational reply:', error);
-    return NextResponse.json(
-      { error: 'Failed to generate response.' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to generate response.' }, { status: 500 });
   }
 }
