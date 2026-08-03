@@ -40,6 +40,7 @@ export async function POST(request: NextRequest) {
     const topic = body.topic as string | undefined;
     const style = body.style as string | undefined;
     const stream = body.stream === true;
+    console.log("stream flag:", stream, typeof stream);
 
     if (!userText) {
       return NextResponse.json({ error: 'Missing user text.' }, { status: 400 });
