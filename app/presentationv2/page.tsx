@@ -176,11 +176,7 @@ const useAudioPlayer = () => {
   };
 };
 
-const useAIChat = (currentSection: SectionWithBreakdown | undefined, missedQuestions: { question: string; options: string[]; correctAnswer: number; explanation: string }[]) => {
-  const { status: micStatus, toggleMic } = useVoiceInput((text) => {
-    stop();
-    sendMessage(text);
-  });
+const useAIChat = (currentSection: SectionWithBreakdown | undefined, missedQuestions: { question: string; options: string[]; correctAnswer: number; explanation: string }[], onSentence?: (sentence: string) => void) => {
   const [messages, setMessages] = useState<Message[]>([
     { role: 'ai', text: `Good day! I'm ${PRESENTATION.professor.name}, and I'll be your guide through today's lecture on the Blue Catfish invasion in the Chesapeake Bay. Feel free to ask me any questions as we go through the material. What would you like to explore first?` }
   ]);
@@ -189,8 +185,14 @@ const useAIChat = (currentSection: SectionWithBreakdown | undefined, missedQuest
 
   const sendMessage = async (text: string) => {
     if (!text.trim()) return;
+    
     const userMessage: Message = { role: 'user', text };
-    setMessages(prev => [...prev, userMessage]);
+
+    const history = messages.map((m) => ({
+      role: m.role === 'ai' ? 'assistant' : 'user',
+      content: m.text,
+    }));
+    
     setInput('');
     setIsLoading(true);
 
@@ -210,22 +212,16 @@ const useAIChat = (currentSection: SectionWithBreakdown | undefined, missedQuest
           topic: 'Blue Catfish invasion in the Chesapeake Bay',
           stream: true,
           systemPrompt: `You are "${PRESENTATION.professor.name}", a university professor specializing in Marine Biology and Conservation. The student is currently viewing a slide titled "${currentSection.title}" which covers: ${currentSection.content} Answer questions with awareness of what they're currently looking at, and relate your answers back to this section when relevant, like a professor referencing the current lecture slide.`,
-          conversation: messages.map(m => ({
-            role: m.role === 'ai' ? 'assistant' : 'user',
-            content: m.text,
-          })),
+          conversation: history
         }),
       });
-
-      console.log("status:", response.status, "type:", response.headers.get("content-type"));
       
       if (!response.ok || !response.body) {
-        throw new Error('Chat request failed');
+        throw new Error('Chat request failed (${response.status})');
       }
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
-      console.log("reader created");
 
       let full = '';        // everything received so far
       let pending = '';     // text not yet sent to TTS
@@ -235,7 +231,6 @@ const useAIChat = (currentSection: SectionWithBreakdown | undefined, missedQuest
         if (done) break;
 
         const token = decoder.decode(value, { stream: true });
-        console.log("chunk:", JSON.stringify(token));   // 🔵 debug
         full += token;
         pending += token;
 
@@ -1080,7 +1075,10 @@ export default function AIPresentation() {
   
   const { messages, isLoading, input, setInput, sendMessage } = useAIChat(currentSection, missedQuestions, enqueue);
 
-  const { status: micStatus, toggleMic } = useVoiceInput((text) => sendMessage(text));
+  const { status: micStatus, toggleMic } = useVoiceInput((text) => {
+    stop();
+    sendMessage(text);
+  });
 
   const { present, error } = useFacePresence(cameraEnabled);
 
