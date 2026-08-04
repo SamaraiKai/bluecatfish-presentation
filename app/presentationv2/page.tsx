@@ -1045,6 +1045,7 @@ export default function AIPresentation() {
   const [loadingPhase, setLoadingPhase] = useState<'content' | 'audio'>('content');
   const [loadError, setLoadError] = useState<string | null>(null);
   const [introText, setIntroText] = useState('');
+  const [inIntro, setInIntro] = useState(false);
 
   // Navigation
   const [selectedTemplate, setSelectedTemplate] = useState<'classic' | 'split' | null>(null);
@@ -1070,6 +1071,7 @@ export default function AIPresentation() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const presenceAudioRef = useRef<HTMLAudioElement | null>(null);
   const firstRunRef = useRef(true);
+  const interruptedRef = useRef<{ section: number; step: number } | null>(null);
   
   /* ---------------------------------------------------------- hook calls */
   const currentSection = sections[activeSection];
@@ -1086,10 +1088,13 @@ export default function AIPresentation() {
       sendMessage(text);
     },
     () => {
+      if (isSpeaking && !inIntro) {
+        interruptedRef.current = { section: activeSection, step: microStep };
+      }
       stop();
       stopSpeaking();
     },
-    isSpeaking || isChatSpeaking
+    isChatSpeaking || (isSpeaking && !inIntro)
   );
 
   const { present, error } = useFacePresence(cameraEnabled);
@@ -1191,11 +1196,19 @@ export default function AIPresentation() {
   };
 
   const playPresenceCue = (key: 'presence_away' | 'presence_back') => {
+    key: 'presence_away' | 'presence_back',
+    onDone?: () => void
+  ) => {
     const url = audioUrls[key];
-    if (!url) return;
+    if (!url) {
+      onDone?.();
+      return;
+    }
     presenceAudioRef.current?.pause();
     const a = new Audio(url);
     presenceAudioRef.current = a;
+    a.onended = () => onDone?.();
+    a.onerror = () => onDone?.();
     a.play().catch(() => {});
   };
   
@@ -1213,9 +1226,11 @@ export default function AIPresentation() {
   };
 
   const playIntroduction = (template: 'classic' | 'split') => {
+    setInIntro(true);
     play(audioUrls['intro'], 'intro', introText, () => {
       const layoutKey = `layout_${template}`;
       play(audioUrls[layoutKey], layoutKey, '', () => {
+        setInIntro(false);
         narrateSection(0);
       });
     });
@@ -1407,11 +1422,18 @@ export default function AIPresentation() {
       pauseAudio();
       playPresenceCue('presence_away');
     } else {
-      playPresenceCue('presence_back');
-      resumeAudio();
+      playPresenceCue('presence_back'), () => resumeAudio());
     }
   }, [present, cameraEnabled]);
+
+  useEffect(() => {
+    if (isChatSpeaking) return;           // still answering
+    if (!interruptedRef.current) return;  // nothing was interrupted
   
+    const { section, step } = interruptedRef.current;
+    interruptedRef.current = null;
+    playMicroStepAudio(section, step, null);
+  }, [isChatSpeaking]);
   /* -------------------------------------------------------- early returns */
   // Loading / error states before rendering the presentation
   if (isContentLoading) {
