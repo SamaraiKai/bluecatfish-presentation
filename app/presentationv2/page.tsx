@@ -1089,7 +1089,7 @@ export default function AIPresentation() {
       stop();
       stopSpeaking();
     }
-  });
+  );
 
   const { present, error } = useFacePresence(cameraEnabled);
 
