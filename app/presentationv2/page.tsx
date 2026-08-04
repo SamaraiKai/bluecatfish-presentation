@@ -1088,7 +1088,7 @@ export default function AIPresentation() {
       sendMessage(text);
     },
     () => {
-      if (isSpeaking && !inIntro) && !showQuiz && !showReview && !showConclusion) {
+      if (isSpeaking && !inIntro && !showQuiz && !showReview && !showConclusion) {
         interruptedRef.current = { section: activeSection, step: microStep };
       }
       stop();
