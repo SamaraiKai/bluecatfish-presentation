@@ -1070,7 +1070,8 @@ export default function AIPresentation() {
   const keyTermsTimerRef = useRef<NodeJS.Timeout | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const presenceAudioRef = useRef<HTMLAudioElement | null>(null);
-
+  const firstRunRef = useRef(true);
+  
   /* ---------------------------------------------------------- hook calls */
   const currentSection = sections[activeSection];
 
