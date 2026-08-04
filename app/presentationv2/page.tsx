@@ -1080,9 +1080,15 @@ export default function AIPresentation() {
   
   const { messages, isLoading, input, setInput, sendMessage } = useAIChat(currentSection, missedQuestions, enqueue);
 
-  const { status: micStatus, toggleMic } = useVoiceInput((text) => {
-    stop();
-    sendMessage(text);
+  const { status: micStatus, toggleMic } = useVoiceInput(
+    (text) => {
+      setShowChat(true);
+      sendMessage(text);
+    },
+    () => {
+      stop();
+      stopSpeaking();
+    }
   });
 
   const { present, error } = useFacePresence(cameraEnabled);
