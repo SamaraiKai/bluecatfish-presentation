@@ -1422,7 +1422,7 @@ export default function AIPresentation() {
       pauseAudio();
       playPresenceCue('presence_away');
     } else {
-      playPresenceCue('presence_back'), () => resumeAudio());
+      playPresenceCue('presence_back', () => resumeAudio());
     }
   }, [present, cameraEnabled]);
 
