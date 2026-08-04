@@ -1088,13 +1088,13 @@ export default function AIPresentation() {
       sendMessage(text);
     },
     () => {
-      if (isSpeaking && !inIntro) {
+      if (isSpeaking && !inIntro) && !showQuiz && !showReview && !showConclusion) {
         interruptedRef.current = { section: activeSection, step: microStep };
       }
       stop();
       stopSpeaking();
     },
-    isChatSpeaking || (isSpeaking && !inIntro)
+    isChatSpeaking || (isSpeaking && !inIntro && !showConclusion)
   );
 
   const { present, error } = useFacePresence(cameraEnabled);
@@ -1434,6 +1434,10 @@ export default function AIPresentation() {
     interruptedRef.current = null;
     playMicroStepAudio(section, step, null);
   }, [isChatSpeaking]);
+
+  useEffect(() => {
+    interruptedRef.current = null;
+  }, [activeSection, showQuiz, showReview, showConclusion]);
   /* -------------------------------------------------------- early returns */
   // Loading / error states before rendering the presentation
   if (isContentLoading) {
