@@ -62,17 +62,13 @@ export async function POST(request: NextRequest) {
       `If student goes off-topic, redirect warmly: "Let's come back to ${topic || 'our topic'} — right where we left off..."` +
       `Style: ${style || 'warm, authoritative, and genuinely enthusiastic about the subject'}.`;
     
-    console.log("stream flag:", stream, typeof stream);
-    
     const queryEmbedding = await getEmbedding(userText);
-    console.log("embedding done, length:", queryEmbedding?.length);
 
     const { data: docs, error } = await supabase.rpc('match_documents2', {
         query_embedding: queryEmbedding,
         match_count: 4,
       }
     );
-    console.log("rpc done, docs:", docs?.length, "error:", error?.message);
     
     if (error) {
       console.error('Supabase RPC error:', error);
@@ -121,9 +117,10 @@ export async function POST(request: NextRequest) {
         messages,
         temperature: 0.7,
         max_tokens: 160,
+        stream,
       }),
     });
-    console.log("openai status:", response.status, response.headers.get("content-type"));
+
     if (!response.ok) {
       const errorText = await response.text();
       return NextResponse.json(
