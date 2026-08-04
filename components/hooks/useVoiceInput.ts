@@ -170,9 +170,6 @@ export function useVoiceInput(onTranscript: (text: string) => void, onListenStar
     else startListening();
   };
 
-  return { status, toggleMic };
-}
-
   /* --------------------------------------------------- passive barge-in */
   const stopBargeWatch = () => {
     if (bargeRafRef.current) cancelAnimationFrame(bargeRafRef.current);
