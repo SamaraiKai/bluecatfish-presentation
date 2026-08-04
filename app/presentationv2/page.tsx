@@ -1195,7 +1195,7 @@ export default function AIPresentation() {
     play(audioUrls[introKey], introKey, "", () => chain(0));
   };
 
-  const playPresenceCue = (key: 'presence_away' | 'presence_back') => {
+  const playPresenceCue = (
     key: 'presence_away' | 'presence_back',
     onDone?: () => void
   ) => {
