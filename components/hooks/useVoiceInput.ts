@@ -20,7 +20,7 @@ function pickMimeType(): string {
   return ""; // let the browser choose
 }
 
-export function useVoiceInput(onTranscript: (text: string) => void) {
+export function useVoiceInput(onTranscript: (text: string) => void, onListenStart?: () => void) {
   const [status, setStatus] = useState<Status>("idle");
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -128,6 +128,7 @@ export function useVoiceInput(onTranscript: (text: string) => void) {
       mr.start();
       mediaRecorderRef.current = mr;
       setStatus("listening");
+      onListenStart?.();  
       await watchForSilence(stream);
     } catch {
       console.error("Mic permission denied");
