@@ -1420,11 +1420,14 @@ export default function AIPresentation() {
   
     if (!present) {
       pauseAudio();
+      stopSpeaking(); 
       playPresenceCue('presence_away');
     } else {
-      playPresenceCue('presence_back', () => resumeAudio());
+      playPresenceCue('presence_back', () => {
+        if (!isChatSpeaking) resumeAudio();
+      });
     }
-  }, [present, cameraEnabled]);
+  }, [present, cameraEnabled, isChatSpeaking]);
 
   useEffect(() => {
     if (isChatSpeaking) return;           // still answering
