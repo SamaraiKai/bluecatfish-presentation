@@ -1413,6 +1413,7 @@ export default function AIPresentation() {
   // Pause narration when the viewer looks away
   useEffect(() => {
     if (!cameraEnabled) return;
+    if (micStatus !== 'idle' || isChatSpeaking) return;
   
     // don't fire a cue the moment the camera turns on
     if (firstRunRef.current) {
