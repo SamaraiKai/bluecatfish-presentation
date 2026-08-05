@@ -20,7 +20,18 @@ export function useSpeechQueue() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const drainingRef = useRef(false);
   const cancelledRef = useRef(false);
+  const streamingRef = useRef(false);
 
+  const beginStream = () => {
+    streamingRef.current = true;
+    cancelledRef.current = false;
+  };
+
+  const endStream = () => {
+    streamingRef.current = false;
+    drain();   // in case the last clip arrived after the queue drained
+  };
+  
   const playBlob = (blob: Blob) =>
     new Promise<void>((resolve) => {
       const url = URL.createObjectURL(blob);
@@ -40,7 +51,11 @@ export function useSpeechQueue() {
     drainingRef.current = true;
     setIsSpeaking(true);
 
-    while (clipsRef.current.length > 0 && !cancelledRef.current) {
+    while (clipsRef.current.length > 0 || streamingRef.current) && !cancelledRef.current) {
+      if (clipsRef.current.length === 0) {
+        await new Promise((r) => setTimeout(r, 100));   // wait for the next sentence
+        continue;
+      }
       const blob = await clipsRef.current.shift()!;
       if (cancelledRef.current) break;
       if (blob) await playBlob(blob);
@@ -67,5 +82,5 @@ export function useSpeechQueue() {
     setIsSpeaking(false);
   };
 
-  return { enqueue, stopSpeaking, isSpeaking };
+  return { enqueue, stopSpeaking, isSpeaking, beginStream, endStream };
 }
