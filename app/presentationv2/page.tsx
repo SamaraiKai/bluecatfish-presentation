@@ -1097,7 +1097,9 @@ export default function AIPresentation() {
       sendMessage(text);
     },
     () => {
-      if (isSpeaking && !inIntro && !showQuiz && !showReview && !showConclusion) {
+      if (isChatSpeaking) {
+        interruptedRef.current = null;
+      } else if (isSpeaking && !inIntro && !showQuiz && !showReview && !showConclusion) {
         interruptedRef.current = { section: activeSection, step: microStep };
       }
       stop();
@@ -1456,6 +1458,7 @@ export default function AIPresentation() {
     if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
     return;
   }
+  if (micStatus !== 'idle') return;
   if (cameraEnabled && !present) return;
   if (!interruptedRef.current) return;
 
@@ -1469,7 +1472,7 @@ export default function AIPresentation() {
   return () => {
     if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
   };
-}, [isChatSpeaking, cameraEnabled, present]);
+}, [isChatSpeaking, cameraEnabled, present, micStatus]);
   /* -------------------------------------------------------- early returns */
   // Loading / error states before rendering the presentation
   if (isContentLoading) {
