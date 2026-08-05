@@ -1072,6 +1072,8 @@ export default function AIPresentation() {
   const presenceAudioRef = useRef<HTMLAudioElement | null>(null);
   const firstRunRef = useRef(true);
   const interruptedRef = useRef<{ section: number; step: number } | null>(null);
+  const resumeTimerRef = useRef<NodeJS.Timeout | null>(null);
+  
   
   /* ---------------------------------------------------------- hook calls */
   const currentSection = sections[activeSection];
@@ -1094,7 +1096,7 @@ export default function AIPresentation() {
       stop();
       stopSpeaking();
     },
-    isChatSpeaking || (isSpeaking && !inIntro && !showConclusion)
+    isChatSpeaking || (!inIntro && !showConclusion)
   );
 
   const { present, error } = useFacePresence(cameraEnabled);
@@ -1441,6 +1443,25 @@ export default function AIPresentation() {
   useEffect(() => {
     interruptedRef.current = null;
   }, [activeSection, showQuiz, showReview, showConclusion]);
+
+  useEffect(() => {
+  if (isChatSpeaking) {
+    if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
+    return;
+  }
+  if (!interruptedRef.current) return;
+
+  resumeTimerRef.current = setTimeout(() => {
+    const pending = interruptedRef.current;
+    if (!pending) return;
+    interruptedRef.current = null;
+    playMicroStepAudio(pending.section, pending.step, null);
+  }, 6000);
+
+  return () => {
+    if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
+  };
+}, [isChatSpeaking]);
   /* -------------------------------------------------------- early returns */
   // Loading / error states before rendering the presentation
   if (isContentLoading) {
