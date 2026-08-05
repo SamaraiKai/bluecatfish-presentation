@@ -1087,7 +1087,7 @@ export default function AIPresentation() {
 
   const { play, pause, resume, stop, isSpeaking, isPaused, currentKey, currentText, currentTime, duration, pauseAudio, resumeAudio } = useAudioPlayer();
 
-  const { enqueue, stopSpeaking, isSpeaking: isChatSpeaking } = useSpeechQueue();
+  const { enqueue, stopSpeaking, isSpeaking: isChatSpeaking, beginStream, endStream } = useSpeechQueue();
   
   const { messages, isLoading, input, setInput, sendMessage } = useAIChat(currentSection, missedQuestions, enqueue, beginStream, endStream);
 
