@@ -51,7 +51,7 @@ export function useSpeechQueue() {
     drainingRef.current = true;
     setIsSpeaking(true);
 
-    while (clipsRef.current.length > 0 || streamingRef.current) && !cancelledRef.current) {
+    while ((clipsRef.current.length > 0 || streamingRef.current) && !cancelledRef.current) {
       if (clipsRef.current.length === 0) {
         await new Promise((r) => setTimeout(r, 100));   // wait for the next sentence
         continue;
