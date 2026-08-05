@@ -176,7 +176,12 @@ const useAudioPlayer = () => {
   };
 };
 
-const useAIChat = (currentSection: SectionWithBreakdown | undefined, missedQuestions: { question: string; options: string[]; correctAnswer: number; explanation: string }[], onSentence?: (sentence: string) => void) => {
+const useAIChat = (currentSection: SectionWithBreakdown | undefined, 
+                   missedQuestions: { question: string; options: string[]; correctAnswer: number; explanation: string }[], 
+                   onSentence?: (sentence: string) => void,
+                   beginStream?: () => void,
+                   endStream?: () => void
+                  ) => {
   const [messages, setMessages] = useState<Message[]>([
     { role: 'ai', text: `Good day! I'm ${PRESENTATION.professor.name}, and I'll be your guide through today's lecture on the Blue Catfish invasion in the Chesapeake Bay. Feel free to ask me any questions as we go through the material. What would you like to explore first?` }
   ]);
@@ -225,6 +230,7 @@ const useAIChat = (currentSection: SectionWithBreakdown | undefined, missedQuest
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
+      beginStream?.();
 
       let full = '';        // everything received so far
       let pending = '';     // text not yet sent to TTS
@@ -268,6 +274,7 @@ const useAIChat = (currentSection: SectionWithBreakdown | undefined, missedQuest
         });
       }
     } catch (err) {
+      endStream?.();
       console.error('RAG chat failed:', err);
       setMessages((prev) => {
         const next = [...prev];
