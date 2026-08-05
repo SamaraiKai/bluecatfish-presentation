@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { FaceDetector, FilesetResolver } from "@mediapipe/tasks-vision";
 
+const ABSENCE_GRACE_MS = 3500;
+
 export function useFacePresence(enabled: boolean) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const detectorRef = useRef<FaceDetector | null>(null);
@@ -56,7 +58,7 @@ export function useFacePresence(enabled: boolean) {
           if (result.detections.length > 0) {
             lastSeenRef.current = Date.now();
             setPresent(true);
-          } else if (Date.now() - lastSeenRef.current > 2000) {
+          } else if (Date.now() - lastSeenRef.current > ABSENCE_GRACE_MS) {
             // 2s grace period so a blink or head turn doesn't trigger it
             setPresent(false);
           }
