@@ -1421,8 +1421,7 @@ export default function AIPresentation() {
     }
   
     if (!present) {
-      pauseAudio();
-      stopSpeaking(); 
+      pauseAudio(); 
       playPresenceCue('presence_away');
     } else {
       playPresenceCue('presence_back', () => {
@@ -1449,6 +1448,7 @@ export default function AIPresentation() {
     if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
     return;
   }
+  if (cameraEnabled && !present) return;
   if (!interruptedRef.current) return;
 
   resumeTimerRef.current = setTimeout(() => {
@@ -1461,7 +1461,7 @@ export default function AIPresentation() {
   return () => {
     if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
   };
-}, [isChatSpeaking]);
+}, [isChatSpeaking, cameraEnabled, present]);
   /* -------------------------------------------------------- early returns */
   // Loading / error states before rendering the presentation
   if (isContentLoading) {
