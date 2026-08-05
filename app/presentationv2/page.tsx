@@ -1082,7 +1082,7 @@ export default function AIPresentation() {
 
   const { enqueue, stopSpeaking, isSpeaking: isChatSpeaking } = useSpeechQueue();
   
-  const { messages, isLoading, input, setInput, sendMessage } = useAIChat(currentSection, missedQuestions, enqueue);
+  const { messages, isLoading, input, setInput, sendMessage } = useAIChat(currentSection, missedQuestions, enqueue, beginStream, endStream);
 
   const { status: micStatus, toggleMic } = useVoiceInput(
     (text) => {
