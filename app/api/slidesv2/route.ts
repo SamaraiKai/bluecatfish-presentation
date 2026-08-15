@@ -112,7 +112,7 @@ Output ONLY a JSON object with key "section":
 
   const steps = section.steps;
   const validSteps =
-    Array,isArray(steps) &&
+    Array.isArray(steps) &&
     steps.length >= 2 && steps.length <= 5 &&
     steps[0]?.type === 'overview' &&
     new Set(steps.map((s: any) => s.type)).size === steps.length &&
