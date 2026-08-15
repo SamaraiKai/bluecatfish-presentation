@@ -2,8 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 
 type Status = "idle" | "listening" | "processing";
 
-const SILENCE_THRESHOLD = 0.015; // RMS below this counts as silence
-const SILENCE_DURATION = 1700;   // ms of silence before auto-stop
+const SILENCE_THRESHOLD = 0.010; // RMS below this counts as silence
+const SILENCE_DURATION = 2000;   // ms of silence before auto-stop
 
 const BARGE_THRESHOLD = 0.05;
 const BARGE_SUSTAIN = 250;
@@ -130,7 +130,7 @@ export function useVoiceInput(onTranscript: (text: string) => void, onListenStar
         
         try {
           const actualType = mr.mimeType || mimeType || "audio/webm";
-          const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+          const blob = new Blob(chunksRef.current, { type: actualType });
 
           const ext = actualType.includes("mp4") ? "mp4"
               : actualType.includes("ogg") ? "ogg"
@@ -212,7 +212,6 @@ export function useVoiceInput(onTranscript: (text: string) => void, onListenStar
             bargeStartRef.current = performance.now();
           } else if (performance.now() - bargeStartRef.current > BARGE_SUSTAIN) {
             // Sustained speech over the AI — cut it off and start recording
-            onListenStartRef.current?.();
             startListening();
             return;
           }
@@ -236,7 +235,10 @@ export function useVoiceInput(onTranscript: (text: string) => void, onListenStar
     } else {
       stopBargeWatch();
     }
-    return () => stopBargeWatch();
+    return () => {
+      stopBargeWatch();
+      stopListening();
+    };
   }, [bargeInActive, status]);
  
   return { status, toggleMic };
