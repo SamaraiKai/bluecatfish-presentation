@@ -38,7 +38,7 @@ const TRANSITION_PHRASES = [
 ];
 
 // Played between individual key terms
-const ORDINAL_LINES = ["First.", "Next.", "Finally."];
+const ORDINAL_LINES = ["First.", "Next.", "Then.", "Finally."];
 
 const KEYTERM_INTRO_TEXT = "Let's go over some key terms.";
 
@@ -258,7 +258,7 @@ function buildFramingJobs(
 }
 
 /** Everything tied to a specific section: narration, facts, key terms, quiz. */
-export async function buildSectionJobs(sections: any[]): AudioJob[] {
+function buildSectionJobs(sections: any[]): AudioJob[] {
   const jobs: AudioJob[] = [];
  
   for (let i = 0; i < sections.length; i++) {
@@ -268,34 +268,42 @@ export async function buildSectionJobs(sections: any[]): AudioJob[] {
     const successText = nextTitle
       ? `Great job! You're really learning about Blue Catfish. Let's head to the next section: ${nextTitle}.`
       :  `Great job! You've completed all the sections. Let's wrap things up.`;
-    audioUrls[`section${i}_quizsuccess`] = await generateAndUpload(
-      successText, `${FOLDER}/section${i + 1}_quizsuccess.mp3`
-    );
+    jobs.push({
+      key: `section${i}_quizsuccess`
+      text: successText, 
+      fileName: `${FOLDER}/section${i + 1}_quizsuccess.mp3`
+    });
 
     for (let s = 0; s < section.steps.length; s++) {
       const step = section.steps[s];
 
       if (step.type === 'keyTerms') {
-        const intro = step.terms.length === 1 ? `Here's a key term.` : `Let's go over some key terms.`;
-        const body = step.terms.map((t: any) => `${t.term}: ${t.definition}.`).join(' ');
-        audioUrls[`section${i}_step${s}`] = await generateAndUpload(
-          `${intro} ${body}`, `${FOLDER}/section${i + 1}_step${s}.mp3`
-        );
-    } else if (step.text) {
-      audioUrls[`section${i}_step${s}`] = await generateAndUpload(
-        step.text, `${FOLDER}/section${i + 1}_step${s}.mp3`
-      );
-    }
-
-    if (step.type === 'overview' && step.stats?.length) {
-      for (let f = 0; f < step.stats.length; f++) {
-        const lead = f === 0 ? 'One fun fact is' : 'Another fact is';
-        audioUrls[`section${i}_step${s}_fact${f}`] = await generateAndUpload(
-          `${lead} ${step.stats[f].value}: ${step.stats[f].label}`,
-          `${FOLDER}/section${i + 1}_step${s}_fact${f}.mp3`
-        );
+        step.terms.forEach((t: any, termIdx: number) => {
+          jobs.push({
+            key: `section${i}_keyterm${termIdx}`,
+            text: `${t.term}: ${t.definition}.`,
+            fileName: `${FOLDER}/section${i + 1}_keyterm${termIdx}.mp3`,
+          });
+        });
+       else if (step.text) {
+        jobs.push({
+          key: `section${i}_step${s}`,
+          text: step.text,
+          fileName: `${FOLDER}/section${i + 1}_step${s}.mp3`,
+        });
       }
-    }
+
+      if (step.type === 'overview' && step.stats?.length) {
+        step.stats.forEach((stat: any, f: number) => {
+          const lead = f === 0 ? 'One fun fact is' : 'Another fact is';
+          jobs.push({
+            key: `section${i}_step${s}_fact${f}`,
+            text: `${lead} ${stat.value}: ${stat.label}.`,
+            fileName: `${FOLDER}/section${i + 1}_step${s}_fact${f}.mp3`,
+          });
+        });
+      }
+    }  
   }
   return jobs;
 }
