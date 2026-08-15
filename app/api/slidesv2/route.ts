@@ -22,7 +22,7 @@ async function embed(text: string): Promise<number[]> {
 
 async function getRagContext(topic: string, matchCount = 5): Promise<string> {
   const queryEmbedding = await embed(topic);
-  const { data, error } = await supabase.rpc("match_documents2", {
+  const { data, error } = await supabase.rpc("match_documents3", {
     query_embedding: queryEmbedding,
     match_count: matchCount,
   });
@@ -179,25 +179,26 @@ export async function POST(req: Request) {
       return NextResponse.json({ sections: JSON.parse(cachedRaw), source: "cache" });
     }
 
-    const sectionTopics = [
-      "A New Predator Arrives",
-      "Explosive Growth",
-      "Eating Everything",
-      "No Natural Enemies",
-      "A Delicious Solution",
+    const sectionTopics: [string, string][] = [
+      ["What Are Blue Catfish?", "blue catfish Ictalurus furcatus largest catfish species North America size characteristics"],
+      ["Why Are They Invasive?", "why blue catfish are invasive Chesapeake Bay introduction non-native spread"],
+      ["Impact on the Bay Ecosystem", "blue catfish negative impacts native species Chesapeake Bay ecosystem population concerns"],
+      ["Mitigation Efforts", "what is being done to mitigate blue catfish invasion management harvest programs"],
+      ["How You Can Help", "how can you help blue catfish invasion consumer action buying blue catfish products forms available"],
+      ["Nutrition and Safety", "blue catfish fillet nutrition protein fat cholesterol contaminants safe to eat commercially harvested"]
     ];
 
     const ragContexts = await Promise.all(
-      sectionTopics.map((t) => getRagContext(t, 4))
+      sectionTopics.map(([, query]) => getRagContext(query, 4))
     );
 
     const sections = await Promise.all(
-      sectionTopics.map((t, i) =>
-        generateSingleSection(ragContexts[i], t, i + 1)
+      sectionTopics.map(([name], i) =>
+        generateSingleSection(ragContexts[i], name, i + 1)
       )
     );
 
-    await assignUniqueImages(sections, sectionTopics);
+    await assignUniqueImages(sections, sectionTopics.map(([, query]) => query;
     
     await setValue(cacheKey, JSON.stringify(sections));
     return NextResponse.json({ sections, source: "generated" });
