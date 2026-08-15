@@ -65,42 +65,30 @@ SOURCE CONTENT:
 """${ragContext}"""
 
 STRICT RULES YOU MUST FOLLOW:
-1. "content" must be exactly 1 medium sentences — an informative on-screen paragraph summarizing this section's core idea.
-2. "stats" must contain EXACTLY 2 items, each a short quantitative or date-based fact from the source content, styled like:
-   { "value": "100+ Million", "label": "Estimated population in Bay" }
-   { "value": "1970s-80s", "label": "When they were introduced" }
-   "value" is the short number/date/quantity. "label" is a small caption explaining what it refers to (3-6 words).
-3. "icon" must be a single emoji character that visually represents this section's topic.
-4. "breakdown.simple" must be exactly 1 sentences, explaining the topic in the SIMPLEST possible terms for a confused learner — must use DIFFERENT wording and framing than "content", not just a shorter version of it.
-5. "breakdown.keyTerms" must contain EXACTLY 3 items, each a key word or phrase from this section paired with a plain-language definition:
-   { "term": "...", "definition": "..." }
-6. "breakdown.realWorldExample" must explain the concept via an analogy to something unrelated and familiar (e.g. comparing an ecological concept to delivery logistics, sports, cooking, etc.) — NOT another catfish/fish fact. 1-2 sentences.
-7. "quiz" must contain EXACTLY 2 multiple-choice questions testing understanding of THIS section's specific content (not other sections). Each question must have exactly 4 "options" and a "correctAnswer" index (0-3) pointing to the correct option. Base both questions strictly on facts present in the "content", "stats", "breakdown.simple", or the key term definitions — all of these are read aloud to the learner during the lesson. Each question must also include an "explanation" field: 1 short sentence stating the specific fact that makes the correct answer correct, written so a learner who got it wrong immediately understands why — this should directly quote or closely paraphrase the exact source sentence/fact it came from.
-Output ONLY a JSON object with key "section" structured EXACTLY like this:
-8. "quiz" must be a top-level key on the section object, a sibling of "breakdown" — never nested inside "breakdown".
+1. "steps" is an ordered array of teaching steps for this section. YOU decide how many steps and which types, based on what this specific content actually needs. Use between 2 and 5 steps.
+2. The FIRST step must always be type "overview" — it introduces the section. Its "text" is 2 short sentences. It may optionally include "stats": 1-2 short quantitative facts as {value, label} pairs (e.g. {"value": "100+ Million", "label": "Estimated population in Bay"}). Omit "stats" entirely if the source content has no meaningful numbers for this topic — do not invent them.
+3. Available step types after the overview: "simple" (a plainer re-explanation for a confused learner, 2 short sentences, different wording than the overview), "keyTerms" (1-4 terms with short plain-language definitions), "example" (an analogy to something unrelated and familiar, 1-2 sentences).
+4. Include a step type ONLY if it genuinely helps for THIS content. Skip "simple" if the overview is already plain enough. Skip "example" if no honest analogy fits — a forced analogy is worse than none. Include only as many key terms as the content actually warrants; 1 good term beats 3 padded ones. Do not include the same type twice.
+5. Every step's content must be grounded strictly in the SOURCE CONTENT — never invent facts to fill out a step.
+6. "quiz" must contain EXACTLY 2 multiple-choice questions testing THIS section's content. Each has exactly 4 "options", a "correctAnswer" index (0-3), and an "explanation" (1 short sentence stating the specific fact that makes the answer correct). Base questions only on facts appearing in your generated steps, since those are what the learner sees and hears.
+7. "icon" must be a single emoji representing this section's topic.
+
+Output ONLY a JSON object with key "section":
 
 {
   "section": {
     "title": "String",
     "icon": "emoji",
     "image": "",
-    "content": "1 medium sentences",
-    "stats": [
-      { "value": "...", "label": "..." },
-      { "value": "...", "label": "..." }
+    "steps": [
+      { "type": "overview", "text": "...", "stats": [{"value": "...", "label": "..."}] },
+      { "type": "simple", "text": "..." },
+      { "type": "keyTerms", "terms": [{"term": "...", "definition": "..."}] },
+      { "type": "example", "text": "..." }
     ],
-    "breakdown": {
-      "simple": "1 short sentences, different angle than content",
-      "keyTerms": [
-        { "term": "...", "definition": "..." },
-        { "term": "...", "definition": "..." },
-        { "term": "...", "definition": "..." }
-      ],
-      "realWorldExample": "analogy to something unrelated, 1-2 sentences"
-    },
     "quiz": [
-      { "question": "...", "options": ["...", "...", "...", "..."], "correctAnswer": 0, "explanation": "..." },
-      { "question": "...", "options": ["...", "...", "...", "..."], "correctAnswer": 0, "explanation": "..." }
+      { "question": "...", "options": ["...","...","...","..."], "correctAnswer": 0, "explanation": "..." },
+      { "question": "...", "options": ["...","...","...","..."], "correctAnswer": 0, "explanation": "..." }
     ]
   }
 }`,
