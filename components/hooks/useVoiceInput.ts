@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import fixWebmDuration from 'fix-webm-duration';
 
 type Status = "idle" | "listening" | "processing";
 
@@ -34,6 +35,7 @@ export function useVoiceInput(onTranscript: (text: string) => void, onListenStar
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const recordingStartRef = useRef<number>(0);
 
   // shared analyser plumbing
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -113,6 +115,7 @@ export function useVoiceInput(onTranscript: (text: string) => void, onListenStar
   /* ------------------------------------------------------ start recording */
   const startListening = async () => {
     try {
+      recordingStartRef.current = Date.now();
       stopBargeWatch();
       const stream = await navigator.mediaDevices.getUserMedia({ audio: MIC_CONSTRAINTS, });
       chunksRef.current = [];
@@ -126,11 +129,16 @@ export function useVoiceInput(onTranscript: (text: string) => void, onListenStar
 
       mr.onstop = async () => {
         cleanupAnalyser();
+        const recordingDuration = Date.now() - recordingStartRef.current;
         stream.getTracks().forEach((t) => t.stop());
         
         try {
           const actualType = mr.mimeType || mimeType || "audio/webm";
-          const blob = new Blob(chunksRef.current, { type: actualType });
+          const rawBlob = new Blob(chunksRef.current, { type: actualType });
+          
+         const blob = actualType.includes('webm')
+          ? await fixWebmDuration(rawBlob, recordingDuration)
+          : rawBlob;
 
           const ext = actualType.includes("mp4") ? "mp4"
               : actualType.includes("ogg") ? "ogg"
