@@ -62,6 +62,7 @@ const STEP_LABELS: Record<Step['type'], string> = {
  * MICRO-STEP CONFIG
  * ========================================================================== */
 function getMicroSteps(section: SectionWithBreakdown, sectionIndex: number): MicroStep[] {
+  if (!section) return [];
   return section.steps.map((step, s) => ({
     label: STEP_LABELS[step.type],
     audioKey: `section${sectionIndex}_step${s}`,
@@ -1070,18 +1071,6 @@ export default function AIPresentation() {
 
   const { present, error } = useFacePresence(cameraEnabled);
 
-  /* ------------------------------------------------------ derived values */
-  const microSteps = getMicroSteps(currentSection, activeSection);
-
-  const flowSteps = sections.flatMap((_, idx) => [
-    { type: 'section' as const, index: idx },
-    { type: 'quiz' as const, index: idx },
-  ]);
-
-  const currentFlowIndex = flowSteps.findIndex(
-    (step) => step.index === activeSection && step.type === (showQuiz ? 'quiz' : 'section')
-  );
-
   /* ----------------------------------------------------- audio handlers */
   const playMicroStepAudio = (sectionIndex: number, stepIndex: number, transitionType: 'means' | 'analogy' | null) => {
     const section = sections[sectionIndex];
@@ -1446,6 +1435,18 @@ export default function AIPresentation() {
   if (!selectedTemplate) {
     return <TemplateSelector onSelect={handleTemplateSelect} />;
   }   
+
+  /* ------------------------------------------------------ derived values */
+  const microSteps = getMicroSteps(currentSection, activeSection);
+
+  const flowSteps = sections.flatMap((_, idx) => [
+    { type: 'section' as const, index: idx },
+    { type: 'quiz' as const, index: idx },
+  ]);
+
+  const currentFlowIndex = flowSteps.findIndex(
+    (step) => step.index === activeSection && step.type === (showQuiz ? 'quiz' : 'section')
+  );
   
   /* ---------------------------------------------------------------- render */
   return (
