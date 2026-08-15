@@ -110,28 +110,26 @@ Output ONLY a JSON object with key "section":
   const parsed = JSON.parse(content);
   const section = parsed.section ?? parsed;
 
-  // GPT sometimes nests quiz inside breakdown — pull it back out
-  if (!Array.isArray(section.quiz) && Array.isArray(section.breakdown?.quiz)) {
-    section.quiz = section.breakdown.quiz;
-    delete section.breakdown.quiz;
-  }
+  const steps = section.steps;
+  const validSteps =
+    Array,isArray(steps) &&
+    steps.length >= 2 && steps.length <= 5 &&
+    steps[0]?.type === 'overview' &&
+    new Set(steps.map((s: any) => s.type)).size === steps.length &&
+    steps.every((s: any) => {
+      if (s.type === 'keyTerms') return Array.isArray(s.terms) && s.terms.length >= 1 && s.terms.length <= 4;
+      return typeof s.text === 'string' && s.text.trim().length > 0;
+    });
 
-  if ((!section.quiz || section.quiz.length !== 2) && attempt < 2) {
-    console.warn(`Section ${sectionNum} had ${section.quiz?.length} quiz questions, retrying...`);
+  const validQuiz = section.quiz?.length === 2 &&
+    section.quiz.every((q: any) => q.options?.length === 4 && typeof q.explanation === 'string');
+
+  if ((!validSteps || !validQuiz) && attempt < 3) {
+    console.warn(`Section ${sectionNum} malformed (steps/quiz), retrying...`);
     return generateSingleSection(ragContext, sectionTopic, sectionNum, attempt + 1);
   }
   
-  const validKeyTerms = section.breakdown?.keyTerms?.length === 3;
-  const validStats = section.stats?.length === 2;
-  const validQuiz = section.quiz?.length === 2 && section.quiz.every((q: any) => q.options?.length === 4 && typeof q.explanation === 'string');
-
-  if ((!validKeyTerms || !validStats) && attempt < 3) {
-    console.warn(`Section ${sectionNum} malformed (keyTerms/stats), retrying...`);
-    return generateSingleSection(ragContext, sectionTopic, sectionNum, attempt + 1);
-  }
-
   section.image = "";
-  
   return section;
 }
 
@@ -140,7 +138,7 @@ async function assignUniqueImages(sections: any[], sectionTopics: string[]) {
   const CANDIDATE_COUNT = 8; 
  
   for (let i = 0; i < sections.length; i++) {
-    const query = sections[i].content || sectionTopics[i];
+    const query = sections[i].steps?.[0]?.text || sectionTopics[i];
     const candidates = await getMatchingImages(query, CANDIDATE_COUNT);
  
     const firstUnused = candidates.find((url) => !usedUrls.has(url));
