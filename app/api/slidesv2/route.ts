@@ -20,7 +20,7 @@ async function embed(text: string): Promise<number[]> {
   return data.data[0].embedding;
 }
 
-async function getRagContext(topic: string, matchCount = 5): Promise<string> {
+async function getRagContext(topic: string, matchCount = 7): Promise<string> {
   const queryEmbedding = await embed(topic);
   const { data, error } = await supabase.rpc("match_documents3", {
     query_embedding: queryEmbedding,
