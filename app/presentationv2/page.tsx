@@ -1089,68 +1089,54 @@ export default function AIPresentation() {
   /* ----------------------------------------------------- audio handlers */
   const playMicroStepAudio = (sectionIndex: number, stepIndex: number, transitionType: 'means' | 'analogy' | null) => {
     const section = sections[sectionIndex];
-    const steps = getMicroSteps(sections[sectionIndex], sectionIndex);
-    const step = steps[stepIndex];
+    const steps = getMicroSteps(sections, sectionIndex);
+    const step = section.steps[stepIndex];
     const text = getMicroStepText(section, stepIndex);
   
     const playActualStep = () => {
-      const step = section.steps[stepIndex];
       const baseKey = `section${sectionIndex}_step${stepIndex}`;
-  
+
+      // Overview with fun facts — content, then each fact clip in sequence
       if (step.type === 'overview' && step.stats?.length) {
         const factKeys = step.stats.map((_, f) => `${baseKey}_fact${f}`);
         const chain = (idx: number): (() => void) => () => {
-          if (idx >= factKeys.length) { autoAdvanceFrom(sectionIndex, stepIndex); return; }
+          if (idx >= factKeys.length) { 
+            autoAdvanceFrom(sectionIndex, stepIndex); 
+            return; }
           play(audioUrls[factKeys[idx]], factKeys[idx], '', chain(idx + 1));
         };
         play(audioUrls[baseKey], baseKey, step.text, chain(0));
         return;
       }
 
-      play(audioUrls[baseKey], baseKey, getMicroStepText(section, stepIndex), () => {
-        autoAdvanceFrom(sectionIndex, stepIndex);
-      });
-    };
-        play(audioUrls[overviewKey], overviewKey, section.content, () => {
-          play(audioUrls[fact1Key], fact1Key, '', () => {
-            play(audioUrls[fact2Key], fact2Key, '', () => {
-              autoAdvanceFrom(sectionIndex, 0);
-            });
+      // Key terms — shared intro, then ordinal + per-term audio for each term
+      if (step.type === 'keyTerms') {
+        const terms = step.terms;
+        const chainTerm = (t: number): (() => void) => () => {
+          if (t >= terms.length) {
+            autoAdvanceFrom(sectionIndex, stepIndex);
+            return;
+          }
+          const ordinalKey = `ordinal${t}`;
+          const termKey = `section${sectionIndex}_keyterm${t}`;
+          play(audioUrls[ordinalKey], termKey, '', () => {
+            play(audioUrls[termKey], termKey, '', chainTerm(t + 1));
           });
-        });
+        };
+        play(audioUrls['keytermIntro'], 'keytermIntro', '', chainTerm(0));
         return;
       }
-      if (stepIndex === 2) {
-        const termKey = (t: number) => `section${sectionIndex}_keyterm${t}`;
-      
-        play(audioUrls["keytermIntro"], "keytermIntro", "", () => {
-          // ordinal audio is shared, but we pass a section-specific key so the card highlights
-          play(audioUrls["ordinal0"], `${termKey(0)}_ord`, "", () => {
-            play(audioUrls[termKey(0)], termKey(0), "", () => {
-              play(audioUrls["ordinal1"], `${termKey(1)}_ord`, "", () => {
-                play(audioUrls[termKey(1)], termKey(1), "", () => {
-                  play(audioUrls["ordinal2"], `${termKey(2)}_ord`, "", () => {
-                    play(audioUrls[termKey(2)], termKey(2), "", () => {
-                      autoAdvanceFrom(sectionIndex, 2);
-                    });
-                  });
-                });
-              });
-            });
-          });
-        });
-        return;
-      }
-      if (step.audioKey) {
-        play(audioUrls[step.audioKey], step.audioKey, text, () => {
+
+      // Simple / example / anything else with plain text
+      if (step.text) {
+        play(audioUrls[baseKey], baseKey, text, () => {
           autoAdvanceFrom(sectionIndex, stepIndex);
         });
       } else {
-        if (keyTermsTimerRef.current) clearTimeout(keyTermsTimerRef.current);
-        keyTermsTimerRef.current = setTimeout(() => autoAdvanceFrom(sectionIndex, stepIndex), 8000);
+        autoAdvanceFrom(sectionIndex, stepIndex);
       }
     };
-  
+    
     if (transitionType === 'means') {
       const idx = Math.floor(Math.random() * 3);
       const key = `imbetween${idx}`;
