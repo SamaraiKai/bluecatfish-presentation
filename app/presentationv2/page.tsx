@@ -652,7 +652,7 @@ function MiniSlideshowBlock({
                     </div>
                   </div>
                 );
-              ))}
+              })}
             </div>
           );
         }
@@ -667,7 +667,7 @@ function MiniSlideshowBlock({
                 duration={duration}
                 isSpeaking={isSpeaking}
                 isActive={currentKey === baseKey}
-                className={`text-xl text-black leading-relaxed mb-4 ${isExample ? 'text-amber-100' : 'text-black'}`}
+                className={`text-xl leading-relaxed mb-4 ${isExample ? 'text-amber-100' : 'text-black'}`}
               />
               {step.type === 'overview' && step.stats?.length? (
                 <div className={`grid gap-4 ${step.stats.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
