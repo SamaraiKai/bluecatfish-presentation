@@ -63,7 +63,7 @@ const STEP_LABELS: Record<Step['type'], string> = {
  * ========================================================================== */
 function getMicroSteps(section: SectionWithBreakdown, sectionIndex: number): MicroStep[] {
   return section.steps.map((step, s) => ({
-    label: STEEP_LABEL[step.type],
+    label: STEP_LABELS[step.type],
     audioKey: `section${sectionIndex}_step${s}`,
   }));
 }
@@ -85,9 +85,6 @@ const useAudioPlayer = () => {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  
-  const pauseAudio = () => audioRef.current?.pause();
-  const resumeAudio = () => audioRef.current?.play().catch(() => {});
 
   const play = useCallback((url: string | undefined, key: string, text: string = '', onComplete?: () => void) => {
     if (!url) {
@@ -171,8 +168,6 @@ const useAudioPlayer = () => {
     currentText, 
     currentTime, 
     duration, 
-    pauseAudio, 
-    resumeAudio, 
   };
 };
 
@@ -219,13 +214,13 @@ const useAIChat = (currentSection: SectionWithBreakdown | undefined,
           userText: text,
           topic: 'Blue Catfish invasion in the Chesapeake Bay',
           stream: true,
-          systemPrompt: `You are "${PRESENTATION.professor.name}", a university professor specializing in Marine Biology and Conservation. The student is currently viewing a slide titled "${currentSection.title}" which covers: ${currentSection.content} Answer questions with awareness of what they're currently looking at, and relate your answers back to this section when relevant, like a professor referencing the current lecture slide.`,
+          systemPrompt: `You are "${PRESENTATION.professor.name}", a university professor specializing in Marine Biology and Conservation. The student is currently viewing a slide titled "${currentSection?.title}" which covers: ${currentSection?.steps?.[0]?.text ?? ''}${missedContext} Answer questions with awareness of what they're currently looking at, and relate your answers back to this section when relevant, like a professor referencing the current lecture slide.`,
           conversation: history
         }),
       });
       
       if (!response.ok || !response.body) {
-        throw new Error('Chat request failed (${response.status})');
+        throw new Error(`Chat request failed (${response.status})`);
       }
 
       const reader = response.body.getReader();
@@ -615,6 +610,7 @@ function MiniSlideshowBlock({
   duration: number;
   isSpeaking: boolean;
   currentKey: string | null;
+  playMicroStepAudio: (sectionIndex: number, stepIndex: number, transitionType: 'means' | 'analogy' | null) => void;fix
 }) {
   return (
     <div className="p-8 md:p-12 flex flex-col justify-center bg-gradient-to-br from-mauve-200/70 to-mauve-300/70 rounded-3xl border border-white-500/30">
@@ -1049,7 +1045,7 @@ export default function AIPresentation() {
   /* ---------------------------------------------------------- hook calls */
   const currentSection = sections[activeSection];
 
-  const { play, pause, resume, stop, isSpeaking, isPaused, currentKey, currentText, currentTime, duration, pauseAudio, resumeAudio } = useAudioPlayer();
+  const { play, pause, resume, stop, isSpeaking, isPaused, currentKey, currentText, currentTime, duration } = useAudioPlayer();
 
   const { enqueue, stopSpeaking, isSpeaking: isChatSpeaking, beginStream, endStream } = useSpeechQueue();
   
@@ -1075,7 +1071,7 @@ export default function AIPresentation() {
   const { present, error } = useFacePresence(cameraEnabled);
 
   /* ------------------------------------------------------ derived values */
-  const microSteps = getMicroSteps(sections[sectionIndex], sectionIndex);
+  const microSteps = getMicroSteps(currentSection, activeSection);
 
   const flowSteps = sections.flatMap((_, idx) => [
     { type: 'section' as const, index: idx },
@@ -1089,7 +1085,6 @@ export default function AIPresentation() {
   /* ----------------------------------------------------- audio handlers */
   const playMicroStepAudio = (sectionIndex: number, stepIndex: number, transitionType: 'means' | 'analogy' | null) => {
     const section = sections[sectionIndex];
-    const steps = getMicroSteps(sections, sectionIndex);
     const step = section.steps[stepIndex];
     const text = getMicroStepText(section, stepIndex);
   
@@ -1390,48 +1385,35 @@ export default function AIPresentation() {
     }
   
     if (!present) {
-      pauseAudio(); 
+      pause(); 
       playPresenceCue('presence_away');
     } else {
       playPresenceCue('presence_back', () => {
-        if (!isChatSpeaking) resumeAudio();
+        if (!isChatSpeaking) resume();
       });
     }
   }, [present, cameraEnabled, isChatSpeaking]);
 
   useEffect(() => {
     if (isChatSpeaking) return;           // still answering
+    if (micStatus !== 'idle') return;      // still listening/processing
+    if (cameraEnabled && !present) return;  // user still away from camera         
     if (!interruptedRef.current) return;  // nothing was interrupted
   
-    const { section, step } = interruptedRef.current;
-    interruptedRef.current = null;
-    playMicroStepAudio(section, step, null);
-  }, [isChatSpeaking]);
-
-  useEffect(() => {
-    interruptedRef.current = null;
-  }, [activeSection, showQuiz, showReview, showConclusion]);
-
-  useEffect(() => {
-  if (isChatSpeaking) {
     if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
-    return;
-  }
-  if (micStatus !== 'idle') return;
-  if (cameraEnabled && !present) return;
-  if (!interruptedRef.current) return;
-
-  resumeTimerRef.current = setTimeout(() => {
-    const pending = interruptedRef.current;
-    if (!pending) return;
-    interruptedRef.current = null;
-    playMicroStepAudio(pending.section, pending.step, null);
-  }, 6000);
-
+    
+    resumeTimerRef.current = setTimeout(() => {
+      const pending = interruptedRef.current;
+      if (!pending) return;
+      interruptedRef.current = null;
+      playMicroStepAudio(pending.section, pending.step, null);
+    }, 3000);
+    
   return () => {
     if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
   };
 }, [isChatSpeaking, cameraEnabled, present, micStatus]);
+  
   /* -------------------------------------------------------- early returns */
   // Loading / error states before rendering the presentation
   if (isContentLoading) {
