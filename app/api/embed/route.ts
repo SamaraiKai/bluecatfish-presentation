@@ -9,7 +9,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-function chunkText(text: string, maxChunkSize: number = 350, overlap: number = 55): string[] {
+function chunkText(text: string, maxChunkSize: number = 200, overlap: number = 40): string[] {
   const words = text.split(' ');
   const chunks: string[] = [];
   
