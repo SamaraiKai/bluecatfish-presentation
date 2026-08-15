@@ -269,7 +269,7 @@ function buildSectionJobs(sections: any[]): AudioJob[] {
       ? `Great job! You're really learning about Blue Catfish. Let's head to the next section: ${nextTitle}.`
       :  `Great job! You've completed all the sections. Let's wrap things up.`;
     jobs.push({
-      key: `section${i}_quizsuccess`
+      key: `section${i}_quizsuccess`,
       text: successText, 
       fileName: `${FOLDER}/section${i + 1}_quizsuccess.mp3`
     });
@@ -285,7 +285,7 @@ function buildSectionJobs(sections: any[]): AudioJob[] {
             fileName: `${FOLDER}/section${i + 1}_keyterm${termIdx}.mp3`,
           });
         });
-       else if (step.text) {
+      } else if (step.text) {
         jobs.push({
           key: `section${i}_step${s}`,
           text: step.text,
@@ -303,17 +303,17 @@ function buildSectionJobs(sections: any[]): AudioJob[] {
           });
         });
       }
-
-      if (section.quiz) {
-        section.quiz.forEach((q: any, qIdx: number) => {
-          jobs.push({
-            key: `section${i}_review_q${qIdx}`,
-            text: q.explanation,
-            fileName: `${FOLDER}/section${i + 1}_review_q${qIdx}.mp3`,
-          });
-        });
-      }
     }  
+    
+    if (section.quiz) {
+      section.quiz.forEach((q: any, qIdx: number) => {
+        jobs.push({
+          key: `section${i}_review_q${qIdx}`,
+          text: q.explanation,
+          fileName: `${FOLDER}/section${i + 1}_review_q${qIdx}.mp3`,
+        });
+      });
+    }
   }
   return jobs;
 }
