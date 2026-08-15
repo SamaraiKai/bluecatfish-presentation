@@ -632,24 +632,42 @@ function MiniSlideshowBlock({
         if (step.type === 'keyTerms') {
           return (
             <div className="space-y-3">
-              {step.terms.map((kt, idx) => (
-                <div key={idx} className="bg-blue-900/30 rounded-xl p-4 border border-blue-500/20">
-                  <div className="font-bold text-cyan-400 mb-1 text-xl">{kt.term}</div>
-                  <div className="text-blue-100 text-md">{kt.definition}</div>
-                </div>
+              {step.terms.map((kt, idx) => {
+                const termKey = `section${activeSectionIndex}_keyterm${idx}`;
+                const isActive = currentKey === termKey;
+                return (
+                  <div 
+                    key={idx} 
+                    className={`rounded-xl p-4 border transition-all duration-300 ${
+                      isActive
+                        ? 'bg-blue-950 border-cyan-400 ring-2 ring-cyan-300 scale-[1.02] shadow-lg'
+                        : 'bg-blue-900/30 border-blue-500/20'
+                    }`}
+                  >
+                    <div className={`font-bold mb-1 text-xl ${isActive ? 'text-cyan-300' : text-cyan-400'}`}>
+                      {kt.term}
+                    </div>
+                    <div className={isActive ? 'text-white' : 'text-blue-100 text-md'}>
+                      {kt.definition}
+                    </div>
+                  </div>
+                );
               ))}
             </div>
           );
         }
+
+        const isExample = step.type === 'example';
+
         return (
-            <div>
+            <div className={isExample ? 'bg-amber-900/20 rounded-xl p-5 border border-amber-500/20' : undefined}>
               <HighlightedText
                 text={step.text}
                 currentTime={currentTime}
                 duration={duration}
                 isSpeaking={isSpeaking}
                 isActive={currentKey === baseKey}
-                className="text-xl text-black leading-relaxed mb-4"
+                className={`text-xl text-black leading-relaxed mb-4 ${isExample ? 'text-amber-100' : 'text-black'}`}
               />
               {step.type === 'overview' && step.stats?.length? (
                 <div className={`grid gap-4 ${step.stats.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
