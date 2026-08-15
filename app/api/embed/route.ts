@@ -14,16 +14,21 @@ function chunkText(text: string, maxChunkSize: number = 200, overlap: number = 4
   const chunks: string[] = [];
   
   let current: string[] = [];
-
   for (const word of words) {
-    
     current.push(word)
     const currentText = current.join(' ');
     
     if (currentText.length >= maxChunkSize) {
       chunks.push(currentText);
 
-      const overlapWords = current.slice(-Math.floor(overlap / 5));
+      let overlapWords: string[] = [];
+      let overlapChars = 0;
+
+      for (let i = current.length - 1; i >= 0 && overlapChars < overlap; i--) {
+        overlapWords.unshift(current[i]);
+        overlapChars += current[i].length + 1; // +1 for the space
+      }
+      
       current = overlapWords;
     } 
   }
@@ -106,16 +111,14 @@ export async function POST(request: NextRequest) {
       .replace(/\n/g, ' ')
       .trim();
 
-    const lines = text.split('\n').filter(Boolean);
-
-    const chunks = chunkText(text, 400);
+    const chunks = chunkText(text, 200, 40);
     const results = [];
 
     for (const chunk of chunks) {
       const embedding = await getEmbedding(chunk);
       console.log("embedding length:", embedding.length);
       const { data, error } = await supabase
-        .from('documents2')
+        .from('documents3')
         .insert({ content: chunk, embedding, source: fileName || 'manual-input'})
         .select();
       console.log("insert result:", { data, error });
