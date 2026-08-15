@@ -258,90 +258,48 @@ function buildFramingJobs(
 }
 
 /** Everything tied to a specific section: narration, facts, key terms, quiz. */
-function buildSectionJobs(sections: any[]): AudioJob[] {
+export async function buildSectionJobs(sections: any[]): AudioJob[] {
   const jobs: AudioJob[] = [];
  
   for (let i = 0; i < sections.length; i++) {
     const section = sections[i];
-    const n = i + 1; // filenames are 1-based, keys are 0-based
- 
-    // --- quiz success ---
+
     const nextTitle = sections[i + 1]?.title;
-    jobs.push({
-      key: `section${i}_quizsuccess`,
-      text: nextTitle
-        ? `Great job! You're really learning about Blue Catfish. Let's head to the next section: ${nextTitle}.`
-        : `Great job! You've completed all the sections. Let's wrap things up.`,
-      fileName: `${FOLDER}/section${n}_quizsuccess.mp3`,
-    });
- 
-    // --- overview ---
-    if (section.content) {
-      jobs.push({
-        key: `section${i}_overview`,
-        text: section.content,
-        fileName: `${FOLDER}/section${n}_overview.mp3`,
-      });
+    const successText = nextTitle
+      ? `Great job! You're really learning about Blue Catfish. Let's head to the next section: ${nextTitle}.`
+      :  `Great job! You've completed all the sections. Let's wrap things up.`;
+    audioUrls[`section${i}_quizsuccess`] = await generateAndUpload(
+      successText, `${FOLDER}/section${i + 1}_quizsuccess.mp3`
+    );
+
+    for (let s = 0; s < section.steps.length; s++) {
+      const step = section.steps[s];
+
+      if (step.type === 'keyTerms') {
+        const intro = step.terms.length === 1 ? `Here's a key term.` : `Let's go over some key terms.`;
+        const body = step.terms.map((t: any) => `${t.term}: ${t.definition}.`).join(' ');
+        audioUrls[`section${i}_step${s}`] = await generateAndUpload(
+          `${intro} ${body}`, `${FOLDER}/section${i + 1}_step${s}.mp3`
+        );
+    } else if (step.text) {
+      audioUrls[`section${i}_step${s}`] = await generateAndUpload(
+        step.text, `${FOLDER}/section${i + 1}_step${s}.mp3`
+      );
     }
- 
-    // --- fun facts ---
-    if (section.stats?.length === 2) {
-      jobs.push({
-        key: `section${i}_fact1`,
-        text: `One fun fact is ${section.stats[0].value}: ${section.stats[0].label}.`,
-        fileName: `${FOLDER}/section${n}_fact1.mp3`,
-      });
-      jobs.push({
-        key: `section${i}_fact2`,
-        text: `Another fact is ${section.stats[1].value}: ${section.stats[1].label}.`,
-        fileName: `${FOLDER}/section${n}_fact2.mp3`,
-      });
-    }
- 
-    // --- simple explanation ---
-    if (section.breakdown?.simple) {
-      jobs.push({
-        key: `section${i}_simple`,
-        text: section.breakdown.simple,
-        fileName: `${FOLDER}/section${n}_simple.mp3`,
-      });
-    }
- 
-    // --- key terms (one clip each) ---
-    if (section.breakdown?.keyTerms?.length === 3) {
-      const kt = section.breakdown.keyTerms;
-      for (let t = 0; t < 3; t++) {
-        jobs.push({
-          key: `section${i}_keyterm${t}`,
-          text: `${kt[t].term}: ${kt[t].definition}.`,
-          fileName: `${FOLDER}/section${n}_keyterm${t + 1}.mp3`,
-        });
+
+    if (step.type === 'overview' && step.stats?.length) {
+      for (let f = 0; f < step.stats.length; f++) {
+        const lead = f === 0 ? 'One fun fact is' : 'Another fact is';
+        audioUrls[`section${i}_step${s}_fact${f}`] = await generateAndUpload(
+          `${lead} ${step.stats[f].value}: ${step.stats[f].label}`,
+          `${FOLDER}/section${i + 1}_step${s}_fact${f}.mp3`
+        );
       }
     }
- 
-    // --- real world example ---
-    if (section.breakdown?.realWorldExample) {
-      jobs.push({
-        key: `section${i}_example`,
-        text: section.breakdown.realWorldExample,
-        fileName: `${FOLDER}/section${n}_example.mp3`,
-      });
-    }
- 
-    // --- per-question review explanations ---
-    const quiz = section.quiz ?? [];
-    for (let q = 0; q < quiz.length; q++) {
-      const correct = quiz[q].options[quiz[q].correctAnswer];
-      jobs.push({
-        key: `section${i}_review_q${q}`,
-        text: `The correct answer is ${correct}. ${quiz[q].explanation ?? ""}`,
-        fileName: `${FOLDER}/section${n}_review_q${q + 1}.mp3`,
-      });
-    }
   }
- 
   return jobs;
 }
+    
 
 /* ============================================================================
  * ROUTE
