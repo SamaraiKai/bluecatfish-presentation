@@ -19,14 +19,8 @@ interface SectionWithBreakdown {
   title: string;
   icon: string;
   image: string;
-  content: string;
-  stats: { value: string; label: string }[];
-  breakdown: {
-    simple: string;
-    keyTerms: { term: string; definition: string }[];
-    realWorldExample: string;
+  steps: Step[];
   quiz: { question: string; options: string[]; correctAnswer: number; explanation: string }[];
-  };
 }
 
 type MicroStep = {
@@ -34,6 +28,11 @@ type MicroStep = {
   audioKey: string | null;
 };
 
+type Step =
+  | { type: 'overview'; text: string; stats?: { value: string; label: string }[] }
+  | { type: 'simple'; text: string }
+  | { type: 'example'; text: string }
+  | { type: 'keyTerms'; terms: { term: string; definition: string }[] };
 /* ============================================================================
  * CONSTANTS
  * ========================================================================== */
@@ -52,26 +51,27 @@ const PRESENTATION = {
   }
 };
 
+const STEP_LABELS: Record<Step['type'], string> = {
+  overview: 'Overview',
+  simple: 'Simple Explanation',
+  example: 'Real World Example',
+  keyTerms: 'Key Terms',
+};
+
 /* ============================================================================
  * MICRO-STEP CONFIG
  * ========================================================================== */
-function getMicroSteps(sectionIndex: number): MicroStep[] {
-  return [
-    { label: 'Overview', audioKey: `section${sectionIndex}_overview` },
-    { label: 'Simple Explanation', audioKey: `section${sectionIndex}_simple` },
-    { label: 'Key Terms', audioKey: null  },
-    { label: 'Real World Example', audioKey: `section${sectionIndex}_example` },
-  ];
+function getMicroSteps(section: SectionWithBreakdown, sectionIndex: number): MicroStep[] {
+  return section.steps.map((step, s) => ({
+    label: STEEP_LABEL[step.type],
+    audioKey: `section${sectionIndex}_step${s}`,
+  }));
 }
 
 function getMicroStepText(section: SectionWithBreakdown, stepIndex: number): string {
-    switch (stepIndex) {
-      case 0: return section.content;
-      case 1: return section.breakdown.simple;
-      case 2: return '';
-      case 3: return section.breakdown.realWorldExample;
-      default: return '';
-    }
+    const step = section.steps[stepIndex];
+    if (!step || step.type === 'keyTerms') return '';
+    return step.text;
   }
 
 /* ============================================================================
@@ -617,145 +617,109 @@ function MiniSlideshowBlock({
   currentKey: string | null;
 }) {
   return (
-        <div className="p-8 md:p-12 flex flex-col justify-center bg-gradient-to-br from-mauve-200/70 to-mauve-300/70 rounded-3xl border border-white-500/30">
-          {/* Animated Title */}
-          <h2 className="text-3xl md:text-4xl font-bold text-black mb-4 animate-[slideInRight_0.6s_ease-out]">
-            {currentSection.title}
-          </h2>
-          
-          {/* Animated Underline */}
-          <div className="h-1 w-0 bg-gradient-to-r from-cyan-700 to-blue-700 rounded-full mb-6 animate-[expandWidth_0.8s_ease-out_0.3s_forwards]" />
-          
-          {/* ===================== MINI-SLIDESHOW (replaces old Confused button + modal) ===================== */}
-          <div className="mt-6 pt-5 border-t border-blue-700/40">
-            {/* Step content */}
-            <div key={microStep} className="min-h-[160px] animate-[fadeIn_0.8s_ease-out]">
-              {microStep === 0 && (
-                <div>
-                  <HighlightedText
-                    text={currentSection.content}
-                    currentTime={currentTime}
-                    duration={duration}
-                    isSpeaking={isSpeaking}
-                    isActive={currentKey === `section${0}_overview` || currentKey?.endsWith('_overview')}
-                    className="text-xl text-black leading-relaxed mb-4"
-                  />
-                  <div className="grid grid-cols-2 gap-4">
-                    {currentSection.stats.map((stat, idx) => {
-                      const factKey = idx === 0 ? '_fact1' : '_fact2';
-                      const isActive = currentKey?.endsWith(factKey) ?? false;
+    <div className="p-8 md:p-12 flex flex-col justify-center bg-gradient-to-br from-mauve-200/70 to-mauve-300/70 rounded-3xl border border-white-500/30">
+      {/* Animated Title */}
+      <h2 className="text-3xl md:text-4xl font-bold text-black mb-4 animate-[slideInRight_0.6s_ease-out]">
+        {currentSection.title}
+      </h2>
+      
+      {/* Animated Underline */}
+      <div className="h-1 w-0 bg-gradient-to-r from-cyan-700 to-blue-700 rounded-full mb-6 animate-[expandWidth_0.8s_ease-out_0.3s_forwards]" />
+      
+      {/* ===================== MINI-SLIDESHOW (replaces old Confused button + modal) ===================== */}
 
-                      return (
-                      <div 
-                        key={idx} 
-                        className={`rounded-xl p-5 text-center border transition-all duration-300 ${
-                          isActive
-                            ? 'bg-blue-300 border-cyan-400 ring-2 ring-cyan-300 scale-105 shadow-lg'
-                            : 'bg-blue-600/50 border-cyan-500/30'
-                        }`}
-                      >
-                        <div className="text-2xl font-bold text-blue-800 mb-1"><AnimatedStatValue value={stat.value}/></div>
-                        <div className="text-base text-black">{stat.label}</div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-              
-              {microStep === 1 && (
-                <div className="bg-blue-700/20 rounded-xl p-5 border border-blue-500/40">
-                  <HighlightedText
-                    text={currentSection.breakdown.simple}
-                    currentTime={currentTime}
-                    duration={duration}
-                    isSpeaking={isSpeaking}
-                    isActive={currentKey === `section${0}_simple` || currentKey?.endsWith('_simple')}
-                    className="text-xl text-black leading-relaxed mb-4"
-                  />
-                </div>
-              )}
-          
-              {microStep === 2 && (
-                <div className="space-y-3">
-                  {currentSection.breakdown.keyTerms.map((kt, idx) => {
-                    const isActive = currentKey?.includes(`_keyterm${idx}`) ?? false;
-                    return (
-                      <div
-                        key={idx}
-                        className={`rounded-xl p-5 border transition-all duration-300 ${
-                          isActive
-                            ? 'bg-blue-300 border-cyan-400 ring-2 ring-cyan-300 scale-105 shadow-lg'
-                            : 'bg-blue-700/20 border-blue-600/40'
-                        }`}
-                      >
-                        <div className="font-bold text-blue-800 mb-1 text-xl">{kt.term}</div>
-                        <div className="text-black text-md">{kt.definition}</div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-          
-              {microStep === 3 && (
-                <div className="bg-amber-900/30 rounded-xl p-5 border border-amber-700/40">
-                  <HighlightedText
-                    text={currentSection.breakdown.realWorldExample}
-                    currentTime={currentTime}
-                    duration={duration}
-                    isSpeaking={isSpeaking}
-                    isActive={currentKey === `section${0}_example` || currentKey?.endsWith('_example')}
-                    className="text-xl text-black leading-relaxed mb-4"
-                  />
-                </div>
-                )}
-            </div>
+      {(() => {
+        const step = currentSection.steps[microStep];
+        const baseKey = `section${activeSectionIndex}_step${microStep}`;
 
-            <div className="flex justify-center mb-3">
-              <button
-                onClick={() => playMicroStepAudio(activeSectionIndex, microStep, null)}
-                className="flex items-center gap-2 px-4 py-2 mt-4 rounded-full bg-blue-600/90 hover:bg-blue-400/90 text-white text-sm font-medium transition-colors"
-              >
-                🔁 Replay
-              </button>
+        if (step.type === 'keyTerms') {
+          return (
+            <div className="space-y-3">
+              {step.terms.map((kt, idx) => (
+                <div key={idx} className="bg-blue-900/30 rounded-xl p-4 border border-blue-500/20">
+                  <div className="font-bold text-cyan-400 mb-1 text-xl">{kt.term}</div>
+                  <div className="text-blue-100 text-md">{kt.definition}</div>
+                </div>
+              ))}
             </div>
-            
-            {/* Mini-slideshow navigation — always visible */}
-            <div className="flex items-center justify-between mt-5">
-              <button
-                onClick={prevMicroStep}
-                disabled={microStep === 0}
-                className="px-3 py-2 rounded-lg bg-blue-800/70 hover:bg-blue-700/80 disabled:opacity-30 text-white text-sm transition-colors"
-              >
-                ←
-              </button>
-          
-              <div className="flex gap-2">
-                {microSteps.map((step, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => goToMicroStep(idx)}
-                    title={step.label}
-                    className={`w-2.5 h-2.5 rounded-full transition-colors ${
-                      idx === microStep ? 'bg-cyan-500' : 'bg-blue-700/60 hover:bg-blue-500/70'
+          );
+        }
+        return (
+            <div>
+              <HighlightedText
+                text={step.text}
+                currentTime={currentTime}
+                duration={duration}
+                isSpeaking={isSpeaking}
+                isActive={currentKey === baseKey}
+                className="text-xl text-black leading-relaxed mb-4"
+              />
+              {step.type === 'overview' && step.stats?.length? (
+                <div className={`grid gap-4 ${step.stats.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+              {step.stats.map((stat, idx) => {
+                const isActive = currentKey === `${baseKey}_fact${idx}`;
+                return (
+                  <div 
+                    key={idx} 
+                    className={`rounded-xl p-5 text-center border transition-all duration-300 ${
+                      isActive
+                        ? 'bg-blue-300 border-cyan-400 ring-2 ring-cyan-300 scale-105 shadow-lg'
+                        : 'bg-blue-600/50 border-cyan-500/30'
                     }`}
-                  />
-                ))}
-              </div>
-          
-              <button
-                onClick={nextMicroStep}
-                disabled={microStep === microSteps.length - 1}
-                className="px-3 py-2 rounded-lg bg-blue-800/50 hover:bg-blue-700/60 disabled:opacity-30 text-white text-sm transition-colors"
-              >
-                →
-              </button>
+                  >
+                    <div className="text-2xl font-bold text-blue-800 mb-1"><AnimatedStatValue value={stat.value}/></div>
+                    <div className="text-base text-black">{stat.label}</div>
+                  </div>
+                );
+              })}
             </div>
-          
-            <p className="text-center text-xs text-blue-700/80 mt-2">{microSteps[microStep].label}</p>
-          </div>
-          
+          ) : null}
+        </div>
+      );
+    })()}
+      <div className="flex justify-center mb-3">
+        <button
+          onClick={() => playMicroStepAudio(activeSectionIndex, microStep, null)}
+          className="flex items-center gap-2 px-4 py-2 mt-4 rounded-full bg-blue-600/90 hover:bg-blue-400/90 text-white text-sm font-medium transition-colors"
+        >
+          🔁 Replay
+        </button>
       </div>
+      
+      {/* Mini-slideshow navigation — always visible */}
+      <div className="flex items-center justify-between mt-5">
+        <button
+          onClick={prevMicroStep}
+          disabled={microStep === 0}
+          className="px-3 py-2 rounded-lg bg-blue-800/70 hover:bg-blue-700/80 disabled:opacity-30 text-white text-sm transition-colors"
+        >
+          ←
+        </button>
+    
+        <div className="flex gap-2">
+          {microSteps.map((step, idx) => (
+            <button
+              key={idx}
+              onClick={() => goToMicroStep(idx)}
+              title={step.label}
+              className={`w-2.5 h-2.5 rounded-full transition-colors ${
+                idx === microStep ? 'bg-cyan-500' : 'bg-blue-700/60 hover:bg-blue-500/70'
+              }`}
+            />
+          ))}
+        </div>
+    
+        <button
+          onClick={nextMicroStep}
+          disabled={microStep === microSteps.length - 1}
+          className="px-3 py-2 rounded-lg bg-blue-800/50 hover:bg-blue-700/60 disabled:opacity-30 text-white text-sm transition-colors"
+        >
+          →
+        </button>
+      </div>
+    
+      <p className="text-center text-xs text-blue-700/80 mt-2">{microSteps[microStep].label}</p>
+    </div>
   );
 }
 
@@ -1111,7 +1075,7 @@ export default function AIPresentation() {
   const { present, error } = useFacePresence(cameraEnabled);
 
   /* ------------------------------------------------------ derived values */
-  const microSteps = getMicroSteps(activeSection);
+  const microSteps = getMicroSteps(sections[sectionIndex], sectionIndex);
 
   const flowSteps = sections.flatMap((_, idx) => [
     { type: 'section' as const, index: idx },
@@ -1125,16 +1089,28 @@ export default function AIPresentation() {
   /* ----------------------------------------------------- audio handlers */
   const playMicroStepAudio = (sectionIndex: number, stepIndex: number, transitionType: 'means' | 'analogy' | null) => {
     const section = sections[sectionIndex];
-    const steps = getMicroSteps(sectionIndex);
+    const steps = getMicroSteps(sections[sectionIndex], sectionIndex);
     const step = steps[stepIndex];
     const text = getMicroStepText(section, stepIndex);
   
     const playActualStep = () => {
-      if (stepIndex === 0) {
-        const overviewKey = `section${sectionIndex}_overview`;
-        const fact1Key = `section${sectionIndex}_fact1`;
-        const fact2Key = `section${sectionIndex}_fact2`;
-        
+      const step = section.steps[stepIndex];
+      const baseKey = `section${sectionIndex}_step${stepIndex}`;
+  
+      if (step.type === 'overview' && step.stats?.length) {
+        const factKeys = step.stats.map((_, f) => `${baseKey}_fact${f}`);
+        const chain = (idx: number): (() => void) => () => {
+          if (idx >= factKeys.length) { autoAdvanceFrom(sectionIndex, stepIndex); return; }
+          play(audioUrls[factKeys[idx]], factKeys[idx], '', chain(idx + 1));
+        };
+        play(audioUrls[baseKey], baseKey, step.text, chain(0));
+        return;
+      }
+
+      play(audioUrls[baseKey], baseKey, getMicroStepText(section, stepIndex), () => {
+        autoAdvanceFrom(sectionIndex, stepIndex);
+      });
+    };
         play(audioUrls[overviewKey], overviewKey, section.content, () => {
           play(audioUrls[fact1Key], fact1Key, '', () => {
             play(audioUrls[fact2Key], fact2Key, '', () => {
@@ -1260,18 +1236,15 @@ export default function AIPresentation() {
   const prevMicroStep = () => goToMicroStep(microStep - 1);
   
   const autoAdvanceFrom = (sectionIndex: number, fromStep: number) => {
-    const steps = getMicroSteps(sectionIndex);
+    const section = sections[sectionIndex]
+    const steps = getMicroSteps(section, sectionIndex);
     if (fromStep < steps.length - 1) {
       const next = fromStep + 1;
       setMicroStep(next);
 
-      if (fromStep === 0) {
-        playMicroStepAudio(sectionIndex, next, 'means');
-      } else if (fromStep === 2) {
-        playMicroStepAudio(sectionIndex, next, 'analogy');
-      } else {
-        playMicroStepAudio(sectionIndex, next, null);
-      }
+      const nextType = section.steps[next].type;
+      const transition = nextType === 'simple' ? 'means' : nextType === 'example' ? 'analogy' : null;
+      playMicroStepAudio(sectionIndex, next, transition);
     } else {
       play(audioUrls['wrapup'], 'wrapup', '');
     }
