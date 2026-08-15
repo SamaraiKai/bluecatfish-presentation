@@ -641,7 +641,7 @@ function MiniSlideshowBlock({
                     className={`rounded-xl p-4 border transition-all duration-300 ${
                       isActive
                         ? 'bg-blue-950 border-cyan-400 ring-2 ring-cyan-300 scale-[1.02] shadow-lg'
-                        : 'bg-blue-900/30 border-blue-500/20'
+                        : 'bg-blue-900/50 border-blue-500/40'
                     }`}
                   >
                     <div className={`font-bold mb-1 text-xl ${isActive ? 'text-cyan-300' : 'text-cyan-400'}`}>
@@ -660,7 +660,7 @@ function MiniSlideshowBlock({
         const isExample = step.type === 'example';
 
         return (
-            <div className={isExample ? 'bg-amber-900/20 rounded-xl p-5 border border-amber-500/20' : undefined}>
+            <div className={isExample ? 'bg-amber-900/40 rounded-xl p-5 border border-amber-500/40' : undefined}>
               <HighlightedText
                 text={step.text}
                 currentTime={currentTime}
