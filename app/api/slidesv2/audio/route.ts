@@ -303,6 +303,16 @@ function buildSectionJobs(sections: any[]): AudioJob[] {
           });
         });
       }
+
+      if (section.quiz) {
+        section.quiz.forEach((q: any, qIdx: number) => {
+          jobs.push({
+            key: `section${i}_review_q${qIdx}`,
+            text: q.explanation,
+            fileName: `${FOLDER}/section${i + 1}_review_q${qIdx}.mp3`,
+          });
+        });
+      }
     }  
   }
   return jobs;
