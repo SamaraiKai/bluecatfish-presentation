@@ -644,7 +644,7 @@ function MiniSlideshowBlock({
                         : 'bg-blue-900/30 border-blue-500/20'
                     }`}
                   >
-                    <div className={`font-bold mb-1 text-xl ${isActive ? 'text-cyan-300' : text-cyan-400'}`}>
+                    <div className={`font-bold mb-1 text-xl ${isActive ? 'text-cyan-300' : 'text-cyan-400'}`}>
                       {kt.term}
                     </div>
                     <div className={isActive ? 'text-white' : 'text-blue-100 text-md'}>
