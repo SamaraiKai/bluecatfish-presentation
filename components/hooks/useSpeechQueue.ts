@@ -69,8 +69,8 @@ export function useSpeechQueue() {
   const enqueue = (text: string) => {
     const trimmed = text.trim();
     if (!trimmed) return;
-    cancelledRef.current = false;
     clipsRef.current.push(fetchClip(trimmed));
+    if (!cancelledRef.current) drain();
     drain();
   };
 
