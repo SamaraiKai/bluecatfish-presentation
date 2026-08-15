@@ -40,7 +40,6 @@ export async function POST(request: NextRequest) {
     const topic = body.topic as string | undefined;
     const style = body.style as string | undefined;
     const stream = body.stream === true;
-    console.log("stream flag:", stream, typeof stream);
 
     if (!userText) {
       return NextResponse.json({ error: 'Missing user text.' }, { status: 400 });
@@ -54,7 +53,6 @@ export async function POST(request: NextRequest) {
     // Build a professor-style system prompt if none provided from utils.ts
     const effectiveSystemPrompt = systemPrompt ||
       `You are "Professor Marine", a university professor specializing in Marine Biology and Conservation, teaching a 12-16 year old student about "${topic || 'this topic'}" in a live one-on-one voice session. ` +
-      `You are a warm, expert professor teaching a 12-16 year old student about "${topic || 'this topic'}" in a live one-on-one voice session. ` +
       `You LEAD the lesson — you don't wait for questions, you teach proactively. ` +
       `Present one concept, give a real example, then ask the student ONE focused question to check understanding. ` +
       `When the student responds, acknowledge their answer specifically and build the next concept on top of it. ` +
@@ -64,7 +62,7 @@ export async function POST(request: NextRequest) {
     
     const queryEmbedding = await getEmbedding(userText);
 
-    const { data: docs, error } = await supabase.rpc('match_documents2', {
+    const { data: docs, error } = await supabase.rpc('match_documents3', {
         query_embedding: queryEmbedding,
         match_count: 4,
       }
@@ -75,7 +73,7 @@ export async function POST(request: NextRequest) {
     }
     
     const context = docs 
-      ? docs.map((doc) => doc.content).join('\n\n')
+      ? docs.map((doc: any) => doc.content).join('\n\n')
       : '';
     
     const messages = [
@@ -100,11 +98,6 @@ export async function POST(request: NextRequest) {
         content: userText,
       },
     ];
-
-    
-    if (error) {
-      console.error(error);
-    }
     
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -172,11 +165,11 @@ export async function POST(request: NextRequest) {
             try {
               const json = JSON.parse(payload);
               const token = json.choices?.[0]?.delta?.content;
-              console.log("token:", JSON.stringify(token));
+
               if (token) controller.enqueue(encoder.encode(token));
             } catch {
               // partial JSON across chunk boundary — skip it
-              console.log("parse failed on:", payload.slice(0, 120));
+
             }
           }
         }
