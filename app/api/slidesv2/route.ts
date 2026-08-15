@@ -184,7 +184,7 @@ export async function POST(req: Request) {
       )
     );
 
-    await assignUniqueImages(sections, sectionTopics.map(([, query]) => query;
+    await assignUniqueImages(sections, sectionTopics.map(([, query]) => query));
     
     await setValue(cacheKey, JSON.stringify(sections));
     return NextResponse.json({ sections, source: "generated" });
