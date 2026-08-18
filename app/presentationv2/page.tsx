@@ -1192,6 +1192,7 @@ export default function AIPresentation() {
   };
   
   const narrateSection = (index: number) => {
+    setInIntro(false); // <-- add this — ensures inIntro can never get stuck true once a real section starts
     if (index < sections.length) {
       setMicroStep(0);
       playMicroStepAudio(index, 0, null);
