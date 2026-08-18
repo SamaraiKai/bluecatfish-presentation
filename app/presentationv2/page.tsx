@@ -1087,7 +1087,6 @@ export default function AIPresentation() {
       stop();
       stopSpeaking();
     },
-    false
     isChatSpeaking || (!inIntro && !showConclusion)
   );
 
