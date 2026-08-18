@@ -93,7 +93,6 @@ export function useVoiceInput(onTranscript: (text: string) => void, onListenStar
       for (let i = 0; i < buffer.length; i++) sum += buffer[i] * buffer[i];
       const rms = Math.sqrt(sum / buffer.length);
 
-      console.log(`rms=${rms.toFixed(4)} hasSpoken=${hasSpokenRef.current} silenceMs=${silenceStartRef.current ? Math.round(performance.now() - silenceStartRef.current) : 'n/a'}`);
 
       if (rms > SILENCE_THRESHOLD) {
         hasSpokenRef.current = true;
@@ -122,7 +121,7 @@ export function useVoiceInput(onTranscript: (text: string) => void, onListenStar
       stopBargeWatch();
       const stream = await navigator.mediaDevices.getUserMedia({ audio: MIC_CONSTRAINTS });
       const track = stream.getAudioTracks()[0];
-      console.log('track state:', { enabled: track.enabled, muted: track.muted, readyState: track.readyState, label: track.label });
+
       chunksRef.current = [];
 
       const mimeType = pickMimeType();
@@ -145,8 +144,6 @@ export function useVoiceInput(onTranscript: (text: string) => void, onListenStar
           ? await fixWebmDuration(rawBlob, recordingDuration)
           : rawBlob;
 
-          console.log('blob size:', blob.size, 'bytes, type:', blob.type, 'duration used for fix:', recordingDuration, 'ms');
-          
           const ext = actualType.includes("mp4") ? "mp4"
               : actualType.includes("ogg") ? "ogg"
               : "webm";
