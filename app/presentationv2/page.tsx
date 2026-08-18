@@ -1273,6 +1273,9 @@ export default function AIPresentation() {
     if (!text.trim()) return;
     if (isSpeaking && !inIntro && !showQuiz && !showReview && !showConclusion) {
       interruptedRef.current = { section: activeSection, step: microStep };
+      console.log('SET interruptedRef:', interruptedRef.current);
+    } else {
+      console.log('did NOT set interruptedRef — isSpeaking:', isSpeaking, 'inIntro:', inIntro, 'showQuiz:', showQuiz, 'showReview:', showReview, 'showConclusion:', showConclusion);
     }
     stop();
     sendMessage(text);
@@ -1412,14 +1415,16 @@ export default function AIPresentation() {
   }, [present, cameraEnabled, isChatSpeaking]);
 
   useEffect(() => {
+    console.log('resume effect check:', { isChatSpeaking, micStatus, cameraEnabled, present, interrupted: interruptedRef.current });
     if (isChatSpeaking) return;           // still answering
     if (micStatus !== 'idle') return;      // still listening/processing
     if (cameraEnabled && !present) return;  // user still away from camera         
     if (!interruptedRef.current) return;  // nothing was interrupted
-  
-    if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
-    
+
+    console.log('starting 7s resume timer');
+    if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);  
     resumeTimerRef.current = setTimeout(() => {
+      console.log('resume timer fired, presence_back url:', audioUrls['presence_back']);
       const pending = interruptedRef.current;
       if (!pending) return;
       interruptedRef.current = null;
