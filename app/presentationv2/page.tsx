@@ -1076,7 +1076,7 @@ export default function AIPresentation() {
   const { status: micStatus, toggleMic } = useVoiceInput(
     (text) => {
       setShowChat(true);
-       (text);
+      handleSendMessage(text);
     },
     () => {
       if (isChatSpeaking) {
@@ -1088,7 +1088,7 @@ export default function AIPresentation() {
       stopSpeaking();
     },
     false
-    /* isChatSpeaking || (!inIntro && !showConclusion) */
+    isChatSpeaking || (!inIntro && !showConclusion)
   );
 
   const { present, error } = useFacePresence(cameraEnabled);
