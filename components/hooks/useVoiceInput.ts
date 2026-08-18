@@ -130,7 +130,6 @@ export function useVoiceInput(onTranscript: (text: string) => void, onListenStar
         if (e.data.size > 0) chunksRef.current.push(e.data);
       };
 
-      console.log('blob size:', blob.size, 'bytes, type:', blob.type, 'duration used for fix:', recordingDuration, 'ms');
       mr.onstop = async () => {
         cleanupAnalyser();
         const recordingDuration = Date.now() - recordingStartRef.current;
@@ -139,11 +138,13 @@ export function useVoiceInput(onTranscript: (text: string) => void, onListenStar
         try {
           const actualType = mr.mimeType || mimeType || "audio/webm";
           const rawBlob = new Blob(chunksRef.current, { type: actualType });
-          
+
          const blob = actualType.includes('webm')
           ? await fixWebmDuration(rawBlob, recordingDuration)
           : rawBlob;
 
+          console.log('blob size:', blob.size, 'bytes, type:', blob.type, 'duration used for fix:', recordingDuration, 'ms');
+          
           const ext = actualType.includes("mp4") ? "mp4"
               : actualType.includes("ogg") ? "ogg"
               : "webm";
