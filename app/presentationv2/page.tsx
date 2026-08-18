@@ -1423,8 +1423,10 @@ export default function AIPresentation() {
       const pending = interruptedRef.current;
       if (!pending) return;
       interruptedRef.current = null;
-      playMicroStepAudio(pending.section, pending.step, null);
-    }, 3000);
+      play(audioUrls['presence_back'], 'presence_back', '', () => {
+        playMicroStepAudio(pending.section, pending.step, null);
+      });
+    }, 7000);
     
   return () => {
     if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
