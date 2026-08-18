@@ -1062,7 +1062,7 @@ export default function AIPresentation() {
   const presenceAudioRef = useRef<HTMLAudioElement | null>(null);
   const firstRunRef = useRef(true);
   const resumeTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const interruptedRef = useRef<{ type: 'intro'; time: number } | { type: 'section'; section: number; step: number } | null>(null);
+  const interruptedRef = useRef<{ section: number; step: number } | null>(null);
   
   /* ---------------------------------------------------------- hook calls */
   const currentSection = sections[activeSection];
@@ -1284,12 +1284,9 @@ export default function AIPresentation() {
 
   const handleSendMessage = (text: string) => {
     if (!text.trim()) return;
-    if (isSpeaking && !inIntro && !showQuiz && !showReview && !showConclusion) {interruptedRef
-      if (inIntro) {
-        interruptedRef.current = { type: 'intro', time: currentTime };
-      } else { 
-        interruptedRef.current = { type: 'section', section: activeSection, step: microStep };
-      }
+    if (isSpeaking && !inIntro && !showQuiz && !showReview && !showConclusion) {
+      interruptedRef.current = { section: activeSection, step: microStep };
+    }
     stop();
     sendMessage(text);
   };
@@ -1878,5 +1875,4 @@ export default function AIPresentation() {
       </footer>
     </div>
   );
-}
 }
