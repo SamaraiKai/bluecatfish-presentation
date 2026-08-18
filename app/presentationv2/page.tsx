@@ -1076,7 +1076,7 @@ export default function AIPresentation() {
   const { status: micStatus, toggleMic } = useVoiceInput(
     (text) => {
       setShowChat(true);
-       handleSendMessage(text);
+       (text);
     },
     () => {
       if (isChatSpeaking) {
@@ -1828,13 +1828,13 @@ export default function AIPresentation() {
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && !isLoading && sendMessage(input)}
+                onKeyDown={(e) => e.key === 'Enter' && !isLoading && handleSendMessage(input)}
                 placeholder="Ask about Blue Catfish..."
                 className="flex-1 bg-mist-300 text-black rounded-full px-[21px] py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 disabled={isLoading}
               />
               <button
-                onClick={() => sendMessage(input)}
+                onClick={() => handleSendMessage(input)}
                 disabled={isLoading || !input.trim()}
                 className="w-10 h-10 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white rounded-full flex items-center justify-center transition-colors"
               >
