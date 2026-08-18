@@ -172,7 +172,7 @@ export function useVoiceInput(onTranscript: (text: string) => void, onListenStar
       onListenStart?.();  
       await watchForSilence(stream);
     } catch {
-      console.error("Mic permission denied");
+      console.error("Mic permission denied", err);
       setStatus("idle");
     }
   };
