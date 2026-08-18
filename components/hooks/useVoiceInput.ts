@@ -120,7 +120,7 @@ export function useVoiceInput(onTranscript: (text: string) => void, onListenStar
     try {
       recordingStartRef.current = Date.now();
       stopBargeWatch();
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: MIC_CONSTRAINTS, });
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       chunksRef.current = [];
 
       const mimeType = pickMimeType();
@@ -203,6 +203,7 @@ export function useVoiceInput(onTranscript: (text: string) => void, onListenStar
       const ctx = new AudioCtx();
       bargeCtxRef.current = ctx;
       if (ctx.state === "suspended") await ctx.resume();
+      console.log('AudioContext state:', ctx.state);
  
       const source = ctx.createMediaStreamSource(stream);
       const analyser = ctx.createAnalyser();
