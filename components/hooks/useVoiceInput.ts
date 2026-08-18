@@ -93,6 +93,8 @@ export function useVoiceInput(onTranscript: (text: string) => void, onListenStar
       for (let i = 0; i < buffer.length; i++) sum += buffer[i] * buffer[i];
       const rms = Math.sqrt(sum / buffer.length);
 
+      console.log(`rms=${rms.toFixed(4)} hasSpoken=${hasSpokenRef.current} silenceMs=${silenceStartRef.current ? Math.round(performance.now() - silenceStartRef.current) : 'n/a'}`);
+
       if (rms > SILENCE_THRESHOLD) {
         hasSpokenRef.current = true;
         silenceStartRef.current = null;
@@ -101,6 +103,7 @@ export function useVoiceInput(onTranscript: (text: string) => void, onListenStar
         if (silenceStartRef.current === null) {
           silenceStartRef.current = performance.now();
         } else if (performance.now() - silenceStartRef.current > SILENCE_DURATION) {
+          console.log('STOPPING: silence duration exceeded');
           stopListening();
           return;
         }
