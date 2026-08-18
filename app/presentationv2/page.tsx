@@ -1222,6 +1222,16 @@ export default function AIPresentation() {
     setIsNarrating(true);
   };
 
+  const resumeIntro = (time: number) => {
+    setInIntro(true);
+    play(audioUrls['intro'], 'intro', introText, () => {
+      const layoutKey = `layout_${selectedTemplate}`;
+      play(audioUrls[layoutKey], layoutKey, '', () => {
+        setInIntro(false);
+        narrateSection(0);
+      });
+    }, time);
+  };
   /* ------------------------------------------- micro-step nav handlers */
   const goToMicroStep = (index: number) => {
     if (index < 0 || index >= microSteps.length) return;
@@ -1424,21 +1434,23 @@ export default function AIPresentation() {
   }, [present, cameraEnabled, isChatSpeaking]);
 
   useEffect(() => {
-    console.log('resume effect check:', { isChatSpeaking, micStatus, cameraEnabled, present, interrupted: interruptedRef.current });
     if (isChatSpeaking) return;           // still answering
     if (micStatus !== 'idle') return;      // still listening/processing
     if (cameraEnabled && !present) return;  // user still away from camera         
     if (!interruptedRef.current) return;  // nothing was interrupted
 
-    console.log('starting 7s resume timer');
     if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);  
     resumeTimerRef.current = setTimeout(() => {
-      console.log('resume timer fired, presence_back url:', audioUrls['presence_back']);
       const pending = interruptedRef.current;
       if (!pending) return;
       interruptedRef.current = null;
+      
       play(audioUrls['presence_back'], 'presence_back', '', () => {
-        playMicroStepAudio(pending.section, pending.step, null);
+        if (pending.type === 'intro') {
+            resumeIntro(pending.time);
+        } else {
+          playMicroStepAudio(pending.section, pending.step, null);
+        }  
       });
     }, 7000);
     
