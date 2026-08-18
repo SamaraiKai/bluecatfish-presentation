@@ -253,8 +253,6 @@ export function useVoiceInput(onTranscript: (text: string) => void, onListenStar
     }
     return () => stopBargeWatch()
   }, [bargeInActive, status]);
-      stopBargeWatch();
-    };
 
   useEffect(() => {
     return () => {
