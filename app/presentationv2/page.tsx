@@ -1062,7 +1062,7 @@ export default function AIPresentation() {
   const presenceAudioRef = useRef<HTMLAudioElement | null>(null);
   const firstRunRef = useRef(true);
   const resumeTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const interruptedRef = useRef<{ section: number; step: number } | null>(null);
+  const interruptedRef = useRef<{ type: 'intro'; time: number } | { type: 'section'; section: number; step: number } | null>(null);
   
   /* ---------------------------------------------------------- hook calls */
   const currentSection = sections[activeSection];
