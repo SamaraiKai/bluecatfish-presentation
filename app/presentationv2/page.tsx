@@ -1063,7 +1063,7 @@ export default function AIPresentation() {
   const firstRunRef = useRef(true);
   const interruptedRef = useRef<{ section: number; step: number } | null>(null);
   const resumeTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const interruptedRef = useRef
+  const interruptedRef = useRef<
     | { type: 'intro'; time: number }
     | { type: 'section'; section: number; step: number }
     | null
