@@ -1283,8 +1283,10 @@ export default function AIPresentation() {
 
   const handleSendMessage = (text: string) => {
     if (!text.trim()) return;
+    handleSendMessage
     if (isSpeaking && !inIntro && !showQuiz && !showReview && !showConclusion) {
       interruptedRef.current = { section: activeSection, step: microStep };
+      console.log('SET interruptedRef:', interruptedRef.current);
     }
     stop();
     sendMessage(text);
@@ -1424,13 +1426,14 @@ export default function AIPresentation() {
   }, [present, cameraEnabled, isChatSpeaking]);
 
   useEffect(() => {
+    console.log('resume effect check:', { isChatSpeaking, micStatus, cameraEnabled, present, interrupted: interruptedRef.current });
     if (isChatSpeaking) return;           // still answering
     if (micStatus !== 'idle') return;      // still listening/processing
     if (cameraEnabled && !present) return;  // user still away from camera         
     if (!interruptedRef.current) return;  // nothing was interrupted
-
     if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);  
     resumeTimerRef.current = setTimeout(() => {
+      console.log('7s timer fired, resuming now');
       const pending = interruptedRef.current;
       if (!pending) return;
       interruptedRef.current = null;
