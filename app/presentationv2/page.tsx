@@ -262,6 +262,8 @@ const useAIChat = (currentSection: SectionWithBreakdown | undefined,
       // Whatever's left over after the stream ends
       const tail = pending.trim();
       if (tail && onSentence) onSentence(tail);
+
+      endStream?.();
       
       if (!full.trim()) {
         setMessages((prev) => {
