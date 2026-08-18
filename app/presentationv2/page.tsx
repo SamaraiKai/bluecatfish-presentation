@@ -1284,7 +1284,7 @@ export default function AIPresentation() {
 
   const handleSendMessage = (text: string) => {
     if (!text.trim()) return;
-    handleSendMessage
+    console.log('handleSendMessage check:', { isSpeaking, inIntro, showQuiz, showReview, showConclusion });
     if (isSpeaking && !inIntro && !showQuiz && !showReview && !showConclusion) {
       interruptedRef.current = { section: activeSection, step: microStep };
       console.log('SET interruptedRef:', interruptedRef.current);
