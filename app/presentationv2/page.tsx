@@ -1087,7 +1087,8 @@ export default function AIPresentation() {
       stop();
       stopSpeaking();
     },
-    isChatSpeaking || (!inIntro && !showConclusion)
+    false
+    /* isChatSpeaking || (!inIntro && !showConclusion) */
   );
 
   const { present, error } = useFacePresence(cameraEnabled);
