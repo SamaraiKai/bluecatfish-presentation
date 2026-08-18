@@ -87,7 +87,7 @@ const useAudioPlayer = () => {
   const [duration, setDuration] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const play = useCallback((url: string | undefined, key: string, text: string = '', onComplete?: () => void) => {
+  const play = useCallback((url: string | undefined, key: string, text: string = '', onComplete?: () => void, startAt: number = 0) => {
     if (!url) {
       console.warn(`No audio URL found for "${key}"`);
       if (onComplete) onComplete();
@@ -104,9 +104,13 @@ const useAudioPlayer = () => {
     setCurrentText(text);
     setIsSpeaking(true);
     setIsPaused(false);
-    setCurrentTime(0);
+    setCurrentTime(startAt);
     setDuration(0);
 
+    if (startAt > 0) {
+      audio.currentTime = startAt;
+    }
+    
     audio.ontimeupdate = () => setCurrentTime(audio.currentTime);
     audio.onloadedmetadata = () => setDuration(audio.duration);
 
@@ -1059,6 +1063,11 @@ export default function AIPresentation() {
   const firstRunRef = useRef(true);
   const interruptedRef = useRef<{ section: number; step: number } | null>(null);
   const resumeTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const interruptedRef = useRef
+    | { type: 'intro'; time: number }
+    | { type: 'section'; section: number; step: number }
+    | null
+  >(null);
   
   
   /* ---------------------------------------------------------- hook calls */
@@ -1271,12 +1280,12 @@ export default function AIPresentation() {
 
   const handleSendMessage = (text: string) => {
     if (!text.trim()) return;
-    if (isSpeaking && !inIntro && !showQuiz && !showReview && !showConclusion) {
-      interruptedRef.current = { section: activeSection, step: microStep };
-      console.log('SET interruptedRef:', interruptedRef.current);
-    } else {
-      console.log('did NOT set interruptedRef — isSpeaking:', isSpeaking, 'inIntro:', inIntro, 'showQuiz:', showQuiz, 'showReview:', showReview, 'showConclusion:', showConclusion);
-    }
+    if (isSpeaking && !inIntro && !showQuiz && !showReview && !showConclusion) {interruptedRef
+      if (inIntro) {
+        interruptedRef.current = { type: 'intro', time: currentTime };
+      } else { 
+        interruptedRef.current = { type: 'section', section: activeSection, step: microStep };
+      }
     stop();
     sendMessage(text);
   };
