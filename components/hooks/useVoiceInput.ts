@@ -10,8 +10,8 @@ const BARGE_THRESHOLD = 0.05;
 const BARGE_SUSTAIN = 250;
 
 const MIC_CONSTRAINTS: MediaTrackConstraints = {
-  echoCancellation: true,
-  noiseSuppression: true,
+  echoCancellation: false,
+  noiseSuppression: false,
   autoGainControl: true,
 };
 
@@ -120,7 +120,7 @@ export function useVoiceInput(onTranscript: (text: string) => void, onListenStar
     try {
       recordingStartRef.current = Date.now();
       stopBargeWatch();
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: MIC_CONSTRAINTS });
       const track = stream.getAudioTracks()[0];
       console.log('track state:', { enabled: track.enabled, muted: track.muted, readyState: track.readyState, label: track.label });
       chunksRef.current = [];
