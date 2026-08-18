@@ -121,6 +121,8 @@ export function useVoiceInput(onTranscript: (text: string) => void, onListenStar
       recordingStartRef.current = Date.now();
       stopBargeWatch();
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const track = stream.getAudioTracks()[0];
+      console.log('track state:', { enabled: track.enabled, muted: track.muted, readyState: track.readyState, label: track.label });
       chunksRef.current = [];
 
       const mimeType = pickMimeType();
