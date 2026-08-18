@@ -130,6 +130,7 @@ export function useVoiceInput(onTranscript: (text: string) => void, onListenStar
         if (e.data.size > 0) chunksRef.current.push(e.data);
       };
 
+      console.log('blob size:', blob.size, 'bytes, type:', blob.type, 'duration used for fix:', recordingDuration, 'ms');
       mr.onstop = async () => {
         cleanupAnalyser();
         const recordingDuration = Date.now() - recordingStartRef.current;
