@@ -444,6 +444,13 @@ const useAIChat = () => {
   ]);
   const [isLoading, setIsLoading] = useState(false);
   const [input, setInput] = useState('');
+  // Per-tab session id so the OpenClaw bluecatfish agent keeps a separate
+  // learner memory per student (the longitudinal learner model from the
+  // Baradziej and Pal 2026 adaptive-tutoring module).
+  const sessionIdRef = useRef<string>('');
+  if (!sessionIdRef.current && typeof window !== 'undefined') {
+    sessionIdRef.current = 'bc-web-' + Math.random().toString(36).slice(2, 10);
+  }
 
   const sendMessage = async (text: string) => {
     if (!text.trim()) return;
@@ -453,72 +460,27 @@ const useAIChat = () => {
     setInput('');
     setIsLoading(true);
 
-    const apiKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY;
-    
-    if (!apiKey) {
-      const response = getRuleBasedResponse(text);
-      setMessages(prev => [...prev, { role: 'ai', text: response }]);
-      setIsLoading(false);
-      return;
-    }
-
     try {
-      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      const response = await fetch("/api/chat", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-          model: "gpt-3.5-turbo",
-          messages: [
-            {
-              role: "system",
-              content: `You are "${PRESENTATION.professor.name}", a university professor specializing in Marine Biology and Conservation. You teach at a prestigious institution and are passionate about educating students on ecological issues. Your teaching style is engaging, academic yet accessible, and you use real-world examples to illustrate complex concepts. 
-
-You are currently teaching a class about Blue Catfish invasion in the Chesapeake Bay. The key facts students have learned include:
-- Blue Catfish were introduced in the 1970s-80s for recreational fishing
-- They now number over 100 million in the Chesapeake Bay
-- They eat 8-9% of their body weight daily (about 12-13 lbs for a 150lb fish)
-- They make up 75% of fish biomass in some rivers
-- They eat native species: American Shad, Blue Crabs, Menhaden, River Herring
-- They have zero natural predators
-- The solution is commercial harvesting - they're delicious and nutritious!
-
-When answering questions:
-- Address the student respectfully
-- Reference what they've learned in the lecture when relevant
-- Add interesting scientific context
-- Be encouraging about their curiosity
-- Keep responses conversational but informative`
-            },
-            ...messages.map(m => ({ 
-              role: m.role === 'ai' ? 'assistant' : 'user', 
-              content: m.text 
-            })),
-            { role: "user", content: text }
-          ],
-          max_tokens: 300
-        })
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text, sessionId: sessionIdRef.current }),
       });
-
       const data = await response.json();
-
-      if (data.choices && data.choices[0]) {
-        setMessages(prev => [...prev, { 
-          role: 'ai', 
-          text: data.choices[0].message.content 
-        }]);
-      } else {
-        setMessages(prev => [...prev, { 
-          role: 'ai', 
-          text: getRuleBasedResponse(text) 
-        }]);
+      const reply =
+        data && data.ok && typeof data.reply === 'string' && data.reply.trim()
+          ? data.reply
+          : (data && typeof data.fallback === 'string' && data.fallback.trim()
+              ? data.fallback
+              : getRuleBasedResponse(text));
+      if (data && typeof data.sessionId === 'string' && data.sessionId) {
+        sessionIdRef.current = data.sessionId;
       }
+      setMessages(prev => [...prev, { role: 'ai', text: reply }]);
     } catch {
-      setMessages(prev => [...prev, { 
-        role: 'ai', 
-        text: getRuleBasedResponse(text) 
+      setMessages(prev => [...prev, {
+        role: 'ai',
+        text: getRuleBasedResponse(text)
       }]);
     } finally {
       setIsLoading(false);
