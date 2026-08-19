@@ -18,6 +18,7 @@ export function useHandRaise(enabled: boolean, onRaised: () => void) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    console.log('useHandRaise effect starting, enabled:', enabled);
     if (!enabled) return
     let cancelled = false;
 
@@ -96,6 +97,7 @@ export function useHandRaise(enabled: boolean, onRaised: () => void) {
     start();
 
     return () => {
+      console.log('useHandRaise cleanup firing, was enabled:', enabled);
       cancelled = true;
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       detectorRef.current?.close();
