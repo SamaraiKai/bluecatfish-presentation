@@ -1076,6 +1076,7 @@ export default function AIPresentation() {
   const interruptedRef = useRef<{ type: 'intro'; time: number } | { type: 'section'; section: number; step: number } | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const noticeTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const prevPresentRef = useRef(present);
   
   /* ---------------------------------------------------------- hook calls */
   const currentSection = sections[activeSection];
