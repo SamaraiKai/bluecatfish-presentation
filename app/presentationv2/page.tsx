@@ -1300,7 +1300,7 @@ export default function AIPresentation() {
     sendMessage(text);
   };
 
-  const handleHandRaised() => {
+  const handleHandRaised = () => {
      if (inIntro) {
       showNotice("Can't raise your hand during the introduction");
       return;
