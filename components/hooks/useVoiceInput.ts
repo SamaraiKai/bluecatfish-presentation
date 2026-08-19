@@ -204,7 +204,6 @@ export function useVoiceInput(onTranscript: (text: string) => void, onListenStar
       const ctx = new AudioCtx();
       bargeCtxRef.current = ctx;
       if (ctx.state === "suspended") await ctx.resume();
-      console.log('AudioContext state:', ctx.state);
  
       const source = ctx.createMediaStreamSource(stream);
       const analyser = ctx.createAnalyser();
