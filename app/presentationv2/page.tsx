@@ -1466,7 +1466,6 @@ export default function AIPresentation() {
   }, [present, cameraEnabled, isChatSpeaking]);
 
   useEffect(() => {
-    console.log('resume effect check:', { isChatSpeaking, micStatus, cameraEnabled, present, interrupted: interruptedRef.current });
     if (isChatSpeaking) return;           // still answering
     if (micStatus !== 'idle') return;      // still listening/processing
     if (cameraEnabled && !present) return;  // user still away from camera         
