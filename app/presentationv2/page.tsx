@@ -400,7 +400,7 @@ function CameraSelector({ onSelect }: { onSelect: (useCamera: boolean) => void }
           </div>
           <h3 className="text-black font-bold text-lg mb-1">Use Camera</h3>
           <p className="text-blue-500 text-sm">
-            The lesson pauses when you look away and picks up when you're back
+            The lesson pauses when you look away, and you can raise your hand anytime to ask a question
           </p>
         </button>
 
@@ -1065,6 +1065,8 @@ export default function AIPresentation() {
   const firstRunRef = useRef(true);
   const resumeTimerRef = useRef<NodeJS.Timeout | null>(null);
   const interruptedRef = useRef<{ type: 'intro'; time: number } | { type: 'section'; section: number; step: number } | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const noticeTimerRef = useRef<NodeJS.Timeout | null>(null);
   
   /* ---------------------------------------------------------- hook calls */
   const currentSection = sections[activeSection];
@@ -1299,6 +1301,10 @@ export default function AIPresentation() {
   };
 
   const handleHandRaised() => {
+     if (inIntro) {
+      showNotice("Can't raise your hand during the introduction");
+      return;
+    }
     if (isChatSpeaking || showQuiz || showReview || showConclusion) return;
     if (isSpeaking && !inIntro) {
       interruptedRef.current = { section: activeSection, step: microStep };
@@ -1347,6 +1353,21 @@ export default function AIPresentation() {
     setSectionScores({});
     setCompletedQuizzes(new Set());
   };
+
+  const showNotice = (text: string) => {
+    setNotice(text);
+    if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
+    noticeTimerRef.current = setTimeout(() => setNotice(null), 2500);
+  };
+
+  function Notice({ text }: { text: string | null }) {
+    if (!text) return null;
+    return (
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 mb-3 z-40 bg-slate-900 text-white text-sm font-medium px-5 py-2.5 rounded-full shadow-lg animate-[fadeIn_0.2s_ease-out]">
+        {text}
+      </div>
+    );
+  }
 
   /* -------------------------------------------------------------- effects */
   // Fetch sections, then fetch pre-generated audio for them
@@ -1612,7 +1633,7 @@ export default function AIPresentation() {
             totalQuestions={sections.length * 2}
           />
         ) : (
-        <div className="max-w-7xl w-full">
+        <div className="max-w-7xl w-full relative">
           {/* Progress Bar */}
           <div className="mb-8">
             <div className="flex justify-between text-black text-sm mb-2">
@@ -1627,6 +1648,8 @@ export default function AIPresentation() {
             </div>
           </div>
 
+          <Notice text={notice} />
+          
           {showReview ? (
             <ReviewSlide
               missedQuestions={missedQuestions}
@@ -1859,20 +1882,23 @@ export default function AIPresentation() {
               >
                 →
               </button>
-              <button
-                onClick={toggleMic}
-                disabled={isLoading}
-                className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
-                  micStatus === "listening"
-                    ? "bg-red-600 animate-pulse text-white"
-                    : micStatus === "processing"
-                    ? "bg-gray-500 text-white"
-                    : "bg-blue-600 hover:bg-blue-700 text-white"
-                }`}
-                title={micStatus === "listening" ? "Stop recording" : "Speak"}
-              >
-                {micStatus === "processing" ? "…" : "🎤"}
-              </button>
+
+              {!cameraEnabled && (
+                <button
+                  onClick={toggleMic}
+                  disabled={isLoading}
+                  className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
+                    micStatus === "listening"
+                      ? "bg-red-600 animate-pulse text-white"
+                      : micStatus === "processing"
+                      ? "bg-gray-500 text-white"
+                      : "bg-blue-600 hover:bg-blue-700 text-white"
+                  }`}
+                  title={micStatus === "listening" ? "Stop recording" : "Speak"}
+                >
+                  {micStatus === "processing" ? "…" : "🎤"}
+                </button>
+              )}
             </div>
           </div>
         </div>
