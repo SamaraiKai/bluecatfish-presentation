@@ -8,10 +8,10 @@ const COOLDOWN_MS = 4000;
 export function useHandRaise(enabled: boolean, onRaised: () => void) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const detectorRef = useRef<HandLandmarker | null>(null);
-  const rafRaf = useRef<number | null>(null);
+  const rafRef = useRef<number | null>(null);
   const raiseStartRef = useRef<number | null>(null);
   const lastTriggerRef = useRef<number>(0);
-  const onRaisedRtef = useRef(onRaised);
+  const onRaisedRef = useRef(onRaised);
   const onRaisedRef.current = onRaised;
 
   const [ready, setReady] = useState(false);
@@ -70,7 +70,7 @@ export function useHandRaise(enabled: boolean, onRaised: () => void) {
             if (raiseStartRef.current === null) {
               raiseStartRef.current = Date.now();
             } else if (
-              Date.now() - raiseStartRef.current > RAISE_SUSTAIN_MS &&
+              Date.now() - raisedStartRef.current > RAISE_SUSTAIN_MS &&
               Date.now() - lastTriggerRef.current > COOLDOWN_MS
             ) {
               lastTriggerRef.current = Date.now();
