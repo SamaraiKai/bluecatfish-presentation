@@ -502,6 +502,14 @@ function ConclusionScreen({
     );
   }
 
+function Notice({ text }: { text: string | null }) {
+  if (!text) return null;
+  return (
+    <div className="absolute top-0 left-1/2 -translate-x-1/2 mb-3 z-40 bg-slate-900 text-white text-sm font-medium px-5 py-2.5 rounded-full shadow-lg animate-[fadeIn_0.2s_ease-out]">
+      {text}
+    </div>
+  );
+}
 /* ============================================================================
  * SLIDE BLOCKS
  * ========================================================================== */
@@ -1098,8 +1106,6 @@ export default function AIPresentation() {
 
   const { present, error } = useFacePresence(cameraEnabled);
 
-  const { ready: handRaiseReady, error: handRaiseError } = useHandRaise(cameraEnabled, handleHandRaised);
-
   /* ----------------------------------------------------- audio handlers */
   const playMicroStepAudio = (sectionIndex: number, stepIndex: number, transitionType: 'means' | 'analogy' | null) => {
     const section = sections[sectionIndex];
@@ -1361,15 +1367,6 @@ export default function AIPresentation() {
     noticeTimerRef.current = setTimeout(() => setNotice(null), 2500);
   };
 
-  function Notice({ text }: { text: string | null }) {
-    if (!text) return null;
-    return (
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 mb-3 z-40 bg-slate-900 text-white text-sm font-medium px-5 py-2.5 rounded-full shadow-lg animate-[fadeIn_0.2s_ease-out]">
-        {text}
-      </div>
-    );
-  }
-
   /* -------------------------------------------------------------- effects */
   // Fetch sections, then fetch pre-generated audio for them
   useEffect(() => {
@@ -1535,7 +1532,8 @@ export default function AIPresentation() {
   const currentFlowIndex = flowSteps.findIndex(
     (step) => step.index === activeSection && step.type === (showQuiz ? 'quiz' : 'section')
   );
-  
+
+  const { ready: handRaiseReady, error: handRaiseError } = useHandRaise(cameraEnabled, handleHandRaised);
   /* ---------------------------------------------------------------- render */
   return (
     <div className="min-h-screen bg-gradient-to-br from-mist-400 via-mist-50 to-mist-400 flex flex-col">
