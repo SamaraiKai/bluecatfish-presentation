@@ -12,7 +12,7 @@ export function useHandRaise(enabled: boolean, onRaised: () => void) {
   const raiseStartRef = useRef<number | null>(null);
   const lastTriggerRef = useRef<number>(0);
   const onRaisedRef = useRef(onRaised);
-  const onRaisedRef.current = onRaised;
+  onRaisedRef.current = onRaised;
 
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
