@@ -1113,9 +1113,10 @@ export default function AIPresentation() {
       showNotice("Can't raise your hand during the introduction");
       return;
     }
-    if (isChatSpeaking || showQuiz || showReview || showConclusion)return;
+    if (isChatSpeaking || showQuiz || showReview || showConclusion) {
       console.log('blocked by state guard', { isChatSpeaking, showQuiz, showReview, showConclusion });
       return;
+    }
     if (isSpeaking && !inIntro) {
       interruptedRef.current = { section: activeSection, step: microStep };
     }
