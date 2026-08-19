@@ -1095,6 +1095,8 @@ export default function AIPresentation() {
 
   const { present, error } = useFacePresence(cameraEnabled);
 
+  const { ready: handRaiseReady, error: handRaiseError } = useHandRaise(cameraEnabled, handleHandRaised);
+
   /* ----------------------------------------------------- audio handlers */
   const playMicroStepAudio = (sectionIndex: number, stepIndex: number, transitionType: 'means' | 'analogy' | null) => {
     const section = sections[sectionIndex];
@@ -1294,6 +1296,17 @@ export default function AIPresentation() {
     }
     stop();
     sendMessage(text);
+  };
+
+  const handleHandRaised() => {
+    if (isChatSpeaking || showQuiz || showReview || showConclusion) return;
+    if (isSpeaking && !inIntro) {
+      interruptedRef.current = { section: activeSection, step: microStep };
+    }
+    stop();
+    play(audioUrls['handRaiseCue'], 'handRaiseCue', '', () => {
+      if (micStatus === 'idle') toggleMic();
+    });
   };
   
   const handleQuizReview = () => {
