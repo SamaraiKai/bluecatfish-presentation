@@ -66,6 +66,9 @@ export function useHandRaise(enabled: boolean, onRaised: () => void) {
           const wristY = hand?.[0]?.y;
           const isRaised = wristY !== undefined && wristY < 0.35;
 
+          console.log('hand detection:', { handFound: !!hand, wristY, isRaised, raiseStart: raiseStartRef.current });
+
+          
           if (isRaised) {
             if (raiseStartRef.current === null) {
               raiseStartRef.current = Date.now();
@@ -73,6 +76,7 @@ export function useHandRaise(enabled: boolean, onRaised: () => void) {
               Date.now() - raisedStartRef.current > RAISE_SUSTAIN_MS &&
               Date.now() - lastTriggerRef.current > COOLDOWN_MS
             ) {
+              console.log('TRIGGERING onRaised');
               lastTriggerRef.current = Date.now();
               raiseStartRef.current = null;
               onRaisedRef.current();
