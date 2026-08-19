@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { HandLandmarker, FilesetResolver } from "mediapipe/tasks-vision";
+import { HandLandmarker, FilesetResolver } from "@mediapipe/tasks-vision";
 
 const RAISE_SUSTAIN_MS = 600; 
 const COOLDOWN_MS = 4000;
