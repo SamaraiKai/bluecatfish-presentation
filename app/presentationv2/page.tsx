@@ -505,7 +505,7 @@ function ConclusionScreen({
 function Notice({ text }: { text: string | null }) {
   if (!text) return null;
   return (
-    <div className="absolute top-0 left-1/2 -translate-x-1/2 mb-3 z-40 bg-slate-900 text-white text-sm font-medium px-5 py-2.5 rounded-full shadow-lg animate-[fadeIn_0.2s_ease-out]">
+    <div className="absolute top-0 left-1/2 -translate-x-1/2 mb-5 z-40 bg-slate-900 text-white text-sm font-medium px-5 py-2.5 rounded-full shadow-lg animate-[fadeIn_0.2s_ease-out]">
       {text}
     </div>
   );
