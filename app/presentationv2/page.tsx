@@ -1066,6 +1066,7 @@ export default function AIPresentation() {
   const [isNarrating, setIsNarrating] = useState(false);
   const [cameraEnabled, setCameraEnabled] = useState(false);
   const [cameraChoiceMade, setCameraChoiceMade] = useState(false);
+  const [inConversation, setInConversation] = useState(false);
   
   // Refs
   const keyTermsTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -1087,6 +1088,9 @@ export default function AIPresentation() {
   
   const { messages, isLoading, input, setInput, sendMessage } = useAIChat(currentSection, missedQuestions, enqueue, beginStream, endStream);
 
+  const presentationStarted = !!selectedTemplate && !showConclusion;
+  const bargeInActive = isChatSpeaking || inConversation;
+  
   const { status: micStatus, toggleMic } = useVoiceInput(
     (text) => {
       setShowChat(true);
@@ -1101,8 +1105,7 @@ export default function AIPresentation() {
       stop();
       stopSpeaking();
     },
-    false
-    /* isChatSpeaking || (!inIntro && !showConclusion) */
+    bargeInActive
   );
 
   const { present, error } = useFacePresence(cameraEnabled);
@@ -1327,6 +1330,7 @@ export default function AIPresentation() {
 
   const handleSendMessage = (text: string) => {
     if (!text.trim()) return;
+    setInConversation(true);
     if (isSpeaking && !inIntro && !showQuiz && !showReview && !showConclusion) {
       interruptedRef.current = { section: activeSection, step: microStep };
     }
@@ -1479,8 +1483,12 @@ export default function AIPresentation() {
     resumeTimerRef.current = setTimeout(() => {
       console.log('7s timer fired, resuming now');
       const pending = interruptedRef.current;
-      if (!pending) return;
+      if (!pending) {
+        setInConversation(false);
+        return;
+      }
       interruptedRef.current = null;
+      setInConversation(false);
       
       play(audioUrls['presence_back'], 'presence_back', '', () => {
         if (pending.type === 'intro') {
