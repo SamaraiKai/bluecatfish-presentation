@@ -1367,6 +1367,7 @@ export default function AIPresentation() {
     noticeTimerRef.current = setTimeout(() => setNotice(null), 2500);
   };
 
+  const { ready: handRaiseReady, error: handRaiseError } = useHandRaise(cameraEnabled, handleHandRaised);
   /* -------------------------------------------------------------- effects */
   // Fetch sections, then fetch pre-generated audio for them
   useEffect(() => {
@@ -1533,7 +1534,6 @@ export default function AIPresentation() {
     (step) => step.index === activeSection && step.type === (showQuiz ? 'quiz' : 'section')
   );
 
-  const { ready: handRaiseReady, error: handRaiseError } = useHandRaise(cameraEnabled, handleHandRaised);
   /* ---------------------------------------------------------------- render */
   return (
     <div className="min-h-screen bg-gradient-to-br from-mist-400 via-mist-50 to-mist-400 flex flex-col">
