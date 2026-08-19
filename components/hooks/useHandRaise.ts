@@ -12,6 +12,7 @@ export function useHandRaise(enabled: boolean, onRaised: () => void) {
   const raiseStartRef = useRef<number | null>(null);
   const lastTriggerRef = useRef<number>(0);
   const onRaisedRef = useRef(onRaised);
+  const smoothedYRef = useRef<number | null>(null)
   onRaisedRef.current = onRaised;
 
   const [ready, setReady] = useState(false);
@@ -70,9 +71,19 @@ export function useHandRaise(enabled: boolean, onRaised: () => void) {
             // Landmark 0 = wrist. Video y-coords are 0 (top) to 1 (bottom).
             // A raised hand puts the wrist in the upper portion of frame.
             const wristY = hand?.[0]?.y;
-            const isRaised = wristY !== undefined && wristY < 0.35;
+            
+            if (wristY !== undefined) {
+              smoothedYRef.current =
+                smoothedYRef.current === null
+                  ? wristY
+                  : smoothedYRef.current * 0.75 + wristY * 0.25; // heavily weight history, smooth out jitter
+            } else {
+              smoothedYRef.current = null; // hand left frame entirely
+            }
+            
+            const isRaised = smoothedYRef.current !== null && smoothedYRef.current < 0.35;
   
-            console.log('hand detection:', { handFound: !!hand, wristY, isRaised, raiseStart: raiseStartRef.current });
+            onsole.log('hand detection:', { handFound: !!hand, rawY: wristY, smoothedY: smoothedYRef.current, isRaised, raiseStart: raiseStartRef.current });
 
           
             if (isRaised) {
