@@ -1107,11 +1107,15 @@ export default function AIPresentation() {
   const { present, error } = useFacePresence(cameraEnabled);
 
   const handleHandRaised = () => {
+     console.log('handleHandRaised called, inIntro:', inIntro);
      if (inIntro) {
+      console.log('blocked: in intro, showing notice');
       showNotice("Can't raise your hand during the introduction");
       return;
     }
-    if (isChatSpeaking || showQuiz || showReview || showConclusion) return;
+    if (isChatSpeaking || showQuiz || showReview || showConclusion)return;
+      console.log('blocked by state guard', { isChatSpeaking, showQuiz, showReview, showConclusion });
+      return;
     if (isSpeaking && !inIntro) {
       interruptedRef.current = { section: activeSection, step: microStep };
     }
