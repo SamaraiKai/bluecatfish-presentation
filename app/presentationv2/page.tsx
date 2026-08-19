@@ -1449,8 +1449,11 @@ export default function AIPresentation() {
   useEffect(() => {
     if (!cameraEnabled) return;
     if (micStatus !== 'idle' || isChatSpeaking) return;
-  
-    // don't fire a cue the moment the camera turns on
+    if (firstRunRef.current) { firstRunRef.current = false; prevPresentRef.current = present; return; }
+
+    if (present === prevPresentRef.current) return;
+    prevPresentRef.current = present;
+    
     if (firstRunRef.current) {
       firstRunRef.current = false;
       return;
@@ -1460,7 +1463,7 @@ export default function AIPresentation() {
       pause(); 
       playPresenceCue('presence_away');
     } else {
-      playPresenceCue('presence_back', () => {
+      playPresenceCue('presence_back', () => { 
         if (!isChatSpeaking) resume();
       });
     }
