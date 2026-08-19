@@ -57,37 +57,46 @@ export function useHandRaise(enabled: boolean, onRaised: () => void) {
         setReady(true);
 
         const loop = () => {
-          if (cancelled || !detectorRef.current || !videoRef.current) return;
+          
+          if (cancelled || !detectorRef.current || !videoRef.current) {
+            console.log('loop exiting early:', { cancelled, hasDetector: !!detectorRef.current, hasVideo: !!videoRef.current });
+            return;
+          }
 
-          const result = detectorRef.current.detectForVideo(videoRef.current, performance.now());
-          const hand = result.landmarks?.[0];
-
-          // Landmark 0 = wrist. Video y-coords are 0 (top) to 1 (bottom).
-          // A raised hand puts the wrist in the upper portion of frame.
-          const wristY = hand?.[0]?.y;
-          const isRaised = wristY !== undefined && wristY < 0.35;
-
-          console.log('hand detection:', { handFound: !!hand, wristY, isRaised, raiseStart: raiseStartRef.current });
+          try {
+            const result = detectorRef.current.detectForVideo(videoRef.current, performance.now());
+            const hand = result.landmarks?.[0];
+  
+            // Landmark 0 = wrist. Video y-coords are 0 (top) to 1 (bottom).
+            // A raised hand puts the wrist in the upper portion of frame.
+            const wristY = hand?.[0]?.y;
+            const isRaised = wristY !== undefined && wristY < 0.35;
+  
+            console.log('hand detection:', { handFound: !!hand, wristY, isRaised, raiseStart: raiseStartRef.current });
 
           
-          if (isRaised) {
-            if (raiseStartRef.current === null) {
-              raiseStartRef.current = Date.now();
-            } else if (
-              Date.now() - raisedStartRef.current > RAISE_SUSTAIN_MS &&
-              Date.now() - lastTriggerRef.current > COOLDOWN_MS
-            ) {
-              console.log('TRIGGERING onRaised');
-              lastTriggerRef.current = Date.now();
+            if (isRaised) {
+              if (raiseStartRef.current === null) {
+                raiseStartRef.current = Date.now();
+              } else if (
+                Date.now() - raiseStartRef.current > RAISE_SUSTAIN_MS &&
+                Date.now() - lastTriggerRef.current > COOLDOWN_MS
+              ) {
+                console.log('TRIGGERING onRaised');
+                lastTriggerRef.current = Date.now();
+                raiseStartRef.current = null;
+                onRaisedRef.current();
+              }
+            } else {
               raiseStartRef.current = null;
-              onRaisedRef.current();
             }
-          } else {
-            raisedStartRef.current = null;
+          } catch (err) {
+            console.error('ERROR IN LOOP:', err);
           }
 
           rafRef.current = requestAnimationFrame(loop);
         };
+
         loop();
       } catch (e: any) {
         setError(e.message ?? "Camera unavailable");
@@ -95,7 +104,7 @@ export function useHandRaise(enabled: boolean, onRaised: () => void) {
     };
 
     start();
-
+        
     return () => {
       console.log('useHandRaise cleanup firing, was enabled:', enabled);
       cancelled = true;
