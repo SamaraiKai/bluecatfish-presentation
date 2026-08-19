@@ -44,13 +44,55 @@ async function getEmbedding(text: string): Promise<number[]> {
   return data.data[0].embedding;
 }
 
-// Call the locally-running OpenClaw bluecatfish agent (Professor Marine) as the
-// self-hosted reasoning layer. The agent's skill supplies the persona and
-// pedagogy; we pass the retrieved factsheet context and conversation so the
-// reply is grounded in the Supabase knowledge base. This replaces the OpenAI
-// gpt-4o-mini call, making the LLM self-hosted (model on the DGX Spark) while
-// keeping the Supabase pgvector RAG. See Baradziej and Pal (2026), Section 4.
+// Resolve the Professor Marine reply. In production (Vercel) set
+// OPENCLAW_GATEWAY_URL to the homelab OpenClaw HTTP bridge (exposed from the
+// Minisforum via cloudflared). In local dev, leave it unset and the route
+// spawns the local openclaw CLI on the Mac. The agent's skill supplies the
+// persona and pedagogy; we pass the retrieved factsheet context and conversation
+// so the reply is grounded in the Supabase knowledge base. This makes the LLM
+// self-hosted (model on the DGX Spark) while keeping the Supabase pgvector RAG.
+// See Baradziej and Pal (2026), Section 4.
 async function runOpenClawBluecatfish(message: string): Promise<string> {
+  if (process.env.OPENCLAW_GATEWAY_URL) {
+    return callOpenClawGatewayHttp(message);
+  }
+  return runOpenClawLocal(message);
+}
+
+// Production path: HTTP to the Minisforum OpenClaw bridge. Contract:
+// POST { message, agent, thinking } -> { reply } | openclaw --json shape.
+async function callOpenClawGatewayHttp(message: string): Promise<string> {
+  const url = process.env.OPENCLAW_GATEWAY_URL as string;
+  const token = process.env.OPENCLAW_GATEWAY_TOKEN;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ message, agent: 'bluecatfish', thinking: 'off' }),
+  });
+  if (!res.ok) {
+    throw new Error(`OpenClaw gateway HTTP ${res.status}: ${(await res.text()).slice(0, 300)}`);
+  }
+  const data = (await res.json()) as {
+    reply?: string;
+    result?: { payloads?: { text?: string }[] };
+  };
+  if (data.reply && data.reply.trim()) return data.reply.trim();
+  if (data.result?.payloads) {
+    const text = data.result.payloads
+      .map((p) => p.text ?? '')
+      .filter(Boolean)
+      .join('\n')
+      .trim();
+    if (text) return text;
+  }
+  throw new Error('OpenClaw gateway returned no reply payload');
+}
+
+// Local dev path: spawn the openclaw CLI on the Mac.
+async function runOpenClawLocal(message: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const proc = spawn('/opt/homebrew/bin/openclaw', [
       'agent',

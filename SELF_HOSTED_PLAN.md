@@ -16,6 +16,15 @@ The `respond` route does RAG: it embeds the student text, retrieves the top fact
 | Text-to-speech | OpenAI audio/speech | OpenAI audio/speech | Local Coqui or Piper |
 | Vector store | Supabase pgvector | Supabase pgvector | Supabase pgvector (stays) |
 
+## Vercel deployment shape (decided)
+
+The app is hosted on Vercel. Vercel is a cloud platform, so the app server itself is not self-hosted. The self-hosting applies to the AI services, which run on the homelab (Minisforum plus DGX Spark) and are reached from Vercel over authenticated tunnels. The LLM call is env-gated so one codebase serves both environments:
+
+- **Local dev (Mac):** `OPENCLAW_GATEWAY_URL` unset. The `respond` route spawns the local `openclaw agent --agent bluecatfish` CLI. Works because openclaw and the bluecatfish agent live on the Mac.
+- **Vercel production:** `OPENCLAW_GATEWAY_URL` set to a tiny HTTP bridge on the Minisforum that wraps `openclaw agent` locally and returns `{ reply }`. Exposed via cloudflared (same pattern as `llama.newfire.app` and `claw.newfire.app`), with `OPENCLAW_GATEWAY_TOKEN` for server-to-server auth. Vercel cannot spawn the CLI or speak the OpenClaw WebSocket RPC, so the HTTP bridge is required.
+
+This means the OpenClaw agent framework and the `bluecatfish` agent must also be installed on the Minisforum (always-on), not only on the Mac. The Mac setup stays for local development.
+
 The LLM swap is done: `app/api/conversational/respond/route.ts` keeps the Supabase pgvector retrieval and the Professor Marine prompt, but calls the local OpenClaw `bluecatfish` agent instead of OpenAI. The agent's skill (`openclaw/bluecatfish/SKILL.md`) supplies the persona and pedagogy; the retrieved factsheet chunks are passed in as context.
 
 ## Remaining phases
