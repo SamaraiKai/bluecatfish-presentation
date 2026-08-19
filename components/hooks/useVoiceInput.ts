@@ -6,7 +6,7 @@ type Status = "idle" | "listening" | "processing";
 const SILENCE_THRESHOLD = 0.010; // RMS below this counts as silence
 const SILENCE_DURATION = 2000;   // ms of silence before auto-stop
 
-const BARGE_THRESHOLD = 0.05;
+const BARGE_THRESHOLD = 0.0435;
 const BARGE_SUSTAIN = 250;
 
 const MIC_CONSTRAINTS: MediaTrackConstraints = {
