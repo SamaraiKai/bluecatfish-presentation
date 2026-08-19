@@ -82,9 +82,6 @@ export function useHandRaise(enabled: boolean, onRaised: () => void) {
             }
             
             const isRaised = smoothedYRef.current !== null && smoothedYRef.current < 0.35;
-  
-            console.log('hand detection:', { handFound: !!hand, rawY: wristY, smoothedY: smoothedYRef.current, isRaised, raiseStart: raiseStartRef.current });
-
           
             if (isRaised) {
               if (raiseStartRef.current === null) {
