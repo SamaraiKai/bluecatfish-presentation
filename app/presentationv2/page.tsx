@@ -1106,6 +1106,29 @@ export default function AIPresentation() {
 
   const { present, error } = useFacePresence(cameraEnabled);
 
+  const handleHandRaised = () => {
+     if (inIntro) {
+      showNotice("Can't raise your hand during the introduction");
+      return;
+    }
+    if (isChatSpeaking || showQuiz || showReview || showConclusion) return;
+    if (isSpeaking && !inIntro) {
+      interruptedRef.current = { section: activeSection, step: microStep };
+    }
+    stop();
+    play(audioUrls['handRaiseCue'], 'handRaiseCue', '', () => {
+      if (micStatus === 'idle') toggleMic();
+    });
+  };
+  
+  const showNotice = (text: string) => {
+    setNotice(text);
+    if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
+    noticeTimerRef.current = setTimeout(() => setNotice(null), 2500);
+  };
+
+  const { ready: handRaiseReady, error: handRaiseError } = useHandRaise(cameraEnabled, handleHandRaised);
+  
   /* ----------------------------------------------------- audio handlers */
   const playMicroStepAudio = (sectionIndex: number, stepIndex: number, transitionType: 'means' | 'analogy' | null) => {
     const section = sections[sectionIndex];
@@ -1306,21 +1329,6 @@ export default function AIPresentation() {
     stop();
     sendMessage(text);
   };
-
-  const handleHandRaised = () => {
-     if (inIntro) {
-      showNotice("Can't raise your hand during the introduction");
-      return;
-    }
-    if (isChatSpeaking || showQuiz || showReview || showConclusion) return;
-    if (isSpeaking && !inIntro) {
-      interruptedRef.current = { section: activeSection, step: microStep };
-    }
-    stop();
-    play(audioUrls['handRaiseCue'], 'handRaiseCue', '', () => {
-      if (micStatus === 'idle') toggleMic();
-    });
-  };
   
   const handleQuizReview = () => {
     setShowQuiz(false);
@@ -1360,14 +1368,7 @@ export default function AIPresentation() {
     setSectionScores({});
     setCompletedQuizzes(new Set());
   };
-
-  const showNotice = (text: string) => {
-    setNotice(text);
-    if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
-    noticeTimerRef.current = setTimeout(() => setNotice(null), 2500);
-  };
-
-  const { ready: handRaiseReady, error: handRaiseError } = useHandRaise(cameraEnabled, handleHandRaised);
+  
   /* -------------------------------------------------------------- effects */
   // Fetch sections, then fetch pre-generated audio for them
   useEffect(() => {
