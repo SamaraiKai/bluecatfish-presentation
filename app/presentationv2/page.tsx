@@ -6,6 +6,7 @@ import { createPortal } from 'react-dom';
 import { useFacePresence } from "@/components/hooks/useFacePresence";
 import { useVoiceInput } from '@/components/hooks/useVoiceInput';
 import { useSpeechQueue } from '@/components/hooks/useSpeechQueue';
+import { useHandRaise } from '@/components/hooks/useHandRaise';
 
 /* ============================================================================
  * TYPES
