@@ -20,6 +20,8 @@ export function useFacePresence(enabled: boolean) {
     let cancelled = false;
 
     const start = async () => {
+      setError(null);
+      setReady(false);
       try {
         const vision = await FilesetResolver.forVisionTasks(
           "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/wasm"
@@ -32,7 +34,10 @@ export function useFacePresence(enabled: boolean) {
           runningMode: "VIDEO",
           minDetectionConfidence: 0.5,
         });
-        if (cancelled) return;
+        if (cancelled) {
+          detector.close();
+          return;
+        }
         detectorRef.current = detector;
 
         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
@@ -59,7 +64,7 @@ export function useFacePresence(enabled: boolean) {
             lastSeenRef.current = Date.now();
             setPresent(true);
           } else if (Date.now() - lastSeenRef.current > ABSENCE_GRACE_MS) {
-            // 2s grace period so a blink or head turn doesn't trigger it
+            // grace period so a blink or head turn doesn't trigger it
             setPresent(false);
           }
 
