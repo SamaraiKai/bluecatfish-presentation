@@ -52,6 +52,8 @@ const REVIEW_OUTRO_TEXT = "That's the review. Ready to keep going?";
 
 const presence_away = "Take your time. I'll wait."
 const presence_back = "Alright, picking up where we left off."
+
+const HAND_RAISE_TEXT = "Do you have a question?";
 /* ============================================================================
  * HELPERS
  * ========================================================================== */
@@ -226,6 +228,13 @@ function buildSharedJobs(): AudioJob[] {
     text: presence_back,
     fileName: `${FOLDER}/presence-back.mp3`,
   });
+
+  jobs.push({ 
+    key: "handRaiseCue", 
+    text: HAND_RAISE_TEXT, 
+    fileName: `${FOLDER}/hand-raise-cue.mp3` 
+  });
+  
   return jobs;
 }
 
