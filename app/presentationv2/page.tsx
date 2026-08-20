@@ -1398,7 +1398,11 @@ export default function AIPresentation() {
   };
   /* ------------------------------------------- micro-step nav handlers */
   const goToMicroStep = (index: number) => {
-    if (index < 0 || index >= microSteps.length) return;
+    console.log('goToMicroStep called with:', index, 'microSteps.length:', microSteps.length, 'activeSection:', activeSection);
+    if (index < 0 || index >= microSteps.length) {
+      console.log('REJECTED — out of bounds');
+      return;
+    }
     if (keyTermsTimerRef.current) clearTimeout(keyTermsTimerRef.current);
     setMicroStep(index);
     playMicroStepAudio(activeSection, index, null);
