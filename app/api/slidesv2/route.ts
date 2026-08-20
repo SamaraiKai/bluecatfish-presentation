@@ -70,8 +70,9 @@ STRICT RULES YOU MUST FOLLOW:
 3. Available step types after the overview: "simple" (a plainer re-explanation for a confused learner, 2 short sentences, different wording than the overview), "keyTerms" (1-4 terms with short plain-language definitions), "example" (an analogy to something unrelated and familiar, 1-2 sentences), "numberSpotlight" (ONE striking statistic from the source content that deserves emphasis — provide "value" as the short number/quantity, "label" as a 3-6 word caption, and "context" as 1-2 sentences explaining why this number matters), "predictThen" (a question inviting the learner to guess a fact before it's revealed — provide "question" (1 sentence), "answer" (the short factual answer), and "reveal" (1-2 sentences expanding on it)), "checkYourself" (a single quick true/false comprehension check — provide "statement", "isTrue" (boolean), and "feedback" (1 sentence explaining why)).
 4. Include a step type ONLY if it genuinely helps for THIS content. Skip "simple" if the overview is already plain enough. Skip "example" if no honest analogy fits. Only use "numberSpotlight" if the source content contains a genuinely striking figure — never invent one. Only use "predictThen" for facts a learner could plausibly guess at. Do not include the same type twice.
 5. Every step's content must be grounded strictly in the SOURCE CONTENT — never invent facts to fill out a step.
-6. "quiz" must contain EXACTLY 2 multiple-choice questions testing THIS section's content. Each has exactly 4 "options", a "correctAnswer" index (0-3), and an "explanation" (1 short sentence stating the specific fact that makes the answer correct). Base questions only on facts appearing in your generated steps, since those are what the learner sees and hears.
-7. "icon" must be a single emoji representing this section's topic.
+6. Every section SHOULD include at least one interactive step ("predictThen" or "checkYourself") unless the content genuinely doesn't support one.
+7. "quiz" must contain EXACTLY 2 multiple-choice questions testing THIS section's content. Each has exactly 4 "options", a "correctAnswer" index (0-3), and an "explanation" (1 short sentence stating the specific fact that makes the answer correct). Base questions only on facts appearing in your generated steps, since those are what the learner sees and hears. IMPORTANT: vary your step composition across sections rather than defaulting to the same pattern every time. "checkYourself" and "example" are just as valid as "keyTerms" — use them wherever the content supports them, and do not treat "keyTerms" as a default.
+8. "icon" must be a single emoji representing this section's topic.
 
 Output ONLY a JSON object with key "section":
 
@@ -164,7 +165,7 @@ async function assignUniqueImages(sections: any[], sectionTopics: string[]) {
 
 export async function POST(req: Request) {
   try {
-    const cacheKey = `bluecatfish_sections_ai_v22`;
+    const cacheKey = `bluecatfish_sections_ai_v23`;
 
     const cachedRaw = await getValue(cacheKey);
     if (cachedRaw) {
