@@ -288,8 +288,13 @@ function buildSectionJobs(sections: any[]): AudioJob[] {
 
       if (step.type === 'numberSpotlight') {
         jobs.push({
+          key: `section${i}_step${s}_value`,
+          text: `${step.value}. ${step.label}.`,
+          fileName: `${FOLDER}/section${i + 1}_step${s}_value.mp3`,
+        });
+        jobs.push({
           key: `section${i}_step${s}`,
-          text: `${step.value}. ${step.label}. ${step.context}`,
+          text: step.context,
           fileName: `${FOLDER}/section${i + 1}_step${s}.mp3`,
         });
       } else if (step.type === 'predictThen') {
