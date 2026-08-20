@@ -122,9 +122,11 @@ const useAudioPlayer = () => {
       audio.currentTime = startAt;
     }
     
-    audio.ontimeupdate = () => setCurrentTime(audio.currentTime);
-    audio.onloadedmetadata = () => setDuration(audio.duration);
-
+    audio.ontimeupdate = () => setDuration(audio.duration);
+    audio.onloadedmetadata = () {
+      if (isFinite(audio.duration) && audio.duration > 0) setDuration(audio.duration);
+    };
+    
     audio.onended = () => {
       setIsSpeaking(false);
       setIsPaused(false);
@@ -325,7 +327,7 @@ function HighlightedText({
 }) {
   const words = text ? text.split(/\s+/) : [];
   const activeIndex =
-    isActive && isSpeaking && duration > 0
+    isActive && isSpeaking && duration > 0 && currentTime > 0
       ? (() => {
           const totalChars = words.reduce((sum, w) => sum + w.length, 0);
           const targetChars = (currentTime / duration) * totalChars;
