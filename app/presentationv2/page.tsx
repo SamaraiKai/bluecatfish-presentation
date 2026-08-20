@@ -80,7 +80,7 @@ function getMicroSteps(section: SectionWithBreakdown, sectionIndex: number): Mic
 function getMicroStepText(section: SectionWithBreakdown, stepIndex: number): string {
     const step = section.steps[stepIndex];
     if (!step || step.type === 'keyTerms') return '';
-    if (step.type === 'numberSpotlight') return `${step.value}. ${step.label}. ${step.context}`;
+    if (step.type === 'numberSpotlight') return step.context;
     if (step.type === 'predictThen') return '';
     if (step.type === 'checkYourself') return '';
     return step.text;
@@ -697,9 +697,10 @@ function MiniSlideshowBlock({
         }
 
         if (step.type === 'numberSpotlight') {
+          const valueActive = currentKey === `${baseKey}_value`;
           return (
             <div className="text-center py-6">
-              <div className="text-6xl md:text-7xl font-black text-blue-700 mb-3">
+              <div className={`"text-6xl md:text-7xl font-black mb-3 transition-colors ${valueActive ? 'text-cyan-500' : 'text-blue-700'}`}>
                 <AnimatedStatValue value={step.value} />
               </div>
               <div className="text-lg font-semibold text-blue-900 mb-4">{step.label}</div>
@@ -1304,9 +1305,19 @@ export default function AIPresentation() {
         play(audioUrls[sKey], sKey, ''); // no onComplete — waits for user to answer
         return;
       }
+
+      if (step.type === 'numberSpotlight') {
+        const valueKey = `${baseKey}_value`;
+        play(audioUrls[valueKey], valueKey, '', () => {
+          play(audioUrls[baseKey], baseKey, step.context, () => {
+            autoAdvanceFrom(sectionIndex, stepIndex);
+          });
+        });
+        return;
+      }
       
       // Simple / example / anything else with plain text
-      if (step.text || step.type === 'numberSpotlight') {
+      if (step.text) {
         play(audioUrls[baseKey], baseKey, getMicroStepText(section, stepIndex), () => {
           autoAdvanceFrom(sectionIndex, stepIndex);
         });
