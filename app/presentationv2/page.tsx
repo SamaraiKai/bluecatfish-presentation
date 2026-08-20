@@ -639,7 +639,7 @@ function MiniSlideshowBlock({
   duration: number;
   isSpeaking: boolean;
   currentKey: string | null;
-  playMicroStepAudio: (sectionIndex: number, stepIndex: number, transitionType: 'means' | 'analogy' | null) => void;fix
+  playMicroStepAudio: (sectionIndex: number, stepIndex: number, transitionType: 'means' | 'analogy' | null) => void;
   autoAdvanceFrom: (sectionIndex: number, fromStep: number) => void;
   audioUrls: Record<string, string>;
   play: (url: string | undefined, key: string, text?: string, onComplete?: () => void) => void;
@@ -873,6 +873,9 @@ function ClassicLayout(props: {
   handleQuizContinue: () => void;
   currentKey: string | null;
   playMicroStepAudio: (sectionIndex: number, stepIndex: number, transitionType: 'means' | 'analogy' | null) => void;
+  autoAdvanceFrom: (sectionIndex: number, fromStep: number) => void;
+  audioUrls: Record<string, string>;
+  play: (url: string | undefined, key: string, text?: string, onComplete?: () => void) => void;
 }) {
   return (
     <div className="bg-white/5 backdrop-blur-md rounded-3xl border border-white-500/30 shadow-2xl overflow-hidden">
@@ -925,6 +928,9 @@ function SplitLayout(props: {
   showQuiz: boolean;
   handleQuizContinue: () => void;
   playMicroStepAudio: (sectionIndex: number, stepIndex: number, transitionType: 'means' | 'analogy' | null) => void;
+  autoAdvanceFrom: (sectionIndex: number, fromStep: number) => void;
+  audioUrls: Record<string, string>;
+  play: (url: string | undefined, key: string, text?: string, onComplete?: () => void) => void;
   
 }) {
   return (
