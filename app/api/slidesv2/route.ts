@@ -67,8 +67,8 @@ SOURCE CONTENT:
 STRICT RULES YOU MUST FOLLOW:
 1. "steps" is an ordered array of teaching steps for this section. YOU decide how many steps and which types, based on what this specific content actually needs. Use between 2 and 5 steps.
 2. The FIRST step must always be type "overview" — it introduces the section. Its "text" is 2 short sentences. It may optionally include "stats": 1-2 short quantitative facts as {value, label} pairs (e.g. {"value": "100+ Million", "label": "Estimated population in Bay"}). Omit "stats" entirely if the source content has no meaningful numbers for this topic — do not invent them.
-3. Available step types after the overview: "simple" (a plainer re-explanation for a confused learner, 2 short sentences, different wording than the overview), "keyTerms" (1-4 terms with short plain-language definitions), "example" (an analogy to something unrelated and familiar, 1-2 sentences).
-4. Include a step type ONLY if it genuinely helps for THIS content. Skip "simple" if the overview is already plain enough. Skip "example" if no honest analogy fits — a forced analogy is worse than none. Include only as many key terms as the content actually warrants; 1 good term beats 3 padded ones. Do not include the same type twice.
+3. Available step types after the overview: "simple" (a plainer re-explanation for a confused learner, 2 short sentences, different wording than the overview), "keyTerms" (1-4 terms with short plain-language definitions), "example" (an analogy to something unrelated and familiar, 1-2 sentences), "numberSpotlight" (ONE striking statistic from the source content that deserves emphasis — provide "value" as the short number/quantity, "label" as a 3-6 word caption, and "context" as 1-2 sentences explaining why this number matters), "predictThen" (a question inviting the learner to guess a fact before it's revealed — provide "question" (1 sentence), "answer" (the short factual answer), and "reveal" (1-2 sentences expanding on it)), "checkYourself" (a single quick true/false comprehension check — provide "statement", "isTrue" (boolean), and "feedback" (1 sentence explaining why)).
+4. Include a step type ONLY if it genuinely helps for THIS content. Skip "simple" if the overview is already plain enough. Skip "example" if no honest analogy fits. Only use "numberSpotlight" if the source content contains a genuinely striking figure — never invent one. Only use "predictThen" for facts a learner could plausibly guess at. Do not include the same type twice.
 5. Every step's content must be grounded strictly in the SOURCE CONTENT — never invent facts to fill out a step.
 6. "quiz" must contain EXACTLY 2 multiple-choice questions testing THIS section's content. Each has exactly 4 "options", a "correctAnswer" index (0-3), and an "explanation" (1 short sentence stating the specific fact that makes the answer correct). Base questions only on facts appearing in your generated steps, since those are what the learner sees and hears.
 7. "icon" must be a single emoji representing this section's topic.
@@ -84,7 +84,10 @@ Output ONLY a JSON object with key "section":
       { "type": "overview", "text": "...", "stats": [{"value": "...", "label": "..."}] },
       { "type": "simple", "text": "..." },
       { "type": "keyTerms", "terms": [{"term": "...", "definition": "..."}] },
-      { "type": "example", "text": "..." }
+      { "type": "example", "text": "..." },
+      { "type": "numberSpotlight", "value": "...", "label": "...", "context": "..." },
+      { "type": "predictThen", "question": "...", "answer": "...", "reveal": "..." },
+      { "type": "checkYourself", "statement": "...", "isTrue": true, "feedback": "..." }
     ],
     "quiz": [
       { "question": "...", "options": ["...","...","...","..."], "correctAnswer": 0, "explanation": "..." },
@@ -118,6 +121,9 @@ Output ONLY a JSON object with key "section":
     new Set(steps.map((s: any) => s.type)).size === steps.length &&
     steps.every((s: any) => {
       if (s.type === 'keyTerms') return Array.isArray(s.terms) && s.terms.length >= 1 && s.terms.length <= 4;
+      if (s.type === 'numberSpotlight') return typeof s.value === 'string' && typeof s.label === 'string' && typeof s.context === 'string';
+      if (s.type === 'predictThen') return typeof s.question === 'string' && typeof s.answer === 'string' && typeof s.reveal === 'string';
+      if (s.type === 'checkYourself') return typeof s.statement === 'string' && typeof s.isTrue === 'boolean' && typeof s.feedback === 'string';
       return typeof s.text === 'string' && s.text.trim().length > 0;
     });
 
@@ -158,7 +164,7 @@ async function assignUniqueImages(sections: any[], sectionTopics: string[]) {
 
 export async function POST(req: Request) {
   try {
-    const cacheKey = `bluecatfish_sections_ai_v20`;
+    const cacheKey = `bluecatfish_sections_ai_v21`;
 
     const cachedRaw = await getValue(cacheKey);
     if (cachedRaw) {
