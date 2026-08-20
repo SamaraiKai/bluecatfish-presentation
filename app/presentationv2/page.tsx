@@ -327,7 +327,7 @@ function HighlightedText({
 }) {
   const words = text ? text.split(/\s+/) : [];
   const activeIndex =
-    isActive && isSpeaking && duration > 0 &&
+    isActive && isSpeaking && duration > 0
       ? (() => {
           const totalChars = words.reduce((sum, w) => sum + w.length, 0);
           const targetChars = (currentTime / duration) * totalChars;
