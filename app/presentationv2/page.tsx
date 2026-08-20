@@ -561,6 +561,7 @@ function SectionImageBlock({
                 {/* Main Image */}
                 {currentSection.image && (
                   <img 
+                    key={currentSection.image}
                     src={currentSection.image} 
                     alt={currentSection.title}
                     className="absolute inset-0 w-full h-full object-contain opacity-80"
