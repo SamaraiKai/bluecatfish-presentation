@@ -700,7 +700,11 @@ function MiniSlideshowBlock({
           const valueActive = currentKey === `${baseKey}_value`;
           return (
             <div className="text-center py-6">
-              <div className={`"text-6xl md:text-7xl font-black mb-3 transition-colors ${valueActive ? 'text-cyan-500' : 'text-blue-700'}`}>
+              <div 
+                className={`text-6xl md:text-7xl font-black text-blue-700 mb-3 inline-block transition-all duration-500 ${
+                  valueActive ? 'scale-125 drop-shadow-[0_0_25px_rgba(34,211,238,0.6)]' : 'scale-100'
+                }`}
+              >
                 <AnimatedStatValue value={step.value} />
               </div>
               <div className="text-lg font-semibold text-blue-900 mb-4">{step.label}</div>
