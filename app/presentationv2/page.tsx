@@ -80,7 +80,7 @@ function getMicroSteps(section: SectionWithBreakdown, sectionIndex: number): Mic
 function getMicroStepText(section: SectionWithBreakdown, stepIndex: number): string {
     const step = section.steps[stepIndex];
     if (!step || step.type === 'keyTerms') return '';
-    if (step.type === 'numberSpotlight') return step.context;
+    if (step.type === 'numberSpotlight') return `${step.value}. ${step.label}. ${step.context}`;
     if (step.type === 'predictThen') return '';
     if (step.type === 'checkYourself') return '';
     return step.text;
