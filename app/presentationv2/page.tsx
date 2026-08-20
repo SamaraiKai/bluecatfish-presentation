@@ -1843,6 +1843,9 @@ export default function AIPresentation() {
               showQuiz={showQuiz}
               handleQuizContinue={handleQuizContinue}
               playMicroStepAudio={playMicroStepAudio}
+              autoAdvanceFrom={props.autoAdvanceFrom}
+              audioUrls={props.audioUrls}
+              play={props.play}
             />
           ) : (
             <SplitLayout
@@ -1862,6 +1865,9 @@ export default function AIPresentation() {
               showQuiz={showQuiz}
               handleQuizContinue={handleQuizContinue}
               playMicroStepAudio={playMicroStepAudio}
+              autoAdvanceFrom={props.autoAdvanceFrom}
+              audioUrls={props.audioUrls}
+              play={props.play}
             />
           )}
           
