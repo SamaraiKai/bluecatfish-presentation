@@ -123,7 +123,7 @@ const useAudioPlayer = () => {
     }
     
     audio.ontimeupdate = () => setDuration(audio.duration);
-    audio.onloadedmetadata = () {
+    audio.onloadedmetadata = () => {
       if (isFinite(audio.duration) && audio.duration > 0) setDuration(audio.duration);
     };
     
