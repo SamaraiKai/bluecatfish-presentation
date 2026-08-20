@@ -10,7 +10,7 @@ const supabase = createClient(
  * CONFIG
  * ========================================================================== */
 const BUCKET = "slide-audio";
-const FOLDER = "sections_v20";
+const FOLDER = "sections_v21";
 
 // How many TTS calls to run at once. Higher = faster, but risks rate limits.
 const BATCH_SIZE = 8;
@@ -286,7 +286,35 @@ function buildSectionJobs(sections: any[]): AudioJob[] {
     for (let s = 0; s < section.steps.length; s++) {
       const step = section.steps[s];
 
-      if (step.type === 'keyTerms') {
+      if (step.type === 'numberSpotlight') {
+        jobs.push({
+          key: `section${i}_step${s}`,
+          text: `${step.value}. ${step.label}. ${step.context}`,
+          fileName: `${FOLDER}/section${i + 1}_step${s}.mp3`,
+        });
+      } else if (step.type === 'predictThen') {
+        jobs.push({
+          key: `section${i}_step${s}_question`,
+          text: step.question,
+          fileName: `${FOLDER}/section${i + 1}_step${s}_question.mp3`,
+        });
+        jobs.push({
+          key: `section${i}_step${s}_reveal`,
+          text: `${step.answer}. ${step.reveal}`,
+          fileName: `${FOLDER}/section${i + 1}_step${s}_reveal.mp3`,
+        });
+      } else if (step.type === 'checkYourself') {
+        jobs.push({
+          key: `section${i}_step${s}_statement`,
+          text: `True or false: ${step.statement}`,
+          fileName: `${FOLDER}/section${i + 1}_step${s}_statement.mp3`,
+        });
+        jobs.push({
+          key: `section${i}_step${s}_feedback`,
+          text: step.feedback,
+          fileName: `${FOLDER}/section${i + 1}_step${s}_feedback.mp3`,
+        });
+      } else if (step.type === 'keyTerms') {
         step.terms.forEach((t: any, termIdx: number) => {
           jobs.push({
             key: `section${i}_keyterm${termIdx}`,
