@@ -710,7 +710,7 @@ function MiniSlideshowBlock({
         if (step.type === 'numberSpotlight') {
           const valueActive = currentKey === `${baseKey}_value`;
           return (
-            <div className="text-center py-6">
+            <div className="text-center py-6 animate-[fadeInUp_0.7s_ease-out]">
               <div 
                 className={`text-6xl md:text-7xl font-black text-blue-700 mb-3 inline-block transition-all duration-700 ease-out ${
                   valueActive ? 'scale-115 drop-shadow-[0_0_25px_rgba(34,211,238,0.6)]' : 'scale-100 drop-shadow-none'
@@ -734,7 +734,14 @@ function MiniSlideshowBlock({
         if (step.type === 'predictThen') {
           return (
             <div className="text-center py-4">
-              <p className="text-xl font-semibold text-black mb-6">{step.question}</p>
+              <HighlightedText
+                text={step.question}
+                currentTime={currentTime}
+                duration={duration}
+                isSpeaking={isSpeaking}
+                isActive={currentKey === `${baseKey}_question`}
+                className="text-xl font-semibold text-black mb-6"
+              />
               {!revealed ? (
                 <button
                   onClick={() => {
@@ -749,7 +756,14 @@ function MiniSlideshowBlock({
               ) : (
                 <div className="animate-[fadeIn_0.4s_ease-out]">
                   <div className="text-4xl font-black text-blue-700 mb-3">{step.answer}</div>
-                  <p className="text-lg text-black leading-relaxed max-w-xl mx-auto">{step.reveal}</p>
+                  <HighlightedText
+                    text={step.reveal}
+                    currentTime={currentTime}
+                    duration={duration}
+                    isSpeaking={isSpeaking}
+                    isActive={currentKey === `${baseKey}_reveal`}
+                    className="text-lg text-black leading-relaxed max-w-xl mx-auto"
+                  />
                 </div>
               )}
             </div>
@@ -970,9 +984,9 @@ function SplitLayout(props: {
             duration={props.duration}
             isSpeaking={props.isSpeaking}
             playMicroStepAudio={props.playMicroStepAudio}
-            autoAdvanceFrom={autoAdvanceFrom}
-            audioUrls={audioUrls}
-            play={play}
+            autoAdvanceFrom={props.autoAdvanceFrom}
+            audioUrls={props.audioUrls}
+            play={props.play}
           />
         </div>
 
