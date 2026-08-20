@@ -662,11 +662,22 @@ function MiniSlideshowBlock({
         const baseKey = `section${activeSectionIndex}_step${microStep}`;
         const [revealed, setRevealed] = useState(false);
         const [checkAnswer, setCheckAnswer] = useState<boolean | null>(null);
+        const [scaled, setScaled] = useState(false);
 
         useEffect(() => {
           setRevealed(false);
           setCheckAnswer(null);
         }, [microStep, activeSectionIndex]);
+
+        useEffect(() => {
+          if (currentKey === `${baseKey}_value`) {
+            // next frame, so the browser paints the un-scaled state first and can animate from it
+            const id = requestAnimationFrame(() => setScaled(true));
+            return () => cancelAnimationFrame(id);
+          } else {
+            setScaled(false);
+          }
+        }, [currentKey, baseKey]);
       
         if (step.type === 'keyTerms') {
           return (
@@ -701,11 +712,11 @@ function MiniSlideshowBlock({
           return (
             <div className="text-center py-6">
               <div 
-                className={`text-6xl md:text-7xl font-black text-blue-700 mb-3 inline-block transition-all duration-500 ${
-                  valueActive ? 'scale-125 drop-shadow-[0_0_25px_rgba(34,211,238,0.6)]' : 'scale-100'
+                className={`text-6xl md:text-7xl font-black text-blue-700 mb-3 inline-block transition-all duration-700 ease-out ${
+                  valueActive ? 'scale-115 drop-shadow-[0_0_25px_rgba(34,211,238,0.6)]' : 'scale-100 drop-shadow-none'
                 }`}
               >
-                <AnimatedStatValue value={step.value} />
+                <AnimatedStatValue value={step.value} start={scaled}/>
               </div>
               <div className="text-lg font-semibold text-blue-900 mb-4">{step.label}</div>
               <HighlightedText
