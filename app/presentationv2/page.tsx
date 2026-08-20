@@ -658,6 +658,7 @@ function MiniSlideshowBlock({
 
       {(() => {
         const step = currentSection.steps[microStep];
+        if (!step) return null; // step index out of range mid-transition — render nothing this frame
         const baseKey = `section${activeSectionIndex}_step${microStep}`;
         const [revealed, setRevealed] = useState(false);
         const [checkAnswer, setCheckAnswer] = useState<boolean | null>(null);
@@ -848,7 +849,7 @@ function MiniSlideshowBlock({
         </button>
       </div>
     
-      <p className="text-center text-xs text-blue-700/80 mt-2">{microSteps[microStep].label}</p>
+      <p className="text-center text-xs text-blue-700/80 mt-2">{microSteps[microStep]?.label}</p>
     </div>
   );
 }
@@ -1257,6 +1258,8 @@ export default function AIPresentation() {
     const text = getMicroStepText(section, stepIndex);
   
     const playActualStep = () => {
+      const step = section.steps[stepIndex];
+      if (!step) return;
       const baseKey = `section${sectionIndex}_step${stepIndex}`;
       console.log('PLAYING STEP:', { sectionIndex, stepIndex, type: step.type, baseKey, urlExists: !!audioUrls[baseKey] });
       // Overview with fun facts — content, then each fact clip in sequence
@@ -1303,8 +1306,8 @@ export default function AIPresentation() {
       }
       
       // Simple / example / anything else with plain text
-      if (step.text) {
-        play(audioUrls[baseKey], baseKey, text, () => {
+      if (step.text || step.type === 'numberSpotlight') {
+        play(audioUrls[baseKey], baseKey, getMicroStepText(section, stepIndex), () => {
           autoAdvanceFrom(sectionIndex, stepIndex);
         });
       } else {
