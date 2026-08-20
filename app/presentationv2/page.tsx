@@ -746,8 +746,11 @@ function MiniSlideshowBlock({
                 <button
                   onClick={() => {
                     setRevealed(true);
+                    const aKey = `${baseKey}_answer`;
                     const rKey = `${baseKey}_reveal`;
-                    play(audioUrls[rKey], rKey, '', () => autoAdvanceFrom(activeSectionIndex, microStep));
+                    play(audioUrls[aKey], aKey, '', () => {
+                      play(audioUrls[rKey], rKey, step.reveal, () => autoAdvanceFrom(activeSectionIndex, microStep));
+                    });
                   }}
                   className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-colors"
                 >
