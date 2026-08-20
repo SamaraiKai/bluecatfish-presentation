@@ -122,10 +122,8 @@ const useAudioPlayer = () => {
       audio.currentTime = startAt;
     }
     
-    audio.ontimeupdate = () => setDuration(audio.duration);
-    audio.onloadedmetadata = () => {
-      if (isFinite(audio.duration) && audio.duration > 0) setDuration(audio.duration);
-    };
+    audio.ontimeupdate = () => setCurrentTime(audio.currentTime);
+    audio.onloadedmetadata = () => setDuration(audio.duration);
     
     audio.onended = () => {
       setIsSpeaking(false);
