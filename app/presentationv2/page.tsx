@@ -33,7 +33,11 @@ type Step =
   | { type: 'overview'; text: string; stats?: { value: string; label: string }[] }
   | { type: 'simple'; text: string }
   | { type: 'example'; text: string }
-  | { type: 'keyTerms'; terms: { term: string; definition: string }[] };
+  | { type: 'keyTerms'; terms: { term: string; definition: string }[] }
+  | { type: 'numberSpotlight'; value: string; label: string; context: string }
+  | { type: 'predictThen'; question: string; answer: string; reveal: string }
+  | { type: 'checkYourself'; statement: string; isTrue: boolean; feedback: string };
+
 /* ============================================================================
  * CONSTANTS
  * ========================================================================== */
@@ -57,6 +61,9 @@ const STEP_LABELS: Record<Step['type'], string> = {
   simple: 'Simple Explanation',
   example: 'Real World Example',
   keyTerms: 'Key Terms',
+  numberSpotlight: 'By the Numbers',
+  predictThen: 'Take a Guess',
+  checkYourself: 'Quick Check',
 };
 
 /* ============================================================================
@@ -73,6 +80,9 @@ function getMicroSteps(section: SectionWithBreakdown, sectionIndex: number): Mic
 function getMicroStepText(section: SectionWithBreakdown, stepIndex: number): string {
     const step = section.steps[stepIndex];
     if (!step || step.type === 'keyTerms') return '';
+    if (step.type === 'numberSpotlight') return step.context;
+    if (step.type === 'predictThen') return '';
+    if (step.type === 'checkYourself') return '';
     return step.text;
   }
 
@@ -612,6 +622,9 @@ function MiniSlideshowBlock({
   isSpeaking,
   currentKey,
   playMicroStepAudio,
+  autoAdvanceFrom,
+  audioUrls,
+  play,
 }: {
   currentSection: SectionWithBreakdown;
   activeSectionIndex: number;
@@ -627,6 +640,9 @@ function MiniSlideshowBlock({
   isSpeaking: boolean;
   currentKey: string | null;
   playMicroStepAudio: (sectionIndex: number, stepIndex: number, transitionType: 'means' | 'analogy' | null) => void;fix
+  autoAdvanceFrom: (sectionIndex: number, fromStep: number) => void;
+  audioUrls: Record<string, string>;
+  play: (url: string | undefined, key: string, text?: string, onComplete?: () => void) => void;
 }) {
   return (
     <div className="p-8 md:p-12 flex flex-col justify-center bg-gradient-to-br from-mauve-200/70 to-mauve-300/70 rounded-3xl border border-white-500/30">
@@ -643,7 +659,14 @@ function MiniSlideshowBlock({
       {(() => {
         const step = currentSection.steps[microStep];
         const baseKey = `section${activeSectionIndex}_step${microStep}`;
+        const [revealed, setRevealed] = useState(false);
+        const [checkAnswer, setCheckAnswer] = useState<boolean | null>(null);
 
+        useEffect(() => {
+          setRevealed(false);
+          setCheckAnswer(null);
+        }, [microStep, activeSectionIndex]);
+      
         if (step.type === 'keyTerms') {
           return (
             <div className="space-y-3">
@@ -672,8 +695,85 @@ function MiniSlideshowBlock({
           );
         }
 
+        if (step.type === 'numberSpotlight') {
+          return (
+            <div className="text-center py-6">
+              <div className="text-6xl md:text-7xl font-black text-blue-700 mb-3">
+                <AnimatedStatValue value={step.value} />
+              </div>
+              <div className="text-lg font-semibold text-blue-900 mb-4">{step.label}</div>
+              <HighlightedText
+                text={step.context}
+                currentTime={currentTime}
+                duration={duration}
+                isSpeaking={isSpeaking}
+                isActive={currentKey === baseKey}
+                className="text-lg text-black leading-relaxed max-w-xl mx-auto"
+              />
+            </div>
+          );
+        }
+        
+        if (step.type === 'predictThen') {
+          return (
+            <div className="text-center py-4">
+              <p className="text-xl font-semibold text-black mb-6">{step.question}</p>
+              {!revealed ? (
+                <button
+                  onClick={() => {
+                    setRevealed(true);
+                    const rKey = `${baseKey}_reveal`;
+                    play(audioUrls[rKey], rKey, '', () => autoAdvanceFrom(activeSectionIndex, microStep));
+                  }}
+                  className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-colors"
+                >
+                  Reveal the answer →
+                </button>
+              ) : (
+                <div className="animate-[fadeIn_0.4s_ease-out]">
+                  <div className="text-4xl font-black text-blue-700 mb-3">{step.answer}</div>
+                  <p className="text-lg text-black leading-relaxed max-w-xl mx-auto">{step.reveal}</p>
+                </div>
+              )}
+            </div>
+          );
+        }
+        
+        if (step.type === 'checkYourself') {
+          const isCorrect = checkAnswer === step.isTrue;
+          return (
+            <div className="text-center py-4">
+              <p className="text-xl font-semibold text-black mb-6">{step.statement}</p>
+              {checkAnswer === null ? (
+                <div className="flex gap-4 justify-center">
+                  {[true, false].map((val) => (
+                    <button
+                      key={String(val)}
+                      onClick={() => {
+                        setCheckAnswer(val);
+                        const fKey = `${baseKey}_feedback`;
+                        play(audioUrls[fKey], fKey, '', () => autoAdvanceFrom(activeSectionIndex, microStep));
+                      }}
+                      className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-colors"
+                    >
+                      {val ? 'True' : 'False'}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="animate-[fadeIn_0.4s_ease-out]">
+                  <div className={`text-2xl font-bold mb-3 ${isCorrect ? 'text-green-600' : 'text-red-600'}`}>
+                    {isCorrect ? '✓ Correct' : '✗ Not quite'}
+                  </div>
+                  <p className="text-lg text-black leading-relaxed max-w-xl mx-auto">{step.feedback}</p>
+                </div>
+              )}
+            </div>
+          );
+        }
+          
         const isExample = step.type === 'example';
-
+    
         return (
             <div className={isExample ? 'bg-amber-900/40 rounded-xl p-5 border border-amber-500/40' : undefined}>
               <HighlightedText
@@ -798,6 +898,9 @@ function ClassicLayout(props: {
             duration={props.duration}
             isSpeaking={props.isSpeaking}
             playMicroStepAudio={props.playMicroStepAudio}
+            autoAdvanceFrom={props.autoAdvanceFrom}
+            audioUrls={props.audioUrls}
+            play={props.play}
           />
         </div>
       </div>
@@ -844,6 +947,9 @@ function SplitLayout(props: {
             duration={props.duration}
             isSpeaking={props.isSpeaking}
             playMicroStepAudio={props.playMicroStepAudio}
+            autoAdvanceFrom={autoAdvanceFrom}
+            audioUrls={audioUrls}
+            play={play}
           />
         </div>
 
@@ -1178,6 +1284,18 @@ export default function AIPresentation() {
         return;
       }
 
+      if (step.type === 'predictThen') {
+        const qKey = `${baseKey}_question`;
+        play(audioUrls[qKey], qKey, ''); // no onComplete — waits for user to reveal
+        return;
+      }
+
+      if (step.type === 'checkYourself') {
+        const sKey = `${baseKey}_statement`;
+        play(audioUrls[sKey], sKey, ''); // no onComplete — waits for user to answer
+        return;
+      }
+      
       // Simple / example / anything else with plain text
       if (step.text) {
         play(audioUrls[baseKey], baseKey, text, () => {
