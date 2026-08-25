@@ -248,7 +248,6 @@ function buildSharedJobs(): AudioJob[] {
 function buildFramingJobs(
   sections: any[],
   intro?: string,
-  conclusion?: string
 ): AudioJob[] {
   const jobs: AudioJob[] = [];
  
@@ -260,15 +259,6 @@ function buildFramingJobs(
       fileName: `${FOLDER}/intro-${firstTopicSlug}.mp3`,
     });
   }
- 
-  if (conclusion) {
-    jobs.push({
-      key: "conclusion",
-      text: conclusion,
-      fileName: `${FOLDER}/conclusion.mp3`,
-    });
-  }
- 
   return jobs;
 }
 
@@ -385,13 +375,13 @@ function buildSectionJobs(sections: any[]): AudioJob[] {
  * ========================================================================== */
 export async function POST(req: Request) {
   try {
-    const { sections, intro, conclusion } = await req.json();
+    const { sections, intro } = await req.json();
     if (!sections) throw new Error("Missing sections data");
     if (!process.env.OPENAI_API_KEY) throw new Error("Missing OpenAI API key");
 
     const jobs: AudioJob[] = [
       ...buildSharedJobs(),
-      ...buildFramingJobs(sections, intro, conclusion),
+      ...buildFramingJobs(sections, intro),
       ...buildSectionJobs(sections),
     ];
 
