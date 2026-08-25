@@ -176,7 +176,10 @@ async function runJobs(
 /** Clips that never change — generated once and reused across every lesson. */
 function buildSharedJobs(): AudioJob[] {
   const jobs: AudioJob[] = [];
- 
+
+  jobs.push({ key: "conclusion_intro", text: CONCLUSION_INTRO_TEXT, fileName: `${FOLDER}/conclusion-intro.mp3` });
+  jobs.push({ key: "conclusion_outro", text: CONCLUSION_OUTRO_TEXT, fileName: `${FOLDER}/conclusion-outro.mp3` });
+  
   for (const [template, text] of Object.entries(LAYOUT_DESCRIPTIONS)) {
     jobs.push({
       key: `layout_${template}`,
@@ -276,6 +279,14 @@ function buildSectionJobs(sections: any[]): AudioJob[] {
   for (let i = 0; i < sections.length; i++) {
     const section = sections[i];
 
+    if (section.recap) {
+      jobs.push({
+        key: `section${i}_recap`,
+        text: section.recap,
+        fileName: `${FOLDER}/section${i + 1}_recap.mp3`,
+      });
+    }
+    
     const nextTitle = sections[i + 1]?.title;
     const successText = nextTitle
       ? `Great job! You're really learning about Blue Catfish. Let's head to the next section: ${nextTitle}.`
