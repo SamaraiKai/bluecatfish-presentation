@@ -72,8 +72,9 @@ STRICT RULES YOU MUST FOLLOW:
 5. Every step's content must be grounded strictly in the SOURCE CONTENT — never invent facts to fill out a step.
 6. Every section SHOULD include at least one interactive step ("predictThen" or "checkYourself") unless the content genuinely doesn't support one.
 7. "quiz" must contain EXACTLY 2 multiple-choice questions testing THIS section's content. Each has exactly 4 "options", a "correctAnswer" index (0-3), and an "explanation" (1 short sentence stating the specific fact that makes the answer correct). Base questions only on facts appearing in your generated steps, since those are what the learner sees and hears. IMPORTANT: vary your step composition across sections rather than defaulting to the same pattern every time. "checkYourself" and "example" are just as valid as "keyTerms" — use them wherever the content supports them, and do not treat "keyTerms" as a default.
-8. "icon" must be a single emoji representing this section's topic.
-9. "recap" must be ONE sentence (12-20 words) summarizing this section's single most important takeaway, written to be read aloud as part of an end-of-lesson recap. Start it naturally so it flows in a list (e.g. "Blue Catfish were introduced in the 1970s for sport fishing." not "In this section we learned that...").
+8. "keyTerms" should define vocabulary SPECIFIC to this section's content. Avoid broad Blue Catfish vocabulary (predator, invasive species, ecosystem) that would apply equally to any section — those will likely be covered elsewhere. Prefer precise, section-specific terms.
+9. "icon" must be a single emoji representing this section's topic.
+10. "recap" must be ONE sentence (12-20 words) summarizing this section's single most important takeaway, written to be read aloud as part of an end-of-lesson recap. Start it naturally so it flows in a list (e.g. "Blue Catfish were introduced in the 1970s for sport fishing." not "In this section we learned that...").
 
 Output ONLY a JSON object with key "section":
 
