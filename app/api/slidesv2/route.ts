@@ -163,9 +163,29 @@ async function assignUniqueImages(sections: any[], sectionTopics: string[]) {
   return sections;
 }
 
+function dedupeKeyTerms(sections: any[]) {
+  const seen = new Set<string>();
+  for (const section of sections) {
+    for (const step of section.steps) {
+      if (step.type !== 'keyTerms') continue;
+      step.terms = step.terms.filter((t: any) => {
+        const norm = t.term.trim().toLowerCase();
+        if (seen.has(norm)) return false;
+        seen.add(norm);
+        return true;
+      });
+    }
+    // a keyTerms step with nothing left shouldn't render at all
+    section.steps = section.steps.filter(
+      (s: any) => s.type !== 'keyTerms' || s.terms.length > 0
+    );
+  }
+  return sections;
+}
+
 export async function POST(req: Request) {
   try {
-    const cacheKey = `bluecatfish_sections_ai_v23`;
+    const cacheKey = `bluecatfish_sections_ai_v24`;
 
     const cachedRaw = await getValue(cacheKey);
     if (cachedRaw) {
@@ -192,6 +212,7 @@ export async function POST(req: Request) {
     );
 
     await assignUniqueImages(sections, sectionTopics.map(([, query]) => query));
+    dedupeKeyTerms(sections);
     
     await setValue(cacheKey, JSON.stringify(sections));
     return NextResponse.json({ sections, source: "generated" });
