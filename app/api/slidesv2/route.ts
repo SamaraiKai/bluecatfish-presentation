@@ -167,15 +167,29 @@ async function assignUniqueImages(sections: any[], sectionTopics: string[]) {
   return sections;
 }
 
+function normalizeTerm(term: string): string {
+  return term
+    .trim()
+    .toLowerCase()
+    .replace(/\b(species|behavior|behaviour|process|status|effect|effects)\b/g, '') // drop generic qualifier words
+    .replace(/(ies|ing|ory|ive|s)\b/g, '')  // crude stemming: predatory/predators/predation → predat
+    .replace(/[^a-z]/g, '')
+    .trim();
+}
+
 function dedupeKeyTerms(sections: any[]) {
-  const seen = new Set<string>();
+  const seen = string[] = [];
   for (const section of sections) {
     for (const step of section.steps) {
       if (step.type !== 'keyTerms') continue;
       step.terms = step.terms.filter((t: any) => {
-        const norm = t.term.trim().toLowerCase();
-        if (seen.has(norm)) return false;
-        seen.add(norm);
+        const norm = normalizeTerm(t.term);
+        if (!norm) return true;
+
+        // reject if it matches, contains, or is contained by anything already used
+        const dupe = seen.some((s) => s === norm || s.includes(norm) || norm.includes(s));
+        if (dupe) return false;
+        seen.push(norm);
         return true;
       });
     }
