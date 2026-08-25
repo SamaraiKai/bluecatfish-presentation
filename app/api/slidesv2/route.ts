@@ -179,7 +179,7 @@ function normalizeTerm(term: string): string {
 }
 
 function dedupeKeyTerms(sections: any[]) {
-  const seen = string[] = [];
+  const seen: string[] = [];
   for (const section of sections) {
     for (const step of section.steps) {
       if (step.type !== 'keyTerms') continue;
