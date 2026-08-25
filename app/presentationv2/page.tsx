@@ -42,10 +42,6 @@ type Step =
  * CONSTANTS
  * ========================================================================== */
 
-const LECTURE_SCRIPTS = {
-  conclusion: `So to summarize what we've learned today: Blue Catfish are an invasive species that were introduced for recreational fishing but have since become a major ecological threat. They eat enormous quantities of native species, make up the majority of fish biomass in many rivers, and have no natural predators to keep their numbers in check. However, there's hope. By commercial harvesting and encouraging consumption of Blue Catfish, we can reduce their population while enjoying a sustainable and delicious food source. Thank you for joining me in this presentation about the Chesapeake Bay's Blue Catfish invasion. Remember, sometimes the solution to an ecological problem can be found on our dinner plates.`
-};
-
 // Sections are no longer hardcoded — they're fetched from /api/slides2 on load.
 const PRESENTATION = {
   title: "Why Are Blue Catfish Invasive?",
@@ -470,31 +466,164 @@ function TemplateSelector({ onSelect }: { onSelect: (template: 'classic' | 'spli
   );
 }
 
+interface SectionWithBreakdown {
+  title: string;
+  icon: string;
+  image: string;
+  recap: string;
+  steps: Step[];
+  quiz: { question: string; options: string[]; correctAnswer: number; explanation: string }[];
+}
+
+const NODE_W = 260;
+const NODE_H = 90;
+const COL_X = [40, 400];
+const ROW_Y = [20, 180, 340];
+
+// Snaking order: L→R, down, R→L, down, L→R
+function nodePos(i: number) {
+  const row = Math.floor(i / 2);
+  const leftFirst = row % 2 === 0;
+  const col = leftFirst ? i % 2 : 1 - (i % 2);
+  return { x: COL_X[col], y: ROW_Y[row], col, row };
+}
+
+function SummaryFlowchart({
+  sections,
+  currentKey,
+  sectionScores,
+}: {
+  sections: SectionWithBreakdown[];
+  currentKey: string | null;
+  sectionScores: Record<number, number>;
+}) {
+  const [revealed, setRevealed] = useState<Set<number>>(new Set());
+
+  useEffect(() => {
+    if (!currentKey) return;
+    const m = currentKey.match(/^section(\d+)_recap$/);
+    if (m) {
+      const idx = parseInt(m[1], 10);
+      setRevealed((prev) => (prev.has(idx) ? prev : new Set([...prev, idx])));
+    }
+  }, [currentKey]);
+
+  const connectors = sections.slice(0, -1).map((_, i) => {
+    const a = nodePos(i);
+    const b = nodePos(i + 1);
+    if (a.row === b.row) {
+      // horizontal
+      const goingRight = b.x > a.x;
+      const x1 = goingRight ? a.x + NODE_W : a.x;
+      const x2 = goingRight ? b.x : b.x + NODE_W;
+      const y = a.y + NODE_H / 2;
+      return { d: `M ${x1} ${y} L ${x2} ${y}`, from: i };
+    }
+    // vertical, down the side the node sits on
+    const x = a.x + NODE_W / 2;
+    return { d: `M ${x} ${a.y + NODE_H} L ${x} ${b.y}`, from: i };
+  });
+
+  return (
+    <svg viewBox="0 0 700 460" className="w-full max-w-3xl mx-auto">
+      {connectors.map((c, i) => {
+        const on = revealed.has(c.from + 1);
+        return (
+          <path
+            key={i}
+            d={c.d}
+            fill="none"
+            stroke="#3b82f6"
+            strokeWidth="3"
+            strokeLinecap="round"
+            style={{
+              strokeDasharray: 200,
+              strokeDashoffset: on ? 0 : 200,
+              transition: 'stroke-dashoffset 0.6s ease-out',
+            }}
+          />
+        );
+      })}
+
+      {sections.map((sec, i) => {
+        const { x, y } = nodePos(i);
+        const on = revealed.has(i);
+        const active = currentKey === `section${i}_recap`;
+        const score = sectionScores[i];
+        const perfect = score !== undefined && score === (sec.quiz?.length ?? 2);
+
+        return (
+          <g
+            key={i}
+            style={{
+              opacity: on ? 1 : 0,
+              transform: on ? 'translateY(0)' : 'translateY(12px)',
+              transformOrigin: `${x + NODE_W / 2}px ${y + NODE_H / 2}px`,
+              transition: 'opacity 0.5s ease-out, transform 0.5s ease-out',
+            }}
+          >
+            <rect
+              x={x}
+              y={y}
+              width={NODE_W}
+              height={NODE_H}
+              rx="18"
+              fill="#ffffff"
+              stroke={active ? '#06b6d4' : perfect ? '#22c55e' : '#93c5fd'}
+              strokeWidth={active ? 4 : 2}
+              style={{ transition: 'stroke 0.3s, stroke-width 0.3s' }}
+            />
+            <text x={x + 24} y={y + 52} fontSize="30">{sec.icon}</text>
+            <text
+              x={x + 62}
+              y={y + 50}
+              fontSize="15"
+              fontWeight="700"
+              fill="#1e3a5f"
+            >
+              {sec.title.length > 24 ? sec.title.slice(0, 22) + '…' : sec.title}
+            </text>
+            <text x={x + 62} y={y + 70} fontSize="12" fill="#64748b">
+              Section {i + 1}
+            </text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
 function ConclusionScreen({
     onRestart,
     sectionScores,
     totalQuestions,
+    sections,
+    currentKey,
   }: {
     onRestart: () => void;
     sectionScores: Record<number, number>;
     totalQuestions: number;
+    sections: SectionWithBreakdown[];
+    currentKey: string | null;
   }) {
     const totalScore = Object.values(sectionScores).reduce((sum, s) => sum + s, 0);
     
     return (
-      <div className="flex flex-col items-center justify-center text-center py-16 px-8">
-        <div className="text-6xl mb-6">🎓</div>
-        <h2 className="text-3xl md:text-4xl font-bold text-black mb-4">
-          Lesson Complete!
-        </h2>
-        <p className="text-blue-700 text-lg max-w-xl mb-8 leading-relaxed">
-          You've made it through the full story of the Blue Catfish invasion in the Chesapeake Bay —
-          from how they got here, to why they've thrived, to how we might turn the problem into a solution.
+      <div className="flex flex-col items-center justify-center text-center py-10 px-8 w-full">
+        <div className="text-5xl mb-4">🎓</div>
+        <h2 className="text-3xl md:text-4xl font-bold text-black mb-2">Lesson Complete!</h2>
+        <p className="text-blue-700 mb-8">Here's everything we covered</p>
+      
+        <SummaryFlowchart
+          sections={sections}
+          currentKey={currentKey}
+          sectionScores={sectionScores}
+        />
+      
+        <p className="text-2xl font-bold text-cyan-500 mt-8 mb-6">
+          Final Score: {totalScore} / {totalQuestions}
         </p>
-        <p className="text-2xl font-bold text-cyan-500 mb-8">
-        Final Score: {totalScore} / {totalQuestions}
-        </p>
-  
+      
         <div className="flex flex-col sm:flex-row gap-4">
           <button
             onClick={onRestart}
@@ -503,7 +632,7 @@ function ConclusionScreen({
             ↺ Restart Lesson
           </button>
         </div>
-  
+      
         <p className="text-blue-700/70 text-sm mt-8">
           Still curious about something? Use <span className="text-cyan-500 font-medium">Ask AI</span> up top —
           Professor Marine is happy to go deeper on anything from the lesson.
@@ -1415,9 +1544,9 @@ export default function AIPresentation() {
       setIsNarrating(true);
       setShowConclusion(false);
     } else {
-      play(audioUrls['conclusion'], 'conclusion');
-      setIsNarrating(true);
       setShowConclusion(true);
+      setIsNarrating(true);
+      playConclusion();
     }
   };
 
@@ -1551,7 +1680,18 @@ export default function AIPresentation() {
     setSectionScores({});
     setCompletedQuizzes(new Set());
   };
-  
+
+  const playConclusion = () => {
+    const chain = (i: number): (() => void) => () => {
+      if (i >= sections.length) {
+        play(audioUrls['conclusion_outro'], 'conclusion_outro', '');
+        return;
+      }
+      const key = `section${i}_recap`;
+      play(audioUrls[key], key, '', chain(i + 1));
+    };
+    play(audioUrls['conclusion_intro'], 'conclusion_intro', '', chain(0));
+  };
   /* -------------------------------------------------------------- effects */
   // Fetch sections, then fetch pre-generated audio for them
   useEffect(() => {
@@ -1584,7 +1724,6 @@ export default function AIPresentation() {
           body: JSON.stringify({
             sections: sectionsData.sections,
             intro: builtIntro,
-            conclusion: LECTURE_SCRIPTS.conclusion,
           }),
         });
         const audioData = await audioRes.json();
@@ -1826,6 +1965,8 @@ export default function AIPresentation() {
             onRestart={handleRestart}
             sectionScores={sectionScores}
             totalQuestions={sections.length * 2}
+            sections={sections}
+            currentKey={currentKey}
           />
         ) : (
         <div className="max-w-7xl w-full relative">
