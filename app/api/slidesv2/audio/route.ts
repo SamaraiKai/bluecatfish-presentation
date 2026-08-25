@@ -37,6 +37,9 @@ const TRANSITION_PHRASES = [
   "Here's a way to picture it...",
 ];
 
+const CONCLUSION_INTRO_TEXT = "Let's take a moment to look back at everything we covered today.";
+const CONCLUSION_OUTRO_TEXT = "And that's the whole story. Thanks for joining me — remember, sometimes the solution to an ecological problem can be found on our dinner plates.";
+
 // Played between individual key terms
 const ORDINAL_LINES = ["First.", "Next.", "Then.", "Finally."];
 
