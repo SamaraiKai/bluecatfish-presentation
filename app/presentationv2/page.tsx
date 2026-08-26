@@ -573,17 +573,16 @@ function SummaryFlowchart({
               strokeWidth={active ? 4 : 2}
               style={{ transition: 'stroke 0.3s, stroke-width 0.3s' }}
             />
-            <text x={x + 24} y={y + 52} fontSize="30">{sec.icon}</text>
             <text
-              x={x + 62}
+              x={x + 24}
               y={y + 50}
               fontSize="15"
               fontWeight="700"
               fill="#1e3a5f"
             >
-              {sec.title.length > 24 ? sec.title.slice(0, 22) + '…' : sec.title}
+              {sec.title.length > 26 ? sec.title.slice(0, 24) + '…' : sec.title}
             </text>
-            <text x={x + 62} y={y + 70} fontSize="12" fill="#64748b">
+            <text x={x + 24} y={y + 70} fontSize="12" fill="#64748b">
               Section {i + 1}
             </text>
           </g>
@@ -663,29 +662,6 @@ function SectionImageBlock({
   }) {
     return (
               <div className="relative h-72 md:h-auto min-h-[500px] bg-gradient-to-br overflow-hidden">
-                {/* Animated Background Elements */}
-                <div className="absolute inset-0 overflow-hidden">
-                  {/* Floating Bubbles */}
-                  <div className="absolute w-4 h-4 bg-cyan-400/20 rounded-full animate-ping" style={{top: '20%', left: '10%', animationDuration: '3s'}} />
-                  <div className="absolute w-6 h-6 bg-blue-400/20 rounded-full animate-ping" style={{top: '60%', left: '80%', animationDuration: '4s', animationDelay: '1s'}} />
-                  <div className="absolute w-3 h-3 bg-cyan-300/30 rounded-full animate-ping" style={{top: '40%', left: '50%', animationDuration: '2.5s', animationDelay: '0.5s'}} />
-                  
-                  {/* Swimming Fish Animation */}
-                  <div className="absolute animate-[swim_8s_ease-in-out_infinite]" style={{top: '30%', left: '-20%'}}>
-                    <svg width="80" height="50" viewBox="0 0 80 50" className="drop-shadow-lg">
-                      <path d="M60 25 Q70 15 80 25 Q70 35 60 25 M0 25 L45 10 L45 40 Z" fill="currentColor" className="text-cyan-300 opacity-80"/>
-                      <circle cx="50" r="3" fill="white"/>
-                    </svg>
-                  </div>
-                  
-                  {/* Second Fish */}
-                  <div className="absolute animate-[swim2_10s_ease-in-out_infinite]" style={{top: '65%', right: '-20%'}}>
-                    <svg width="60" height="40" viewBox="0 0 80 50" className="drop-shadow-lg">
-                      <path d="M60 25 Q70 15 80 25 Q70 35 60 25 M0 25 L45 10 L45 40 Z" fill="currentColor" className="text-blue-300 opacity-70"/>
-                      <circle cx="50" r="2" fill="white"/>
-                    </svg>
-                  </div>
-                </div>
                 
                 {/* Main Image */}
                 {currentSection.image && (
@@ -708,15 +684,6 @@ function SectionImageBlock({
                   <span className="font-bold text-white">{activeSection + 1} / {totalSections}</span>
                 </div>
                 
-                {/* Interactive Icon with Hover Effect */}
-                <div className="absolute bottom-4 left-4 group cursor-pointer">
-                  <div className="text-7xl drop-shadow-lg transition-transform duration-300 group-hover:scale-125 group-hover:rotate-12 animate-[float_3s_ease-in-out_infinite]">
-                    {currentSection.icon}
-                  </div>
-                  <div className="absolute -bottom-8 left-0 bg-black/80 px-3 py-1 rounded text-sm text-white opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                    Click me!
-                  </div>
-                </div>
                 
                 {/* Stats Overlay */}
                 {/*
@@ -2058,22 +2025,6 @@ export default function AIPresentation() {
           
             {/* Custom Keyframe Animations */}
             <style jsx>{`
-              @keyframes swim {
-                0% { transform: translateX(0); }
-                50% { transform: translateX(calc(100vw + 100%)); }
-                51% { transform: translateX(calc(100vw + 100%)) scaleX(-1); }
-                100% { transform: translateX(0) scaleX(-1); }
-              }
-              @keyframes swim2 {
-                0% { transform: translateX(0) scaleX(-1); }
-                50% { transform: translateX(calc(-100vw - 100%)) scaleX(-1); }
-                51% { transform: translateX(calc(-100vw - 100%)); }
-                100% { transform: translateX(0); }
-              }
-              @keyframes float {
-                0%, 100% { transform: translateY(0); }
-                50% { transform: translateY(-10px); }
-              }
               @keyframes slideInRight {
                 from { opacity: 0; transform: translateX(30px); }
                 to { opacity: 1; transform: translateX(0); }
