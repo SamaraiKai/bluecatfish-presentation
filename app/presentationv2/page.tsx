@@ -722,6 +722,7 @@ function MiniSlideshowBlock({
   autoAdvanceFrom,
   audioUrls,
   play,
+  devMode
 }: {
   currentSection: SectionWithBreakdown;
   activeSectionIndex: number;
@@ -740,6 +741,7 @@ function MiniSlideshowBlock({
   autoAdvanceFrom: (sectionIndex: number, fromStep: number) => void;
   audioUrls: Record<string, string>;
   play: (url: string | undefined, key: string, text?: string, onComplete?: () => void) => void;
+  devMode: boolean;
 }) {
   return (
     <div className="p-8 md:p-12 flex flex-col justify-center bg-gradient-to-br from-mauve-200/70 to-mauve-300/70 rounded-3xl border border-white-500/30">
@@ -938,48 +940,52 @@ function MiniSlideshowBlock({
         </div>
       );
     })()}
-      <div className="flex justify-center mb-3">
-        <button
-          onClick={() => playMicroStepAudio(activeSectionIndex, microStep, null)}
-          className="flex items-center gap-2 px-4 py-2 mt-4 rounded-full bg-blue-600/90 hover:bg-blue-400/90 text-white text-sm font-medium transition-colors"
-        >
-          🔁 Replay
-        </button>
-      </div>
-      
-      {/* Mini-slideshow navigation — always visible */}
-      <div className="flex items-center justify-between mt-5">
-        <button
-          onClick={prevMicroStep}
-          disabled={microStep === 0}
-          className="px-3 py-2 rounded-lg bg-blue-800/70 hover:bg-blue-700/80 disabled:opacity-30 text-white text-sm transition-colors"
-        >
-          ←
-        </button>
-    
-        <div className="flex gap-2">
-          {microSteps.map((step, idx) => (
+      {devMode && (
+        <>
+          <div className="flex justify-center mb-3">
             <button
-              key={idx}
-              onClick={() => goToMicroStep(idx)}
-              title={step.label}
-              className={`w-2.5 h-2.5 rounded-full transition-colors ${
-                idx === microStep ? 'bg-cyan-500' : 'bg-blue-700/60 hover:bg-blue-500/70'
-              }`}
-            />
-          ))}
-        </div>
+              onClick={() => playMicroStepAudio(activeSectionIndex, microStep, null)}
+              className="flex items-center gap-2 px-4 py-2 mt-4 rounded-full bg-blue-600/90 hover:bg-blue-400/90 text-white text-sm font-medium transition-colors"
+            >
+              🔁 Replay
+            </button>
+          </div>
+      
+          {/* Mini-slideshow navigation — dev mode only */}
+          <div className="flex items-center justify-between mt-5">
+            <button
+              onClick={prevMicroStep}
+              disabled={microStep === 0}
+              className="px-3 py-2 rounded-lg bg-blue-800/70 hover:bg-blue-700/80 disabled:opacity-30 text-white text-sm transition-colors"
+            >
+              ←
+            </button>
     
-        <button
-          onClick={nextMicroStep}
-          disabled={microStep === microSteps.length - 1}
-          className="px-3 py-2 rounded-lg bg-blue-800/50 hover:bg-blue-700/60 disabled:opacity-30 text-white text-sm transition-colors"
-        >
-          →
-        </button>
-      </div>
-    
-      <p className="text-center text-xs text-blue-700/80 mt-2">{microSteps[microStep]?.label}</p>
+            <div className="flex gap-2">
+              {microSteps.map((step, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => goToMicroStep(idx)}
+                  title={step.label}
+                  className={`w-2.5 h-2.5 rounded-full transition-colors ${
+                    idx === microStep ? 'bg-cyan-500' : 'bg-blue-700/60 hover:bg-blue-500/70'
+                  }`}
+                />
+              ))}
+            </div>
+        
+            <button
+              onClick={nextMicroStep}
+              disabled={microStep === microSteps.length - 1}
+              className="px-3 py-2 rounded-lg bg-blue-800/50 hover:bg-blue-700/60 disabled:opacity-30 text-white text-sm transition-colors"
+            >
+              →
+            </button>
+          </div>
+        
+          <p className="text-center text-xs text-blue-700/80 mt-2">{microSteps[microStep]?.label}</p>
+        </>
+      )}
     </div>
   );
 }
@@ -1007,6 +1013,7 @@ function ClassicLayout(props: {
   autoAdvanceFrom: (sectionIndex: number, fromStep: number) => void;
   audioUrls: Record<string, string>;
   play: (url: string | undefined, key: string, text?: string, onComplete?: () => void) => void;
+  devMode: boolean;
 }) {
   return (
     <div className="bg-white/5 backdrop-blur-md rounded-3xl border border-white-500/30 shadow-2xl overflow-hidden">
@@ -1035,6 +1042,7 @@ function ClassicLayout(props: {
             autoAdvanceFrom={props.autoAdvanceFrom}
             audioUrls={props.audioUrls}
             play={props.play}
+            devMode={props.devMode}
           />
         </div>
       </div>
@@ -1062,7 +1070,7 @@ function SplitLayout(props: {
   autoAdvanceFrom: (sectionIndex: number, fromStep: number) => void;
   audioUrls: Record<string, string>;
   play: (url: string | undefined, key: string, text?: string, onComplete?: () => void) => void;
-  
+  devMode: boolean;
 }) {
   return (
     <div className="bg-white/5 backdrop-blur-md rounded-3xl border border-white-500/30 shadow-2xl overflow-hidden">
@@ -1087,6 +1095,7 @@ function SplitLayout(props: {
             autoAdvanceFrom={props.autoAdvanceFrom}
             audioUrls={props.audioUrls}
             play={props.play}
+            devMode={props.devMode}
           />
         </div>
 
@@ -1145,7 +1154,7 @@ function QuizSlide({
     <div className="backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-gradient-to-br from-mist-400/70 via-mist-300/70 to-mist-400/70 rounded-3xl max-w-2xl w-full max-h-[85vh] overflow-y-auto border border-white/30 shadow-2xl p-8">
         <h3 className="text-2xl font-bold text-black mb-1">Quick Check</h3>
-        <p className="text-black text-sm mb-6">Answer both questions to continue</p>
+        <p className="text-black text-sm mb-6">Answer to continue</p>
 
         <div className="space-y-6">
           {quiz.map((q, qIdx) => (
@@ -1292,7 +1301,7 @@ export default function AIPresentation() {
   const [inIntro, setInIntro] = useState(false);
 
   // Navigation
-  const [selectedTemplate, setSelectedTemplate] = useState<'classic' | 'split' | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<'classic' | 'split' | null>('classic');
   const [activeSection, setActiveSection] = useState(0);
   const [microStep, setMicroStep] = useState(0);
   const [showConclusion, setShowConclusion] = useState(false);
@@ -1308,8 +1317,10 @@ export default function AIPresentation() {
   const [showChat, setShowChat] = useState(false);
   const [isNarrating, setIsNarrating] = useState(false);
   const [cameraEnabled, setCameraEnabled] = useState(false);
-  const [cameraChoiceMade, setCameraChoiceMade] = useState(false);
+  const [cameraChoiceMade, setCameraChoiceMade] = useState(true);
   const [inConversation, setInConversation] = useState(false);
+  const [started, setStarted] = useState(false);
+  const [devMode, setDevMode] = useState(false);
   
   // Refs
   const keyTermsTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -1539,6 +1550,14 @@ export default function AIPresentation() {
       });
     }, time);
   };
+
+  const handleStart = () => {
+    setStarted(true);
+    setActiveSection(0);
+    setShowConclusion(false);
+    playIntroduction('classic');
+  };
+  
   /* ------------------------------------------- micro-step nav handlers */
   const goToMicroStep = (index: number) => {
     console.log('goToMicroStep called with:', index, 'microSteps.length:', microSteps.length, 'activeSection:', activeSection);
@@ -1621,7 +1640,7 @@ export default function AIPresentation() {
 
   const nextSection = () => {
     setMicroStep(0);
-    if (currentSection.quiz && currentSection.quiz.length === 2) {
+    if (currentSection.quiz && currentSection.quiz.length === 1) {
       setShowQuiz(true);
     } else {
     handleQuizContinue(); // no valid quiz for this section — just advance
@@ -1816,6 +1835,21 @@ export default function AIPresentation() {
     );
   }
 
+  if (!started) {
+    return (
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-gradient-to-br from-mist-50 to-mist-400 p-8">
+        <h1 className="text-4xl md:text-5xl font-bold text-black mb-4 text-center">{PRESENTATION.title}</h1>
+        <p className="text-xl text-blue-600 mb-10 text-center">{PRESENTATION.subtitle}</p>
+        <button
+          onClick={handleStart}
+          className="px-12 py-6 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white text-2xl font-bold rounded-full shadow-2xl transition-all"
+        >
+          ▶ Start Lesson
+        </button>
+      </div>
+    );
+  }
+  /*
   if (!cameraChoiceMade) {
     return <CameraSelector onSelect={handleCameraSelect} />;
   }
@@ -1823,6 +1857,7 @@ export default function AIPresentation() {
   if (!selectedTemplate) {
     return <TemplateSelector onSelect={handleTemplateSelect} />;
   }   
+  */
 
   /* ------------------------------------------------------ derived values */
   const microSteps = getMicroSteps(currentSection, activeSection);
@@ -1856,8 +1891,8 @@ export default function AIPresentation() {
               </p>
             </div>
           </div>
-          
-          {/* camera toggle */}
+
+          {/*
           <div className="flex flex-col items-center gap-2 h-20 mt-[5px]">
             <button
               onClick={() => setCameraEnabled((v) => !v)}
@@ -1871,7 +1906,8 @@ export default function AIPresentation() {
               </div>
             )}
           </div>
-          
+          */}
+            
           <div className="flex items-center gap-3">
             {/* Speaking Indicator */}
             {isSpeaking && (
@@ -1909,6 +1945,16 @@ export default function AIPresentation() {
                 ⏹️
               </button>
             </div>
+
+            <button
+              onClick={() => setDevMode((v) => !v)}
+              className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors ${
+                🥽 ? 'bg-amber-500 text-white' : 'bg-slate-300 text-slate-700 hover:bg-slate-400'
+              }`}
+              title="Toggle navigation controls"
+            >
+              ⚙ {devMode ? 'Controls on' : 'Controls off'}
+            </button>
             
             {/* Chat Toggle */}
             <button
@@ -1931,7 +1977,7 @@ export default function AIPresentation() {
           <ConclusionScreen 
             onRestart={handleRestart}
             sectionScores={sectionScores}
-            totalQuestions={sections.length * 2}
+            totalQuestions={sections.length * 1}
             sections={sections}
             currentKey={currentKey}
           />
@@ -1998,6 +2044,7 @@ export default function AIPresentation() {
               autoAdvanceFrom={autoAdvanceFrom}
               audioUrls={audioUrls}
               play={play}
+              devMode={devMode}
             />
           ) : (
             <SplitLayout
@@ -2020,6 +2067,7 @@ export default function AIPresentation() {
               autoAdvanceFrom={autoAdvanceFrom}
               audioUrls={audioUrls}
               play={play}
+              devMode={devMode}
             />
           )}
           
@@ -2056,45 +2104,47 @@ export default function AIPresentation() {
             >
               ← Previous
             </button>
-            
-            <div className="flex gap-2 flex-wrap justify-center max-w-md">
-              {flowSteps.map((step, i) => {
-                const isActive = i === currentFlowIndex;
-                const isQuizDone = step.type === 'quiz' ? completedQuizzes.has(step.index) : true;
 
-                let dotClasses = 'transition-colors ';
-
-                if (step.type === 'section') {
-                  dotClasses += `w-3 h-3 rounded-full ${isActive ? 'bg-cyan-500' : 'bg-blue-600 hover:bg-blue-400'}`;
-                } else {
-                  dotClasses += `w-3 h-3 rotate-45 ${
-                    !isQuizDone
-                      ? 'bg-black/30 hover:bg-black/60'
-                      : isActive
-                      ? 'bg-cyan-500'
-                      : 'bg-green-500 hover:bg-green-400'
-                  }`;
-                }
-                
-                return (
-                  <button
-                    key={i}
-                    title={step.type === 'quiz' ? `Quiz ${step.index + 1}` : `Section ${step.index + 1}`}
-                    onClick={() => {
-                      stop();
-                      setActiveSection(step.index);
-                      if (step.type === 'quiz') {
-                        setShowQuiz(true);
-                      } else {
-                        setShowQuiz(false);
-                        setTimeout(() => narrateSection(step.index), 300);
-                      }
-                    }}
-                    className={dotClasses}
-                  />
-                );
-              })}
-            </div>
+            {devMode && (
+              <div className="flex gap-2 flex-wrap justify-center max-w-md">
+                {flowSteps.map((step, i) => {
+                  const isActive = i === currentFlowIndex;
+                  const isQuizDone = step.type === 'quiz' ? completedQuizzes.has(step.index) : true;
+  
+                  let dotClasses = 'transition-colors ';
+  
+                  if (step.type === 'section') {
+                    dotClasses += `w-3 h-3 rounded-full ${isActive ? 'bg-cyan-500' : 'bg-blue-600 hover:bg-blue-400'}`;
+                  } else {
+                    dotClasses += `w-3 h-3 rotate-45 ${
+                      !isQuizDone
+                        ? 'bg-black/30 hover:bg-black/60'
+                        : isActive
+                        ? 'bg-cyan-500'
+                        : 'bg-green-500 hover:bg-green-400'
+                    }`;
+                  }
+                  
+                  return (
+                    <button
+                      key={i}
+                      title={step.type === 'quiz' ? `Quiz ${step.index + 1}` : `Section ${step.index + 1}`}
+                      onClick={() => {
+                        stop();
+                        setActiveSection(step.index);
+                        if (step.type === 'quiz') {
+                          setShowQuiz(true);
+                        } else {
+                          setShowQuiz(false);
+                          setTimeout(() => narrateSection(step.index), 300);
+                        }
+                      }}
+                      className={dotClasses}
+                    />
+                  );
+                })}
+              </div>
+            )}
 
             <button
               onClick={nextSection}
