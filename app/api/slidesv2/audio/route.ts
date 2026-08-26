@@ -74,6 +74,15 @@ function slugify(text: string): string {
     .slice(0, 40);
 }
 
+function cleanForTTS(text: string): string {
+  return text
+    .trim()
+    .replace(/\.{2,}/g, '.')      // "This means..." → "This means."
+    .replace(/\s+/g, ' ')          // collapse whitespace/newlines
+    .replace(/\s+([.,!?])/g, '$1') // remove space before punctuation
+    .replace(/([.,!?])\1+/g, '$1'); // collapse doubled punctuation
+}
+
 function publicUrl(fileName: string): string {
   const { data } = supabase.storage.from(BUCKET).getPublicUrl(fileName);
   return data.publicUrl;
@@ -104,7 +113,7 @@ async function generateAndUpload(text: string, fileName: string): Promise<string
     body: JSON.stringify({
       model: "gpt-4o-mini-tts",
       voice: "alloy",
-      input: text,
+      input: cleanForTTS(text),
     }),
   });
 
@@ -168,7 +177,6 @@ async function runJobs(
  
   return audioUrls;
 }
-
 /* ============================================================================
  * JOB BUILDERS
  * ========================================================================== */
