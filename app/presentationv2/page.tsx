@@ -1957,8 +1957,8 @@ export default function AIPresentation() {
 
              <button
               onClick={() => setDevMode((v) => !v)}
-              className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors ${
-                🥽 ? 'bg-amber-500 text-white' : 'bg-slate-300 text-slate-700 hover:bg-slate-400'
+              className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                devMode ? 'bg-amber-500 text-white' : 'bg-slate-300 text-slate-700 hover:bg-slate-400'
               }`}
               title="Toggle navigation controls"
             >
