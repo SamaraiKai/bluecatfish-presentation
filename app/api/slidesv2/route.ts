@@ -70,7 +70,7 @@ STRICT RULES YOU MUST FOLLOW:
 3. Available step types after the overview: "simple" (a plainer re-explanation for a confused learner, 2 short sentences, different wording than the overview), "keyTerms" (1-4 terms with short plain-language definitions), "example" (an analogy to something unrelated and familiar, 1-2 sentences).
 4. Include a step type ONLY if it genuinely helps for THIS content. Skip "simple" if the overview is already plain enough. Skip "example" if no honest analogy fits — a forced analogy is worse than none. Include only as many key terms as the content actually warrants; 1 good term beats 3 padded ones. Do not include the same type twice.
 5. Every step's content must be grounded strictly in the SOURCE CONTENT — never invent facts to fill out a step.
-6. "quiz" must contain EXACTLY 2 multiple-choice questions testing THIS section's content. Each has exactly 4 "options", a "correctAnswer" index (0-3), and an "explanation" (1 short sentence stating the specific fact that makes the answer correct). Base questions only on facts appearing in your generated steps, since those are what the learner sees and hears.
+6. "quiz" must contain EXACTLY 1 multiple-choice questions testing THIS section's content. Each has exactly 4 "options", a "correctAnswer" index (0-3), and an "explanation" (1 short sentence stating the specific fact that makes the answer correct). Base questions only on facts appearing in your generated steps, since those are what the learner sees and hears.
 7. "icon" must be a single emoji representing this section's topic.
 
 Output ONLY a JSON object with key "section":
@@ -87,7 +87,6 @@ Output ONLY a JSON object with key "section":
       { "type": "example", "text": "..." }
     ],
     "quiz": [
-      { "question": "...", "options": ["...","...","...","..."], "correctAnswer": 0, "explanation": "..." },
       { "question": "...", "options": ["...","...","...","..."], "correctAnswer": 0, "explanation": "..." }
     ]
   }
@@ -121,7 +120,7 @@ Output ONLY a JSON object with key "section":
       return typeof s.text === 'string' && s.text.trim().length > 0;
     });
 
-  const validQuiz = section.quiz?.length === 2 &&
+  const validQuiz = section.quiz?.length === 1 &&
     section.quiz.every((q: any) => q.options?.length === 4 && typeof q.explanation === 'string');
 
   if ((!validSteps || !validQuiz) && attempt < 3) {
