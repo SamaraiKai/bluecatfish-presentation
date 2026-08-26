@@ -1942,7 +1942,20 @@ export default function AIPresentation() {
               </button>
             </div>
 
-            <button
+            {devMode && (
+              <button
+                onClick={() => setShowChat(!showChat)}
+                className={`px-4 py-2 rounded-full font-semibold transition-colors ${
+                  showChat 
+                    ? 'bg-cyan-500 text-white' 
+                    : 'bg-blue-600 hover:bg-blue-700 text-white'
+                }`}
+              >
+                💬 Ask AI
+              </button>
+            )}
+
+             <button
               onClick={() => setDevMode((v) => !v)}
               className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors ${
                 🥽 ? 'bg-amber-500 text-white' : 'bg-slate-300 text-slate-700 hover:bg-slate-400'
@@ -1952,17 +1965,6 @@ export default function AIPresentation() {
               ⚙ {devMode ? 'Controls on' : 'Controls off'}
             </button>
             
-            {/* Chat Toggle */}
-            <button
-              onClick={() => setShowChat(!showChat)}
-              className={`px-4 py-2 rounded-full font-semibold transition-colors ${
-                showChat 
-                  ? 'bg-cyan-500 text-white' 
-                  : 'bg-blue-600 hover:bg-blue-700 text-white'
-              }`}
-            >
-              💬 Ask AI
-            </button>
           </div>
         </div>
       </header>
