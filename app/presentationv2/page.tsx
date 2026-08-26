@@ -1903,46 +1903,47 @@ export default function AIPresentation() {
             )}
           </div>
           */}
-            
-          <div className="flex items-center gap-3">
-            {/* Speaking Indicator */}
-            {isSpeaking && (
-              <div className="flex items-center gap-2 bg-cyan-500/20 px-4 py-2 rounded-full">
-                <div className="flex gap-1">
-                  {[...Array(3)].map((_, i) => (
-                    <div 
-                      key={i}
-                      className="w-1 h-4 bg-cyan-400 rounded-full animate-pulse"
-                      style={{ animationDelay: `${i * 0.15}s` }}
-                    />
-                  ))}
-                </div>
-                <span className="text-blue-700 text-sm font-medium">
-                  {isPaused ? 'Paused' : 'Teaching...'}
-                </span>
-              </div>
-            )}
-            
-            {/* Voice Controls */}
-            <div className="flex items-center gap-2 bg-black/30 rounded-full px-4 py-2">
-              <button
-                onClick={() => isSpeaking ? (isPaused ? resume() : pause()) : narrateSection(activeSection)}
-                className="w-10 h-10 rounded-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center transition-colors shadow-lg"
-                title={isSpeaking ? (isPaused ? 'Resume' : 'Pause') : 'Play Narration'}
-              >
-                {isSpeaking && !isPaused ? '⏸️' : '▶️'}
-              </button>
-              <button
-                onClick={stop}
-                disabled={!isSpeaking}
-                className="w-10 h-10 rounded-full bg-red-600 hover:bg-red-700 disabled:bg-gray-600 text-white flex items-center justify-center transition-colors shadow-lg"
-                title="Stop"
-              >
-                ⏹️
-              </button>
-            </div>
 
-            {devMode && (
+          {devMode && (
+            <div className="flex items-center gap-3">
+              
+              {isSpeaking && (
+                <div className="flex items-center gap-2 bg-cyan-500/20 px-4 py-2 rounded-full">
+                  <div className="flex gap-1">
+                    {[...Array(3)].map((_, i) => (
+                      <div 
+                        key={i}
+                        className="w-1 h-4 bg-cyan-400 rounded-full animate-pulse"
+                        style={{ animationDelay: `${i * 0.15}s` }}
+                      />
+                    ))}
+                  </div>
+                  <span className="text-blue-700 text-sm font-medium">
+                    {isPaused ? 'Paused' : 'Teaching...'}
+                  </span>
+                </div>
+              )}
+              
+              
+              <div className="flex items-center gap-2 bg-black/30 rounded-full px-4 py-2">
+                <button
+                  onClick={() => isSpeaking ? (isPaused ? resume() : pause()) : narrateSection(activeSection)}
+                  className="w-10 h-10 rounded-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center transition-colors shadow-lg"
+                  title={isSpeaking ? (isPaused ? 'Resume' : 'Pause') : 'Play Narration'}
+                >
+                  {isSpeaking && !isPaused ? '⏸️' : '▶️'}
+                </button>
+                <button
+                  onClick={stop}
+                  disabled={!isSpeaking}
+                  className="w-10 h-10 rounded-full bg-red-600 hover:bg-red-700 disabled:bg-gray-600 text-white flex items-center justify-center transition-colors shadow-lg"
+                  title="Stop"
+                >
+                  ⏹️
+                </button>
+              </div>
+  
+              
               <button
                 onClick={() => setShowChat(!showChat)}
                 className={`px-4 py-2 rounded-full font-semibold transition-colors ${
@@ -1953,19 +1954,20 @@ export default function AIPresentation() {
               >
                 💬 Ask AI
               </button>
-            )}
-
-             <button
-              onClick={() => setDevMode((v) => !v)}
-              className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                devMode ? 'bg-amber-500 text-white' : 'bg-slate-300 text-slate-700 hover:bg-slate-400'
-              }`}
-              title="Toggle navigation controls"
-            >
-              ⚙
-            </button>
-            
-          </div>
+              
+  
+               <button
+                onClick={() => setDevMode((v) => !v)}
+                className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                  devMode ? 'bg-amber-500 text-white' : 'bg-slate-300 text-slate-700 hover:bg-slate-400'
+                }`}
+                title="Toggle navigation controls"
+              >
+                ⚙
+              </button>
+              
+            </div>
+          )}
         </div>
       </header>
 
