@@ -203,7 +203,7 @@ function dedupeKeyTerms(sections: any[]) {
 
 export async function POST(req: Request) {
   try {
-    const cacheKey = `bluecatfish_sections_ai_v25`;
+    const cacheKey = `bluecatfish_sections_ai_vPilot1`;
 
     const cachedRaw = await getValue(cacheKey);
     if (cachedRaw) {
