@@ -679,10 +679,6 @@ function SectionImageBlock({
                 {/* Gradient Overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-mist-400/50 via-transparent to-mist-500/50" />
                 
-                {/* Slide Counter Badge */}
-                <div className="absolute top-4 left-4 bg-cyan-500/90 backdrop-blur-sm px-4 py-2 rounded-full shadow-lg">
-                  <span className="font-bold text-white">{activeSection + 1} / {totalSections}</span>
-                </div>
                 
                 
                 {/* Stats Overlay */}
