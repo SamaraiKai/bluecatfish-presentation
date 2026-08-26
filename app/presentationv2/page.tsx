@@ -1962,7 +1962,7 @@ export default function AIPresentation() {
               }`}
               title="Toggle navigation controls"
             >
-              ⚙ {devMode ? 'Controls on' : 'Controls off'}
+              ⚙
             </button>
             
           </div>
