@@ -36,7 +36,7 @@ type Step =
   | { type: 'example'; text: string }
   | { type: 'imageFocus'; text: string }
   | { type: 'numberSpotlight'; value: string; label: string; context: string }
-  | { type: 'predictThen'; question: string; answer: string; reveal: string }
+  | { type: ''; question: string; answer: string  }
   | { type: 'checkYourself'; statement: string; isTrue: boolean; feedback: string };
 
 /* ============================================================================
@@ -843,15 +843,13 @@ function MiniSlideshowBlock({
                 isActive={currentKey === `${baseKey}_question`}
                 className="text-xl font-semibold text-black mb-6"
               />
-              {/*
+              
               {!revealed ? (
                 <button
                   onClick={() => {
                     setRevealed(true);
                     const aKey = `${baseKey}_answer`;
-                    const rKey = `${baseKey}_reveal`;
-                    play(audioUrls[aKey], aKey, '', () => {
-                      play(audioUrls[rKey], rKey, step.reveal, () => autoAdvanceFrom(activeSectionIndex, microStep));
+                    play(audioUrls[aKey], aKey, '', () => autoAdvanceFrom(activeSectionIndex, microStep));
                     });
                   }}
                   className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-colors"
@@ -862,14 +860,6 @@ function MiniSlideshowBlock({
               ) : (
                 <div className="animate-[fadeIn_0.4s_ease-out]">
                   <div className="text-4xl font-black text-blue-700 mb-3">{step.answer}</div>
-                  <HighlightedText
-                    text={step.reveal}
-                    currentTime={currentTime}
-                    duration={duration}
-                    isSpeaking={isSpeaking}
-                    isActive={currentKey === `${baseKey}_reveal`}
-                    className="text-lg text-black leading-relaxed max-w-xl mx-auto"
-                  />
                 </div>
               )}
               */}
