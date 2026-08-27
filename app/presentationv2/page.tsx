@@ -63,7 +63,6 @@ const STEP_LABELS: Record<Step['type'], string> = {
   checkYourself: 'Quick Check',
 };
 
-const isImageFocus = currentSection?.steps?.[microStep]?.type === 'imageFocus';
 /* ============================================================================
  * MICRO-STEP CONFIG
  * ========================================================================== */
@@ -1876,6 +1875,7 @@ export default function AIPresentation() {
   */
 
   /* ------------------------------------------------------ derived values */
+  const isImageFocus = currentSection?.steps?.[microStep]?.type === 'imageFocus';
   const microSteps = getMicroSteps(currentSection, activeSection);
 
   const flowSteps = sections.flatMap((_, idx) => [
