@@ -35,7 +35,6 @@ type Step =
   | { type: 'simple'; text: string }
   | { type: 'example'; text: string }
   | { type: 'imageFocus'; text: string }
-  | { type: 'keyTerms'; terms: { term: string; definition: string }[] }
   | { type: 'numberSpotlight'; value: string; label: string; context: string }
   | { type: 'predictThen'; question: string; answer: string; reveal: string }
   | { type: 'checkYourself'; statement: string; isTrue: boolean; feedback: string };
@@ -59,7 +58,6 @@ const STEP_LABELS: Record<Step['type'], string> = {
   simple: 'Simple Explanation',
   example: 'Real World Example',
   imageFocus: 'Look at This',
-  keyTerms: 'Key Terms',
   numberSpotlight: 'By the Numbers',
   predictThen: 'Take a Guess',
   checkYourself: 'Quick Check',
@@ -78,7 +76,6 @@ function getMicroSteps(section: SectionWithBreakdown, sectionIndex: number): Mic
 
 function getMicroStepText(section: SectionWithBreakdown, stepIndex: number): string {
     const step = section.steps[stepIndex];
-    if (!step || step.type === 'keyTerms') return '';
     if (step.type === 'numberSpotlight') return step.context;
     if (step.type === 'predictThen') return '';
     if (step.type === 'checkYourself') return '';
@@ -776,7 +773,8 @@ function MiniSlideshowBlock({
             setScaled(false);
           }
         }, [currentKey, baseKey]);
-      
+
+        /*
         if (step.type === 'keyTerms') {
           return (
             <div className="space-y-3">
@@ -804,6 +802,7 @@ function MiniSlideshowBlock({
             </div>
           );
         }
+        */
 
         if (step.type === 'numberSpotlight') {
           const valueActive = currentKey === `${baseKey}_value`;
@@ -1432,22 +1431,6 @@ export default function AIPresentation() {
       }
 
       // Key terms — shared intro, then ordinal + per-term audio for each term
-      if (step.type === 'keyTerms') {
-        const terms = step.terms;
-        const chainTerm = (t: number): (() => void) => () => {
-          if (t >= terms.length) {
-            autoAdvanceFrom(sectionIndex, stepIndex);
-            return;
-          }
-          const ordinalKey = `ordinal${t}`;
-          const termKey = `section${sectionIndex}_keyterm${t}`;
-          play(audioUrls[ordinalKey], termKey, '', () => {
-            play(audioUrls[termKey], termKey, '', chainTerm(t + 1));
-          });
-        };
-        play(audioUrls['keytermIntro'], 'keytermIntro', '', chainTerm(0));
-        return;
-      }
 
       if (step.type === 'predictThen') {
         const qKey = `${baseKey}_question`;
