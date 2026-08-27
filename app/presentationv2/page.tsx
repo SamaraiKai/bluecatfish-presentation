@@ -34,6 +34,7 @@ type Step =
   | { type: 'overview'; text: string; stats?: { value: string; label: string }[] }
   | { type: 'simple'; text: string }
   | { type: 'example'; text: string }
+  | { type: 'imageFocus'; text: string }
   | { type: 'keyTerms'; terms: { term: string; definition: string }[] }
   | { type: 'numberSpotlight'; value: string; label: string; context: string }
   | { type: 'predictThen'; question: string; answer: string; reveal: string }
@@ -57,6 +58,7 @@ const STEP_LABELS: Record<Step['type'], string> = {
   overview: 'Overview',
   simple: 'Simple Explanation',
   example: 'Real World Example',
+  imageFocus: 'Look at This',
   keyTerms: 'Key Terms',
   numberSpotlight: 'By the Numbers',
   predictThen: 'Take a Guess',
@@ -868,7 +870,23 @@ function MiniSlideshowBlock({
             </div>
           );
         }
-        
+
+        if (step.type === 'imageFocus') {
+          return (
+            <div className="animate-[fadeInUp_0.7s_ease-out]">
+              <div className="text-sm font-semibold text-cyan-700 mb-2">👀 Look at the image</div>
+              <HighlightedText
+                text={step.text}
+                currentTime={currentTime}
+                duration={duration}
+                isSpeaking={isSpeaking}
+                isActive={currentKey === baseKey}
+                className="text-xl text-black leading-relaxed"
+              />
+            </div>
+          );
+        }
+      
         if (step.type === 'checkYourself') {
           const isCorrect = checkAnswer === step.isTrue;
           return (
