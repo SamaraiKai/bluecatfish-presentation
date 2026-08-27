@@ -1037,8 +1037,8 @@ function ClassicLayout(props: {
   devMode: boolean;
   isImageFocus: boolean;
 }) {
+  console.log('layout isImageFocus:', props.isImageFocus);
   return (
-    console.log('layout isImageFocus:', props.isImageFocus);
     <div className="bg-white/5 backdrop-blur-md rounded-3xl border border-white-500/30 shadow-2xl overflow-hidden">
       <div className="flex">
         <div className="flex-1 min-h-[500px]">
