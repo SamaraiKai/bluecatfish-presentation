@@ -71,7 +71,7 @@ STRICT RULES YOU MUST FOLLOW:
 4. Include a step type ONLY if it genuinely helps for THIS content. Use "simple" ONLY when the overview genuinely requires re-explanation — if the overview is already clear to a general audience, omit it. Most sections should NOT include a "simple" step; it is for genuinely difficult concepts only. Skip "example" if no honest analogy fits. Only use "numberSpotlight" if this section contains a genuinely surprising number — omit the step entirely if it doesn't; never settle for a date or a routine figure just to include one. Only use "predictThen" for facts a learner could plausibly guess at. Do not include the same type twice.
 5. Every step's content must be grounded strictly in the SOURCE CONTENT — never invent facts to fill out a step.
 6. Every section SHOULD include at least one interactive step ("predictThen" or "checkYourself") unless the content genuinely doesn't support one.
-7. "quiz" must contain EXACTLY 1 multiple-choice questions testing THIS section's content. Each has exactly 4 "options", a "correctAnswer" index (0-3), and an "explanation" (1 short sentence stating the specific fact that makes the answer correct). Base questions only on facts appearing in your generated steps, since those are what the learner sees and hears. IMPORTANT: vary your step composition across sections rather than defaulting to the same pattern every time. "checkYourself" and "example" are just as valid as "keyTerms" — use them wherever the content supports them, and do not treat "keyTerms" as a default.
+7. "quiz" must contain EXACTLY 1 multiple-choice questions testing THIS section's content. Each has exactly 4 "options", a "correctAnswer" index (0-3), and an "explanation" (1 short sentence stating the specific fact that makes the answer correct). Base questions only on facts appearing in your generated steps, since those are what the learner sees and hears. IMPORTANT: vary your step composition across sections rather than defaulting to the same pattern every time. "checkYourself" and "example" are just as valid
 8. "icon" must be a single emoji representing this section's topic.
 9. "recap" must be ONE sentence (12-20 words) summarizing this section's single most important takeaway, written to be read aloud as part of an end-of-lesson recap. Start it naturally so it flows in a list (e.g. "Blue Catfish were introduced in the 1970s for sport fishing." not "In this section we learned that...").
 
@@ -86,7 +86,6 @@ Output ONLY a JSON object with key "section":
     "steps": [
       { "type": "overview", "text": "...", "stats": [{"value": "...", "label": "..."}] },
       { "type": "simple", "text": "..." },
-      { "type": "keyTerms", "terms": [{"term": "...", "definition": "..."}] },
       { "type": "example", "text": "..." },
       { "type": "numberSpotlight", "value": "...", "label": "...", "context": "..." },
       { "type": "predictThen", "question": "...", "answer": "...",
@@ -244,7 +243,7 @@ async function addImageSteps(sections: any[]) {
 
 export async function POST(req: Request) {
   try {
-    const cacheKey = `bluecatfish_sections_ai_vPilot3`;
+    const cacheKey = `bluecatfish_sections_ai_vPilot4`;
 
     const cachedRaw = await getValue(cacheKey);
     if (cachedRaw) {
