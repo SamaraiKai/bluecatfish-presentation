@@ -850,7 +850,6 @@ function MiniSlideshowBlock({
                     setRevealed(true);
                     const aKey = `${baseKey}_answer`;
                     play(audioUrls[aKey], aKey, '', () => autoAdvanceFrom(activeSectionIndex, microStep));
-                    });
                   }}
                   className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-colors"
                 >
@@ -862,7 +861,7 @@ function MiniSlideshowBlock({
                   <div className="text-4xl font-black text-blue-700 mb-3">{step.answer}</div>
                 </div>
               )}
-              */}
+              
             </div>
           );
         }
