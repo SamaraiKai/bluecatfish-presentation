@@ -739,6 +739,26 @@ function MiniSlideshowBlock({
   play: (url: string | undefined, key: string, text?: string, onComplete?: () => void) => void;
   devMode: boolean;
 }) {
+  const [revealed, setRevealed] = useState(false);
+  const [checkAnswer, setCheckAnswer] = useState<boolean | null>(null);
+  const [scaled, setScaled] = useState(false);
+
+  useEffect(() => {
+    setRevealed(false);
+    setCheckAnswer(null);
+  }, [microStep, activeSectionIndex]);
+
+  useEffect(() => {
+    const valueKey = `section${activeSectionIndex}_step${microStep}_value`;
+    if (currentKey === valueKey) {
+      // next frame, so the browser paints the un-scaled state first and can animate from it
+      const id = requestAnimationFrame(() => setScaled(true));
+      return () => cancelAnimationFrame(id);
+    } else {
+      setScaled(false);
+    }
+  }, [currentKey, activeSectionIndex, microStep]);
+  
   return (
     <div className="p-8 md:p-12 flex flex-col justify-center bg-gradient-to-br from-mauve-200/70 to-mauve-300/70 rounded-3xl border border-white-500/30">
       {/* Animated Title */}
@@ -755,25 +775,8 @@ function MiniSlideshowBlock({
         const step = currentSection.steps[microStep];
         if (!step) return null; // step index out of range mid-transition — render nothing this frame
         const baseKey = `section${activeSectionIndex}_step${microStep}`;
-        const [revealed, setRevealed] = useState(false);
-        const [checkAnswer, setCheckAnswer] = useState<boolean | null>(null);
-        const [scaled, setScaled] = useState(false);
-        if (step.type === 'imageFocus') return null;
       
-        useEffect(() => {
-          setRevealed(false);
-          setCheckAnswer(null);
-        }, [microStep, activeSectionIndex]);
-
-        useEffect(() => {
-          if (currentKey === `${baseKey}_value`) {
-            // next frame, so the browser paints the un-scaled state first and can animate from it
-            const id = requestAnimationFrame(() => setScaled(true));
-            return () => cancelAnimationFrame(id);
-          } else {
-            setScaled(false);
-          }
-        }, [currentKey, baseKey]);
+        if (step.type === 'imageFocus') return null;
 
         /*
         if (step.type === 'keyTerms') {
