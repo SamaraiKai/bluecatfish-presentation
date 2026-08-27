@@ -37,7 +37,7 @@ async function getMatchingImages(query: string, count: number): Promise<string[]
     match_count: count,
   });
   if (error) throw new Error(`Image lookup failed: ${error.message}`);
-  return (data ?? []).map((row: any) => ({ url: row.url, description: row.description ?? '' });
+  return (data ?? []).map((row: any) => ({ url: row.url, description: row.description ?? '' }));
 }
 
 async function generateSingleSection(
