@@ -19,7 +19,6 @@ export function useHandRaise(enabled: boolean, onRaised: () => void) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    console.log('useHandRaise effect starting, enabled:', enabled);
     if (!enabled) return
     let cancelled = false;
 
