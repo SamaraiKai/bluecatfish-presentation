@@ -1038,9 +1038,10 @@ function ClassicLayout(props: {
   isImageFocus: boolean;
 }) {
   return (
+    console.log('layout isImageFocus:', props.isImageFocus);
     <div className="bg-white/5 backdrop-blur-md rounded-3xl border border-white-500/30 shadow-2xl overflow-hidden">
       <div className="flex">
-        <div className="flex-1">
+        <div className="flex-1 min-h-[500px]">
           <SectionImageBlock
             currentSection={props.currentSection}
             activeSection={props.activeSection}
@@ -1434,7 +1435,6 @@ export default function AIPresentation() {
       const step = section.steps[stepIndex];
       if (!step) return;
       const baseKey = `section${sectionIndex}_step${stepIndex}`;
-      console.log('PLAYING STEP:', { sectionIndex, stepIndex, type: step.type, baseKey, urlExists: !!audioUrls[baseKey] });
       // Overview with fun facts — content, then each fact clip in sequence
       if (step.type === 'overview' && step.stats?.length) {
         const factKeys = step.stats.map((_, f) => `${baseKey}_fact${f}`);
@@ -1576,7 +1576,6 @@ export default function AIPresentation() {
   
   /* ------------------------------------------- micro-step nav handlers */
   const goToMicroStep = (index: number) => {
-    console.log('goToMicroStep called with:', index, 'microSteps.length:', microSteps.length, 'activeSection:', activeSection);
     if (index < 0 || index >= microSteps.length) {
       console.log('REJECTED — out of bounds');
       return;
