@@ -1954,20 +1954,19 @@ export default function AIPresentation() {
               >
                 💬 Ask AI
               </button>
-              
-  
-               <button
-                onClick={() => setDevMode((v) => !v)}
-                className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                  devMode ? 'bg-amber-500 text-white' : 'bg-slate-300 text-slate-700 hover:bg-slate-400'
-                }`}
-                title="Toggle navigation controls"
-              >
-                ⚙
-              </button>
+
               
             </div>
           )}
+          <button
+            onClick={() => setDevMode((v) => !v)}
+            className={`w-10 h-10 rounded-full flex items-center justify-center ${
+              devMode ? 'bg-amber-500 text-white' : 'bg-slate-300 text-slate-700 hover:bg-slate-400'
+            }`}
+            title="Toggle navigation controls"
+          >
+            ⚙
+          </button>
         </div>
       </header>
 
