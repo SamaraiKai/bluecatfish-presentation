@@ -1072,7 +1072,7 @@ function ClassicLayout(props: {
               audioUrls={props.audioUrls}
               play={props.play}
               devMode={props.devMode}
-              isImageFocus={isImageFocus}
+              isImageFocus={props.isImageFocus}
             />
           </div>
         </div>
@@ -1875,8 +1875,8 @@ export default function AIPresentation() {
   */
 
   /* ------------------------------------------------------ derived values */
-  const isImageFocus = currentSection?.steps?.[microStep]?.type === 'imageFocus';
   const microSteps = getMicroSteps(currentSection, activeSection);
+  const isImageFocus = currentSection?.steps?.[microStep]?.type === 'imageFocus';
 
   const flowSteps = sections.flatMap((_, idx) => [
     { type: 'section' as const, index: idx },
