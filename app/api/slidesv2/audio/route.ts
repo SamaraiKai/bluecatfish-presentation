@@ -49,7 +49,7 @@ const WRAP_UP_TEXT = "When you're ready, answer the quiz to head to the next sec
 
 const FAIL_TEXT = "It seems you didn't answer everything correctly. Let's head to review to cement what you know.";
 
-const REVIEW_INTRO_ONE_TEXT = "Almost perfect. Let's look at the one you missed.";
+const REVIEW_INTRO_ONE_TEXT = "That one wasn't quite right. Let's review it.";
 const REVIEW_INTRO_SOME_TEXT = "Let's go back over the ones you missed.";
 const REVIEW_OUTRO_TEXT = "That's the review. Ready to keep going?";
 
