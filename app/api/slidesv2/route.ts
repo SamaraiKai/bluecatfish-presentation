@@ -258,8 +258,8 @@ export async function POST(req: Request) {
       ["Why Are They Invasive?", "why blue catfish are invasive Chesapeake Bay introduction non-native spread"],
       ["Impact on the Bay Ecosystem", "blue catfish negative impacts native species Chesapeake Bay ecosystem population concerns"],
       ["Mitigation Efforts", "what is being done to mitigate blue catfish invasion management harvest programs"],
-      ["How You Can Help", "how can you help blue catfish invasion consumer action buying blue catfish products forms available"],
-      ["Nutrition and Safety", "blue catfish fillet nutrition protein fat cholesterol contaminants safe to eat commercially harvested"]
+      ["How You Can Help", "how can you help blue catfish invasion consumer action buying blue catfish products forms available, food and eating them"],
+      ["Nutrition and Safety", "blue catfish fillet nutrition protein fat cholesterol contaminants safe to eat commercially harvested, food and eating them"]
     ];
 
     const ragContexts = await Promise.all(
