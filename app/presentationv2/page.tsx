@@ -1708,11 +1708,13 @@ export default function AIPresentation() {
 
         setSections(sectionsData.sections);
 
+        /*
         console.log('SECTIONS STRUCTURE:', sectionsData.sections.map((sec: any, i: number) => ({
           section: i,
           title: sec.title,
           steps: sec.steps.map((st: any, s: number) => ({ index: s, type: st.type })),
         })));
+        */
         
         const firstTopic = sectionsData.sections[0]?.title || 'the Blue Catfish invasion';
         const builtIntro = `Hello everyone, and welcome! I'm Professor Marine, and today we're diving into the story of the Blue Catfish invasion in the Chesapeake Bay. By the time we're done, you'll all be experts on the subject. Let's get right into the material — starting with our first topic: ${firstTopic}.`;
