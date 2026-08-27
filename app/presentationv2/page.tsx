@@ -1040,9 +1040,10 @@ function ClassicLayout(props: {
   return (
     <div className="bg-white/5 backdrop-blur-md rounded-3xl border border-white-500/30 shadow-2xl overflow-hidden">
       <div 
-        className="grid transition-[grid-template-columns] duration-700 ease-in-out"
+        className="grid"
         style={{
           gridTemplateColumns: props.isImageFocus ? '1fr 0fr' : '1fr 1fr',
+          transition: 'grid-template-columns 700ms ease-in-out',
         }}
       >
         <SectionImageBlock
@@ -1051,9 +1052,11 @@ function ClassicLayout(props: {
           totalSections={props.totalSections}
         />
         <div
-          className={`overflow-hidden transition-opacity duration-500 ${
-            props.isImageFocus ? 'opacity-0' : 'opacity-100'
-          }`}
+          className="overflow-hidden transition-all duration-700 ease-in-out"
+          style={{
+            width: props.isImageFocus ? '0%' : '50%',
+            opacity: props.isImageFocus ? 0 : 1,
+          }}
         >
           <div className="p-8 md:p-12 flex flex-col justify-center bg-gradient-to-br from-mist-400/50 to-mist-500/50 h-full">
             <MiniSlideshowBlock
