@@ -63,6 +63,7 @@ const STEP_LABELS: Record<Step['type'], string> = {
   checkYourself: 'Quick Check',
 };
 
+const isImageFocus = currentSection?.steps?.[microStep]?.type === 'imageFocus';
 /* ============================================================================
  * MICRO-STEP CONFIG
  * ========================================================================== */
@@ -758,7 +759,8 @@ function MiniSlideshowBlock({
         const [revealed, setRevealed] = useState(false);
         const [checkAnswer, setCheckAnswer] = useState<boolean | null>(null);
         const [scaled, setScaled] = useState(false);
-
+        if (step.type === 'imageFocus') return null;
+      
         useEffect(() => {
           setRevealed(false);
           setCheckAnswer(null);
@@ -1031,36 +1033,49 @@ function ClassicLayout(props: {
   audioUrls: Record<string, string>;
   play: (url: string | undefined, key: string, text?: string, onComplete?: () => void) => void;
   devMode: boolean;
+  isImageFocus: boolean;
 }) {
   return (
     <div className="bg-white/5 backdrop-blur-md rounded-3xl border border-white-500/30 shadow-2xl overflow-hidden">
-      <div className="grid md:grid-cols-2 gap-0">
+      <div 
+        className="grid transition-[grid-template-columns] duration-700 ease-in-out"
+        style={{
+          gridTemplateColumns: props.isImageFocus ? '1fr 0fr' : '1fr 1fr',
+        }}
+      >
         <SectionImageBlock
           currentSection={props.currentSection}
           activeSection={props.activeSection}
           totalSections={props.totalSections}
         />
-        <div className="p-8 md:p-12 flex flex-col justify-center bg-gradient-to-br from-mist-400/50 to-mist-500/50">
-          <MiniSlideshowBlock
-            currentSection={props.currentSection}
-            activeSectionIndex={props.activeSectionIndex}
-            microStep={props.microStep}
-            microSteps={props.microSteps}
-            goToMicroStep={props.goToMicroStep}
-            nextMicroStep={props.nextMicroStep}
-            prevMicroStep={props.prevMicroStep}
-            showQuiz={props.showQuiz}
-            handleQuizContinue={props.handleQuizContinue}
-            currentKey={props.currentKey}
-            currentTime={props.currentTime}
-            duration={props.duration}
-            isSpeaking={props.isSpeaking}
-            playMicroStepAudio={props.playMicroStepAudio}
-            autoAdvanceFrom={props.autoAdvanceFrom}
-            audioUrls={props.audioUrls}
-            play={props.play}
-            devMode={props.devMode}
-          />
+        <div
+          className={`overflow-hidden transition-opacity duration-500 ${
+            props.isImageFocus ? 'opacity-0' : 'opacity-100'
+          }`}
+        >
+          <div className="p-8 md:p-12 flex flex-col justify-center bg-gradient-to-br from-mist-400/50 to-mist-500/50 h-full">
+            <MiniSlideshowBlock
+              currentSection={props.currentSection}
+              activeSectionIndex={props.activeSectionIndex}
+              microStep={props.microStep}
+              microSteps={props.microSteps}
+              goToMicroStep={props.goToMicroStep}
+              nextMicroStep={props.nextMicroStep}
+              prevMicroStep={props.prevMicroStep}
+              showQuiz={props.showQuiz}
+              handleQuizContinue={props.handleQuizContinue}
+              currentKey={props.currentKey}
+              currentTime={props.currentTime}
+              duration={props.duration}
+              isSpeaking={props.isSpeaking}
+              playMicroStepAudio={props.playMicroStepAudio}
+              autoAdvanceFrom={props.autoAdvanceFrom}
+              audioUrls={props.audioUrls}
+              play={props.play}
+              devMode={props.devMode}
+              isImageFocus={isImageFocus}
+            />
+          </div>
         </div>
       </div>
     </div>
