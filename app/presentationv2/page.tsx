@@ -839,6 +839,7 @@ function MiniSlideshowBlock({
                 isActive={currentKey === `${baseKey}_question`}
                 className="text-xl font-semibold text-black mb-6"
               />
+              {/*
               {!revealed ? (
                 <button
                   onClick={() => {
@@ -853,6 +854,7 @@ function MiniSlideshowBlock({
                 >
                   Reveal the answer →
                 </button>
+                
               ) : (
                 <div className="animate-[fadeIn_0.4s_ease-out]">
                   <div className="text-4xl font-black text-blue-700 mb-3">{step.answer}</div>
@@ -866,6 +868,7 @@ function MiniSlideshowBlock({
                   />
                 </div>
               )}
+              */}
             </div>
           );
         }
