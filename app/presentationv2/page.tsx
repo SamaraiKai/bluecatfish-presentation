@@ -669,7 +669,7 @@ function SectionImageBlock({
                     key={currentSection.image}
                     src={currentSection.image} 
                     alt={currentSection.title}
-                    className="absolute inset-0 w-full h-full object-contain opacity-80"
+                    className="absolute inset-0 w-full h-full object-contain opacity-100"
                     onError={(e) => {
                       e.currentTarget.style.display='none';
                     }}
