@@ -22,6 +22,7 @@ interface SectionWithBreakdown {
   image: string;
   steps: Step[];
   quiz: { question: string; options: string[]; correctAnswer: number; explanation: string }[];
+  recap: string,
 }
 
 type MicroStep = {
