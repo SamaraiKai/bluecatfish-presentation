@@ -669,16 +669,16 @@ function SectionImageBlock({
                     key={currentSection.image}
                     src={currentSection.image} 
                     alt={currentSection.title}
-                    className="absolute inset-0 w-full h-full object-contain opacity-100"
+                    className="absolute inset-0 w-full h-full object-contain"
                     onError={(e) => {
                       e.currentTarget.style.display='none';
                     }}
                   />
                 )}
-                
-                {/* Gradient Overlay */}
+
+                {/*
                 <div className="absolute inset-0 bg-gradient-to-t from-mist-400/50 via-transparent to-mist-500/50" />
-                
+                */}
                 
                 
                 {/* Stats Overlay */}
