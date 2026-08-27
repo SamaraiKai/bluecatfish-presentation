@@ -1039,18 +1039,14 @@ function ClassicLayout(props: {
 }) {
   return (
     <div className="bg-white/5 backdrop-blur-md rounded-3xl border border-white-500/30 shadow-2xl overflow-hidden">
-      <div 
-        className="grid"
-        style={{
-          gridTemplateColumns: props.isImageFocus ? '1fr 0fr' : '1fr 1fr',
-          transition: 'grid-template-columns 700ms ease-in-out',
-        }}
-      >
-        <SectionImageBlock
-          currentSection={props.currentSection}
-          activeSection={props.activeSection}
-          totalSections={props.totalSections}
-        />
+      <div className="flex">
+        <div className="flex-1">
+          <SectionImageBlock
+            currentSection={props.currentSection}
+            activeSection={props.activeSection}
+            totalSections={props.totalSections}
+          />
+        </div>
         <div
           className="overflow-hidden transition-all duration-700 ease-in-out"
           style={{
@@ -1078,7 +1074,6 @@ function ClassicLayout(props: {
               audioUrls={props.audioUrls}
               play={props.play}
               devMode={props.devMode}
-              isImageFocus={props.isImageFocus}
             />
           </div>
         </div>
