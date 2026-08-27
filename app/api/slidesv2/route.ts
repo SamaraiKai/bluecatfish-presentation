@@ -37,7 +37,7 @@ async function getMatchingImages(query: string, count: number): Promise<string[]
     match_count: count,
   });
   if (error) throw new Error(`Image lookup failed: ${error.message}`);
-  return (data ?? []).map((row: any) => row.url);
+  return (data ?? []).map((row: any) => ({ url: row.url, description: row.description ?? '' });
 }
 
 async function generateSingleSection(
@@ -156,11 +156,12 @@ async function assignUniqueImages(sections: any[], sectionTopics: string[]) {
  
     if (firstUnused) {
       sections[i].image = firstUnused;
+      sections[i].imageDescription = firstUnused.description;
       usedUrls.add(firstUnused);
     } else {
-
       console.warn(`Section ${i + 1}: all ${CANDIDATE_COUNT} candidate images already used, reusing top match.`);
       sections[i].image = candidates[0] ?? "";
+      sections[i].imageDescription = candidates[0]?.description ?? "";
     }
   }
  
@@ -201,6 +202,48 @@ function dedupeKeyTerms(sections: any[]) {
   return sections;
 }
 
+async function addImageSteps(sections: any[]) {
+  for (const section of sections) {
+    if (!section.imageDescription) continue;
+
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-3.5-turbo",
+        response_format: { type: "json_object" },
+        messages: [
+          {
+            role: "system",
+            content: `Write a short spoken line directing a learner's attention to an image on screen, then explaining what it shows and why it matters for this lesson section. 2-3 sentences total. Start by pointing at the image naturally ("Take a look at the image on screen..." / "Notice in the picture..."). Base it ONLY on the provided image description — never invent visual details. Output JSON: { "text": "..." }`,
+          },
+          {
+            role: "user",
+            content: `Section: "${section.title}"\nImage description: "${section.imageDescription}"`,
+          },
+        ],
+        temperature: 0.7,
+        max_tokens: 200,
+      }),
+    });
+
+    try {
+      const data = await res.json();
+      const parsed = JSON.parse(data.choices?.[0]?.message?.content ?? '{}');
+      if (parsed.text) {
+        // insert right after the overview so the image is introduced early
+        section.steps.splice(1, 0, { type: 'imageFocus', text: parsed.text });
+      }
+    } catch (e) {
+      console.warn(`Image step failed for "${section.title}":`, e);
+    }
+  }
+  return sections;
+}
+
 export async function POST(req: Request) {
   try {
     const cacheKey = `bluecatfish_sections_ai_vPilot1`;
@@ -231,6 +274,7 @@ export async function POST(req: Request) {
 
     await assignUniqueImages(sections, sectionTopics.map(([, query]) => query));
     dedupeKeyTerms(sections);
+    await addImageSteps(sections);
     
     await setValue(cacheKey, JSON.stringify(sections));
     return NextResponse.json({ sections, source: "generated" });
