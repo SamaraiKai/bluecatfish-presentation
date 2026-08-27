@@ -320,11 +320,13 @@ function buildSectionJobs(sections: any[]): AudioJob[] {
           text: `${step.answer}.`,
           fileName: `${FOLDER}/section${i + 1}_step${s}_answer.mp3`,
         });
+        /*
         jobs.push({
           key: `section${i}_step${s}_reveal`,
           text: step.reveal,
           fileName: `${FOLDER}/section${i + 1}_step${s}_reveal.mp3`,
         });
+        */
       } else if (step.type === 'checkYourself') {
         jobs.push({
           key: `section${i}_step${s}_statement`,
