@@ -89,7 +89,7 @@ Output ONLY a JSON object with key "section":
       { "type": "keyTerms", "terms": [{"term": "...", "definition": "..."}] },
       { "type": "example", "text": "..." },
       { "type": "numberSpotlight", "value": "...", "label": "...", "context": "..." },
-      { "type": "predictThen", "question": "...", "answer": "...", "reveal": "..." },
+      { "type": "predictThen", "question": "...", "answer": "...",
       { "type": "checkYourself", "statement": "...", "isTrue": true, "feedback": "..." }
     ],
     "quiz": [
