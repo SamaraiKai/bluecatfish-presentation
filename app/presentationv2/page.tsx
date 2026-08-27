@@ -661,7 +661,7 @@ function SectionImageBlock({
     totalSections: number;
   }) {
     return (
-              <div className="relative h-72 md:h-auto min-h-[500px] bg-gradient-to-br overflow-hidden">
+              <div className="relative h-full min-h-[500px] bg-gradient-to-br overflow-hidden">
                 
                 {/* Main Image */}
                 {currentSection.image && (
@@ -1040,7 +1040,7 @@ function ClassicLayout(props: {
   console.log('layout isImageFocus:', props.isImageFocus);
   return (
     <div className="bg-white/5 backdrop-blur-md rounded-3xl border border-white-500/30 shadow-2xl overflow-hidden">
-      <div className="flex">
+      <div className="flex items-stretch">
         <div className="flex-1 min-h-[500px]">
           <SectionImageBlock
             currentSection={props.currentSection}
@@ -2066,6 +2066,7 @@ export default function AIPresentation() {
               audioUrls={audioUrls}
               play={play}
               devMode={devMode}
+              isImageFocus={isImageFocus}
             />
           ) : (
             <SplitLayout
