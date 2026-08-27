@@ -811,7 +811,7 @@ function MiniSlideshowBlock({
             <div className="text-center py-6 animate-[fadeInUp_0.7s_ease-out]">
               <div 
                 className={`text-4xl md:text-5xl font-black text-blue-700 mb-3 inline-block transition-all duration-700 ease-out ${
-                  valueActive ? 'scale-115 drop-shadow-[0_0_25px_rgba(34,211,238,0.6)]' : 'scale-100 drop-shadow-none'
+                  valueActive ? 'scale-125 drop-shadow-[0_0_25px_rgba(34,211,238,0.6)]' : 'scale-100 drop-shadow-none'
                 }`}
               >
                 <AnimatedStatValue value={step.value} start={scaled}/>
