@@ -41,9 +41,9 @@ const CONCLUSION_INTRO_TEXT = "Let's take a moment to look back at everything we
 const CONCLUSION_OUTRO_TEXT = "And that's the whole story. Thanks for joining me — remember, sometimes the solution to an ecological problem can be found on our dinner plates.";
 
 // Played between individual key terms
-const ORDINAL_LINES = ["First.", "Next.", "Then.", "Finally."];
+// const ORDINAL_LINES = ["First.", "Next.", "Then.", "Finally."];
 
-const KEYTERM_INTRO_TEXT = "Let's go over some key terms.";
+//const KEYTERM_INTRO_TEXT = "Let's go over some key terms.";
 
 const WRAP_UP_TEXT = "When you're ready, answer the quiz to head to the next section.";
 
@@ -204,15 +204,15 @@ function buildSharedJobs(): AudioJob[] {
     jobs.push({ key: `transition${t}`, text, fileName: `${FOLDER}/transition-${t}.mp3` })
   );
  
-  ORDINAL_LINES.forEach((text, t) =>
-    jobs.push({ key: `ordinal${t}`, text, fileName: `${FOLDER}/ordinal${t}.mp3` })
-  );
+  //ORDINAL_LINES.forEach((text, t) =>
+    //jobs.push({ key: `ordinal${t}`, text, fileName: `${FOLDER}/ordinal${t}.mp3` })
+  //);
  
-  jobs.push({
-    key: "keytermIntro",
-    text: KEYTERM_INTRO_TEXT,
-    fileName: `${FOLDER}/keyterm_intro.mp3`,
-  });
+  //jobs.push({
+    //key: "keytermIntro",
+    //text: KEYTERM_INTRO_TEXT,
+    //fileName: `${FOLDER}/keyterm_intro.mp3`,
+  //});
  
   jobs.push({ key: "wrapup", text: WRAP_UP_TEXT, fileName: `${FOLDER}/wrapup.mp3` });
   jobs.push({ key: "quizFail", text: FAIL_TEXT, fileName: `${FOLDER}/quiz-fail.mp3` });
