@@ -152,15 +152,15 @@ async function assignUniqueImages(sections: any[], sectionTopics: string[]) {
     const query = sections[i].steps?.[0]?.text || sectionTopics[i];
     const candidates = await getMatchingImages(query, CANDIDATE_COUNT);
  
-    const firstUnused = candidates.find((url) => !usedUrls.has(url));
+    const firstUnused = candidates.find((c) => !usedUrls.has(c.url));
  
     if (firstUnused) {
-      sections[i].image = firstUnused;
+      sections[i].image = firstUnused.url;
       sections[i].imageDescription = firstUnused.description;
-      usedUrls.add(firstUnused);
+      usedUrls.add(firstUnused.url);
     } else {
       console.warn(`Section ${i + 1}: all ${CANDIDATE_COUNT} candidate images already used, reusing top match.`);
-      sections[i].image = candidates[0] ?? "";
+      sections[i].image = candidates[0]?.url ?? "";
       sections[i].imageDescription = candidates[0]?.description ?? "";
     }
   }
