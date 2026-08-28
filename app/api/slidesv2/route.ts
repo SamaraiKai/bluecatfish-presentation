@@ -71,9 +71,8 @@ STRICT RULES YOU MUST FOLLOW:
 4. Include a step type ONLY if it genuinely helps for THIS content. Use "simple" ONLY when the overview genuinely requires re-explanation — if the overview is already clear to a general audience, omit it. Most sections should NOT include a "simple" step; it is for genuinely difficult concepts only. Skip "example" if no honest analogy fits. Only use "numberSpotlight" if this section contains a genuinely surprising number — omit the step entirely if it doesn't; never settle for a date or a routine figure just to include one. Only use "predictThen" for facts a learner could plausibly guess at. Do not include the same type twice.
 5. Every step's content must be grounded strictly in the SOURCE CONTENT — never invent facts to fill out a step.
 6. Every section SHOULD include at least one interactive step ("predictThen" or "checkYourself") unless the content genuinely doesn't support one.
-7. "quiz" must contain EXACTLY 1 multiple-choice questions testing THIS section's content. Each has exactly 4 "options", a "correctAnswer" index (0-3), and an "explanation" (1 short sentence stating the specific fact that makes the answer correct). Base questions only on facts appearing in your generated steps, since those are what the learner sees and hears. IMPORTANT: vary your step composition across sections rather than defaulting to the same pattern every time. "checkYourself" and "example" are just as valid
-8. "icon" must be a single emoji representing this section's topic.
-9. "recap" must be ONE sentence (12-20 words) summarizing this section's single most important takeaway, written to be read aloud as part of an end-of-lesson recap. Start it naturally so it flows in a list (e.g. "Blue Catfish were introduced in the 1970s for sport fishing." not "In this section we learned that...").
+7. "quiz" must contain EXACTLY 1 multiple-choice question testing THIS section's specific content. It must have exactly 4 "options", a "correctAnswer" index (0-3), and an "explanation" (1 short sentence stating the specific fact that makes the answer correct). CRITICAL — write the options so the correct answer is not identifiable by format alone: - All 4 options must be similar in length (within a few words of each other). The correct answer must NOT be the longest or most detailed option — that is the single most common giveaway. - All 4 options must be similar in specificity. Do not pair one precise, qualified answer against three vague ones. - Wrong options must be plausible to someone who didn't pay attention — draw them from real-sounding facts about Blue Catfish, not obviously absurd choices. - Vary which index is correct across sections; do not default to the same position. The question must be answerable ONLY by someone who paid attention to THIS section. Do not ask about general Blue Catfish knowledge that other sections also cover — anchor it to a specific fact, number, or claim unique to this section's content.
+8. "recap" must be ONE sentence (12-20 words) summarizing this section's single most important takeaway, written to be read aloud as part of an end-of-lesson recap. Start it naturally so it flows in a list (e.g. "Blue Catfish were introduced in the 1970s for sport fishing." not "In this section we learned that...").
 
 Output ONLY a JSON object with key "section":
 
@@ -243,7 +242,7 @@ async function addImageSteps(sections: any[]) {
 
 export async function POST(req: Request) {
   try {
-    const cacheKey = `bluecatfish_sections_ai_vPilot4`;
+    const cacheKey = `bluecatfish_sections_ai_vPilot5`;
 
     const cachedRaw = await getValue(cacheKey);
     if (cachedRaw) {
