@@ -2105,7 +2105,9 @@ export default function AIPresentation() {
             `}</style>
         
           {/* Navigation */}
-          <div className="flex justify-between items-center mt-8">
+          <div className={1flex justify-between items-center mt-8 transition-opacity duration-300 ${
+            showQuiz || showReview ? 'opacity-0 pointer-events-none' : 'opacity-100'
+          }`}>
             <button
               onClick={prevSection}
               disabled={activeSection === 0}
