@@ -1665,8 +1665,11 @@ export default function AIPresentation() {
     setMicroStep(0);
     setShowConclusion(false);
     setShowQuiz(false);
+    setShowReview(false);
     setSectionScores({});
     setCompletedQuizzes(new Set());
+    setMissedQuestions([]);
+    setStarted(false)
   };
 
   const playConclusion = () => {
