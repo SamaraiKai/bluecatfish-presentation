@@ -348,33 +348,34 @@ function HighlightedText({
   );
 }
 
-function AnimatedStatValue({ value }: { value: string }) {
+function AnimatedStatValue({ value, start = true }: { value: string; start?: boolean }) {
   const match = value.match(/^(\d+(?:\.\d+)?)/);
   const targetNum = match ? parseFloat(match[1]) : null;
   const suffix = match ? value.slice(match[1].length) : '';
-  const [display, setDisplay] = useState(targetNum !== null ? 0 : null);
+   const decimals = match && match[1].includes('.') ? match[1].split('.')[1].length : 0;
+  const [display, setDisplay] = useState<string | null>(targetNum !== null ? (0).toFixed(decimals) : null);
   const hasAnimated = useRef(false);
     
   useEffect(() => {
-    if (targetNum === null || hasAnimated.current) return;
+    if (targetNum === null || hasAnimated.current || !start) return;
     hasAnimated.current = true;
   
     let startTime: number | null = null;
-    const duration = 900; // ms
+    const duration = 1200; // ms
     let frameId: number;
   
     const step = (timestamp: number) => {
       if (startTime === null) startTime = timestamp;
       const progress = Math.min((timestamp - startTime) / duration, 1);
       const eased = 1 - Math.pow(1 - progress, 3); 
-      setDisplay(Math.round(eased * targetNum));
+      setDisplay((eased * targetNum).toFixed(decimals));
       if (progress < 1) {
           frameId = requestAnimationFrame(step);
       }
     };
     frameId = requestAnimationFrame(step);
     return () => cancelAnimationFrame(frameId);
-  }, [targetNum]);
+  }, [targetNum, start, decimals]);
   
   if (targetNum === null) {
     return <>{value}</>;
