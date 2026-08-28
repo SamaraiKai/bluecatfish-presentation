@@ -1534,14 +1534,11 @@ export default function AIPresentation() {
     }
   };
 
-  const playIntroduction = (template: 'classic' | 'split') => {
+  const playIntroduction = () => {
     setInIntro(true);
     play(audioUrls['intro'], 'intro', introText, () => {
-      const layoutKey = `layout_${template}`;
-      play(audioUrls[layoutKey], layoutKey, '', () => {
-        setInIntro(false);
-        narrateSection(0);
-      });
+      setInIntro(false);
+      narrateSection(0);
     });
     setIsNarrating(true);
   };
@@ -1561,7 +1558,7 @@ export default function AIPresentation() {
     setStarted(true);
     setActiveSection(0);
     setShowConclusion(false);
-    playIntroduction('classic');
+    playIntroduction();
   };
   
   /* ------------------------------------------- micro-step nav handlers */
