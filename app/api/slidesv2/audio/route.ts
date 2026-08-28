@@ -18,10 +18,6 @@ const BATCH_SIZE = 8;
 /* ============================================================================
  * STATIC SCRIPT TEXT
  * ========================================================================== */
-const LAYOUT_DESCRIPTIONS = {
-  classic: "As we go through the lesson, you'll see the image on your left and the content on your right.",
-  split: "As we go through the lesson, you'll see the content on your left and the image on your right.",
-};
 
 // Played before a "simple explanation" step
 const IMBETWEEN_PHRASES = [
@@ -187,14 +183,6 @@ function buildSharedJobs(): AudioJob[] {
 
   jobs.push({ key: "conclusion_intro", text: CONCLUSION_INTRO_TEXT, fileName: `${FOLDER}/conclusion-intro.mp3` });
   jobs.push({ key: "conclusion_outro", text: CONCLUSION_OUTRO_TEXT, fileName: `${FOLDER}/conclusion-outro.mp3` });
-  
-  for (const [template, text] of Object.entries(LAYOUT_DESCRIPTIONS)) {
-    jobs.push({
-      key: `layout_${template}`,
-      text,
-      fileName: `${FOLDER}/layout-${template}.mp3`,
-    });
-  }
  
   IMBETWEEN_PHRASES.forEach((text, t) =>
     jobs.push({ key: `imbetween${t}`, text, fileName: `${FOLDER}/imbetween-${t}.mp3` })
