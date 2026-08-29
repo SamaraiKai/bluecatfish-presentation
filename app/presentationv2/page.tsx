@@ -624,13 +624,22 @@ function ConclusionScreen({
           Final Score: {totalScore} / {totalQuestions}
         </p>
       
-        <div className="flex flex-col sm:flex-row gap-4">
+        <div className="flex flex-col sm:flex-row gap-4 items-center">
           <button
             onClick={onRestart}
             className="px-6 py-3 bg-blue-800/60 hover:bg-blue-700/70 text-white rounded-xl font-semibold transition-colors border border-blue-500/30"
           >
             ↺ Restart Lesson
           </button>
+        </div>
+        
+        <div className="mt-8 flex flex-col items-center">
+          <p className="text-blue-900 font-semibold mb-3">Scan to share your feedback</p>
+          <img
+            src="/79ZI6u.png"
+            alt="QR code linking to feedback form"
+            className="w-40 h-40 rounded-xl border-4 border-white shadow-lg"
+          />
         </div>
       
         <p className="text-blue-700/70 text-sm mt-8">
