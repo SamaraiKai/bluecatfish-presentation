@@ -636,7 +636,7 @@ function ConclusionScreen({
         <div className="mt-8 flex flex-col items-center">
           <p className="text-blue-900 font-semibold mb-3">Scan to share your feedback</p>
           <img
-            src="/79ZI6u.png"
+            src="/qr-code.png"
             alt="QR code linking to feedback form"
             className="w-40 h-40 rounded-xl border-4 border-white shadow-lg"
           />
