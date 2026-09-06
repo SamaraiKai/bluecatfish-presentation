@@ -1592,7 +1592,7 @@ export default function AIPresentation() {
       setMicroStep(next);
 
       const nextType = section.steps[next].type;
-      const transition = nextType === 'simple' ? 'means' : nextType === 'example' ? 'analogy' : null;
+      const transition = nextType === 'example' ? 'analogy' : null;
       playMicroStepAudio(sectionIndex, next, transition);
     } else {
       play(audioUrls['wrapup'], 'wrapup', '');
