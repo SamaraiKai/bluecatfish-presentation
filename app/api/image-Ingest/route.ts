@@ -6,6 +6,35 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+async function describeImage(imageUrl: string): Promise<string> {
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: `Describe this image factually and specifically for a Blue Catfish educational lesson. Cover what is actually visible: the subject, setting, notable details, and anything that indicates scale, activity, or context. Write 2-3 sentences. Be concrete and searchable — this description will be used to match the image to lesson topics, so include the specific nouns and concepts someone would search for. Describe only what you can see; do not speculate.`,
+        },
+        {
+          role: "user",
+          content: [
+            { type: "image_url", image_url: { url: imageUrl } },
+          ],
+        },
+      ],
+      max_tokens: 350,
+    }),
+  });
+
+  const data = await res.json();
+  return data.choices?.[0]?.message?.content?.trim() ?? '';
+}
+
 async function embed(text: string): Promise<number[]> {
   const res = await fetch("https://api.openai.com/v1/embeddings", {
     method: "POST",
@@ -48,13 +77,15 @@ export async function POST(req: Request) {
 
     // 2. Get public URL
     const { data: urlData } = supabase.storage
-      .from("slide-images")
+      .from("slide-imagesv2")
       .getPublicUrl(fileName);
 
     const url = urlData.publicUrl;
 
-    // 3. Embed the description
-    const embedding = await embed(description);
+    
+    // 3. Get and Embed the description
+    const description = await describeImage(url);
+    const embedding = await getEmbedding(description);
 
     // 4. Insert into images table
     const { error: insertError } = await supabase
