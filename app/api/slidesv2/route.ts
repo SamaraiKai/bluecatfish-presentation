@@ -112,6 +112,8 @@ Output ONLY a JSON object with key "section":
   const parsed = JSON.parse(content);
   const section = parsed.section ?? parsed;
 
+  console.log(`Section ${sectionNum} raw:`, JSON.stringify(section, null, 2));
+  
   const steps = section.steps;
   const validSteps =
     Array.isArray(steps) &&
