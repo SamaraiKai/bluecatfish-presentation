@@ -951,22 +951,6 @@ function MiniSlideshowBlock({
             </div>
           );
         }
-
-        if (step.type === 'imageFocus') {
-          return (
-            <div className="animate-[fadeInUp_0.7s_ease-out]">
-              <div className="text-sm font-semibold text-cyan-700 mb-2">👀 Look at the image</div>
-              <HighlightedText
-                text={step.text}
-                currentTime={currentTime}
-                duration={duration}
-                isSpeaking={isSpeaking}
-                isActive={currentKey === baseKey}
-                className="text-xl text-black leading-relaxed"
-              />
-            </div>
-          );
-        }
       
         if (step.type === 'checkYourself') {
           const isCorrect = checkAnswer === step.isTrue;
@@ -1739,6 +1723,7 @@ export default function AIPresentation() {
     handleQuizContinue();
   };
 
+  /*
   const nextSection = () => {
     setMicroStep(0);
     if (currentSection.quiz && currentSection.quiz.length === 1) {
@@ -1747,7 +1732,7 @@ export default function AIPresentation() {
     handleQuizContinue(); // no valid quiz for this section — just advance
     }
   };
-
+  
   const prevSection = () => {
     setMicroStep(0);
     if (activeSection > 0) {
@@ -1757,6 +1742,7 @@ export default function AIPresentation() {
       setTimeout(() => narrateSection(newIndex), 300);
     }
   };
+  */
   
   const handleRestart = () => {
     stop();
