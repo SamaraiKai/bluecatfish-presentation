@@ -251,7 +251,7 @@ async function addImageSteps(sections: any[]) {
 
 export async function POST(req: Request) {
   try {
-    const cacheKey = `bluecatfish_sections_ai_vPilot5`;
+    const cacheKey = `bluecatfish_sections_ai_vAfterPilot1`;
 
     const cachedRaw = await getValue(cacheKey);
     if (cachedRaw) {
