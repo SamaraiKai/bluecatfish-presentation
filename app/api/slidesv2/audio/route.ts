@@ -45,6 +45,8 @@ const WRAP_UP_TEXT = "Ready for a quick question?";
 
 const FAIL_TEXT = "It seems you didn't answer everything correctly. Let's head to review to cement what you know.";
 
+const QUIZ_SUCCESS_TEXT = "Nice work. Pick another topic whenever you're ready.";
+
 const REVIEW_INTRO_ONE_TEXT = "That one wasn't quite right. Let's review it.";
 const REVIEW_INTRO_SOME_TEXT = "Let's go back over the ones you missed.";
 const REVIEW_OUTRO_TEXT = "That's the review. Ready to keep going?";
@@ -183,7 +185,9 @@ function buildSharedJobs(): AudioJob[] {
 
   jobs.push({ key: "conclusion_intro", text: CONCLUSION_INTRO_TEXT, fileName: `${FOLDER}/conclusion-intro.mp3` });
   jobs.push({ key: "conclusion_outro", text: CONCLUSION_OUTRO_TEXT, fileName: `${FOLDER}/conclusion-outro.mp3` });
- 
+  
+  jobs.push({ key: "quizSuccess", text: QUIZ_SUCCESS_TEXT, fileName: `${FOLDER}/quiz-success.mp3` });
+  
   IMBETWEEN_PHRASES.forEach((text, t) =>
     jobs.push({ key: `imbetween${t}`, text, fileName: `${FOLDER}/imbetween-${t}.mp3` })
   );
@@ -272,16 +276,6 @@ function buildSectionJobs(sections: any[]): AudioJob[] {
         fileName: `${FOLDER}/section${i + 1}_recap.mp3`,
       });
     }
-    
-    const nextTitle = sections[i + 1]?.title;
-    const successText = nextTitle
-      ? `Great job! You're really learning about Blue Catfish. Let's head to the next section: ${nextTitle}.`
-      :  `Great job! You've completed all the sections. Let's wrap things up.`;
-    jobs.push({
-      key: `section${i}_quizsuccess`,
-      text: successText, 
-      fileName: `${FOLDER}/section${i + 1}_quizsuccess.mp3`
-    });
 
     for (let s = 0; s < section.steps.length; s++) {
       const step = section.steps[s];
