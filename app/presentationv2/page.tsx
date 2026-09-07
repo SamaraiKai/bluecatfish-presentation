@@ -709,6 +709,63 @@ function SectionImageBlock({
               </div>
           );
         }
+function SectionHub({
+  sections,
+  completedQuizzes,
+  onSelect,
+  onFinish,
+}: {
+  sections: SectionWithBreakdown[];
+  completedQuizzes: Set<number>;
+  onSelect: (index: number) => void;
+  onFinish: () => void;
+}) {
+  const allDone = completedQuizzes.size === sections.length;
+
+  return (
+    <div className="w-full max-w-3xl mx-auto text-center py-8">
+      <h2 className="text-3xl md:text-4xl font-bold text-black mb-2">Pick a Topic</h2>
+      <p className="text-blue-700 mb-8">
+        {allDone
+          ? "You've explored everything — ready to wrap up?"
+          : `${completedQuizzes.size} of ${sections.length} explored`}
+      </p>
+
+      <div className="grid grid-cols-2 gap-4 mb-8">
+        {sections.map((sec, i) => {
+          const done = completedQuizzes.has(i);
+          return (
+            <button
+              key={i}
+              onClick={() => onSelect(i)}
+              className={`p-6 rounded-2xl border-2 text-left transition-all duration-300 ${
+                done
+                  ? 'bg-green-100 border-green-500 hover:bg-green-200'
+                  : 'bg-white border-blue-300 hover:border-blue-500 hover:shadow-lg hover:scale-[1.02]'
+              }`}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <span className={`font-bold text-lg ${done ? 'text-green-800' : 'text-blue-900'}`}>
+                  {sec.title}
+                </span>
+                {done && <span className="text-2xl">✓</span>}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      {allDone && (
+        <button
+          onClick={onFinish}
+          className="px-10 py-4 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white text-lg font-bold rounded-full shadow-xl transition-all animate-[fadeInUp_0.5s_ease-out]"
+        >
+          See Your Summary →
+        </button>
+      )}
+    </div>
+  );
+}
 
 function MiniSlideshowBlock({
   currentSection,
@@ -1353,6 +1410,7 @@ export default function AIPresentation() {
   const [inConversation, setInConversation] = useState(false);
   const [started, setStarted] = useState(false);
   const [devMode, setDevMode] = useState(false);
+  const [showHub, setShowHub] = useState(false);
   
   // Refs
   const keyTermsTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -1547,7 +1605,7 @@ export default function AIPresentation() {
     setInIntro(true);
     play(audioUrls['intro'], 'intro', introText, () => {
       setInIntro(false);
-      narrateSection(0);
+      setShowHub(true);
     });
     setIsNarrating(true);
   };
@@ -1600,6 +1658,22 @@ export default function AIPresentation() {
   };
 
   /* --------------------------------------------- section nav handlers */
+  const handleHubSelect = (index: number) => {
+    setShowHub(false);
+    setActiveSection(index);
+    setMicroStep(0);
+    setShowQuiz(false);
+    setShowReview(false);
+    narrateSection(index);
+  };
+  
+  const handleFinishFromHub = () => {
+    setShowHub(false);
+    setShowConclusion(true);
+    setIsNarrating(true);
+    playConclusion();
+  };
+    
   const handleCameraSelect = (useCamera: boolean) => {
     setCameraEnabled(useCamera);
     setCameraChoiceMade(true);
@@ -1615,18 +1689,9 @@ export default function AIPresentation() {
   const handleQuizContinue = () => {
     setCompletedQuizzes((prev) => new Set([...prev, activeSection]));
     setShowQuiz(false);
-    
-    if (activeSection < sections.length - 1) {
-      stop();
-      const newIndex = activeSection + 1;
-      setActiveSection(newIndex);
-      setShowConclusion(false);
-      setTimeout(() => narrateSection(newIndex), 300);
-    } else {
-      stop();
-      setShowConclusion(true);
-      setTimeout(() => narrateSection(sections.length), 500);
-    }
+    setShowReview(false);
+    stop();
+    setShowHub(true);
   };
 
   const handleSendMessage = (text: string) => {
@@ -1716,7 +1781,7 @@ export default function AIPresentation() {
         */
         
         const firstTopic = sectionsData.sections[0]?.title || 'the Blue Catfish invasion';
-        const builtIntro = `Hey! I'm Professor Marine. Let's talk about a fish that's taking over the Chesapeake Bay. First up: ${firstTopic}.`;
+        const builtIntro = `Hey! I'm Professor Marine. Let's talk about a fish that's taking over the Chesapeake Bay. Pick a topic to get started.`;
         setIntroText(builtIntro);
 
         setLoadingPhase('audio');
@@ -2018,8 +2083,14 @@ export default function AIPresentation() {
           </div>
 
           <Notice text={notice} />
-          
-          {showReview ? (
+          {showHub ? (
+            <SectionHub
+              sections={sections}
+              completedQuizzes={completedQuizzes}
+              onSelect={handleHubSelect}
+              onFinish={handleFinishFromHub}
+            />
+          ) : showReview ? (
             <ReviewSlide
               missedQuestions={missedQuestions}
               section={currentSection}
