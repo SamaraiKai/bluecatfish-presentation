@@ -32,7 +32,7 @@ async function getRagContext(topic: string, matchCount = 7): Promise<string> {
 
 async function getMatchingImages(query: string, count: number): Promise<string[]> {
   const queryEmbedding = await embed(query);
-  const { data, error } = await supabase.rpc("match_images", {
+  const { data, error } = await supabase.rpc("match_images2", {
     query_embedding: queryEmbedding,
     match_count: count,
   });
