@@ -52,13 +52,10 @@ export async function POST(req: Request) {
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File;
-    const description = formData.get("description") as string;
+    const manualDescription = (formData.get("description") as string | null)?.trim() || null;
 
-    if (!file || !description) {
-      return NextResponse.json(
-        { error: "Missing file or description" },
-        { status: 400 }
-      );
+    if (!file) {
+      return NextResponse.json({ error: "Missing file" }, { status: 400 });
     }
 
     // 1. Upload image to Supabase Storage
@@ -67,7 +64,7 @@ export async function POST(req: Request) {
     const buffer = Buffer.from(arrayBuffer);
 
     const { error: uploadError } = await supabase.storage
-      .from("slide-images")
+      .from("slide-imagesv2")
       .upload(fileName, buffer, {
         contentType: file.type,
         upsert: false,
@@ -84,17 +81,19 @@ export async function POST(req: Request) {
 
     
     // 3. Get and Embed the description
-    const description = await describeImage(url);
-    const embedding = await getEmbedding(description);
+    const description = manualDescription ?? await describeImage(url);
+    if (!description) throw new Error("Could not generate a description for this image");
+    
+    const embedding = await embed(description);
 
     // 4. Insert into images table
     const { error: insertError } = await supabase
-      .from("images")
+      .from("images2")
       .insert({ url, description, embedding });
 
     if (insertError) throw new Error(`Insert failed: ${insertError.message}`);
 
-    return NextResponse.json({ success: true, url });
+    return NextResponse.json({ success: true, url, description });
   } catch (err: any) {
     console.error("Image ingestion error:", err);
     return NextResponse.json(
