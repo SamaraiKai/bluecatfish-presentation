@@ -16,8 +16,8 @@ export default function UploadImagePage() {
   };
 
   const handleSubmit = async () => {
-    if (!file || !description.trim()) {
-      setStatus("Please select a file and enter a description.");
+    if (!file) {
+      setStatus("Please select a file.");
       return;
     }
 
@@ -27,7 +27,7 @@ export default function UploadImagePage() {
     try {
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("description", description.trim());
+      if (description.trim()) formData.append("description", description.trim());
 
       const res = await fetch("/api/image-Ingest", {
         method: "POST",
@@ -48,7 +48,7 @@ export default function UploadImagePage() {
       if (result.error) {
         setStatus(`Error: ${result.error}`);
       } else {
-        setStatus("Uploaded successfully.");
+        setStatus(`Uploaded. Description: ${result.description ?? '(none returned)'}`);
         setFile(null);
         setDescription("");
         setPreview(null);
@@ -90,7 +90,7 @@ export default function UploadImagePage() {
 
         <div className="mb-6">
           <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
-            Description
+            Description (optional — auto-generated if left blank)
           </label>
           <textarea
             value={description}
@@ -100,7 +100,7 @@ export default function UploadImagePage() {
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
           />
           <p className="mt-1 text-xs text-gray-400">
-            Describe what it shows and what it's about — include the distinguishing context.
+            Leave blank to have the AI describe the image automatically.
           </p>
         </div>
 
@@ -113,7 +113,7 @@ export default function UploadImagePage() {
         <button
           type="button"
           onClick={handleSubmit}
-          disabled={uploading || !file || !description.trim()}
+          disabled={uploading || !file}
           className="w-full rounded-lg bg-blue-600 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
         >
           {uploading ? "Uploading..." : "Upload Image"}
