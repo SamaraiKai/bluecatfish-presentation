@@ -18,7 +18,7 @@ async function describeImage(imageUrl: string): Promise<string> {
       messages: [
         {
           role: "system",
-          content: `Describe this image factually and specifically for a Blue Catfish educational lesson. Cover what is actually visible: the subject, setting, notable details, and anything that indicates scale, activity, or context. Write 2-3 sentences. Be concrete and searchable — this description will be used to match the image to lesson topics, so include the specific nouns and concepts someone would search for. Describe only what you can see; do not speculate.`,
+          content: `Describe this image for a lesson about the Blue Catfish invasion in the Chesapeake Bay. State factually what is visible — subject, setting, notable details, scale, activity. Then, in the same description, state plainly how this image most likely relates to the lesson's themes: the fish itself, its size or biology, the native species it preys on, its ecosystem impact, commercial harvesting, cooking and eating it, or human response. Use the vocabulary someone would search for when looking for an image about that theme. 3-4 sentences. Describe only what you can see; when stating the likely relevance, keep it to the obvious connection, not speculation about specifics you cannot verify.`,
         },
         {
           role: "user",
