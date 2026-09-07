@@ -84,7 +84,6 @@ Output ONLY a JSON object with key "section":
     "recap": "one sentence takeaway",
     "steps": [
       { "type": "overview", "text": "...", "stats": [{"value": "...", "label": "..."}] },
-      { "type": "simple", "text": "..." },
       { "type": "example", "text": "..." },
       { "type": "numberSpotlight", "value": "...", "label": "...", "context": "..." },
       { "type": "predictThen", "question": "...", "answer": "...",
