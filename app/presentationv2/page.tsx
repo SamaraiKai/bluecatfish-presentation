@@ -2215,11 +2215,13 @@ export default function AIPresentation() {
                   }}
                   className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm rounded-full transition-colors"
                 >
-                  ⏭ Skip to summarywewa
+                  ⏭ Skip to summary
                 </button>
               )}
             </div>
           )}
+        </div>
+      )}
       </main>
 
       {/* AI Chat Panel */}
