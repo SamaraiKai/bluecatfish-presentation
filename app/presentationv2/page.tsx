@@ -33,7 +33,6 @@ type MicroStep = {
 
 type Step =
   | { type: 'overview'; text: string; stats?: { value: string; label: string }[] }
-  | { type: 'simple'; text: string }
   | { type: 'example'; text: string }
   | { type: 'imageFocus'; text: string }
   | { type: 'numberSpotlight'; value: string; label: string; context: string }
@@ -56,7 +55,6 @@ const PRESENTATION = {
 
 const STEP_LABELS: Record<Step['type'], string> = {
   overview: 'Overview',
-  simple: 'Simple Explanation',
   example: 'Real World Example',
   imageFocus: 'Look at This',
   numberSpotlight: 'By the Numbers',
