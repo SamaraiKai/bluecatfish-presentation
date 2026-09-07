@@ -738,16 +738,31 @@ function SectionHub({
             <button
               key={i}
               onClick={() => onSelect(i)}
-              className={`p-6 rounded-2xl border-2 text-left transition-all duration-300 ${
+              className={`relative overflow-hidden rounded-2xl border-2 text-left transition-all duration-300 h-40 ${
                 done
-                  ? 'bg-green-100 border-green-500 hover:bg-green-200'
-                  : 'bg-white border-blue-300 hover:border-blue-500 hover:shadow-lg hover:scale-[1.02]'
+                  ? 'border-green-500'
+                  : 'border-blue-300 hover:border-blue-500 hover:shadow-lg hover:scale-[1.02]'
               }`}
             >
-              <div className="flex items-start justify-between gap-2">
-                <span className={`font-bold text-lg ${done ? 'text-green-800' : 'text-blue-900'}`}>
-                  {sec.title}
-                </span>
+              {sec.image && (
+                 <img
+                  src={sec.image}
+                  alt=""
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+              )}
+
+              <div className={`absolute inset-0 ${
+                done
+                  ? 'bg-gradient-to-t from-green-900/90 via-green-900/50 to-green-900/20'
+                  : 'bg-gradient-to-t from-blue-950/90 via-blue-950/50 to-blue-950/20'
+              }`} />
+              
+              <div className="relative h-full flex flex-col justify-end p-4">
+                <div className="flex items-end justify-between gap-2">
+                  <span className={`font-bold text-lg text-white leading-tight`}>
+                    {sec.title}
+                  </span>
                 {done && <span className="text-2xl">✓</span>}
               </div>
             </button>
@@ -1653,7 +1668,13 @@ export default function AIPresentation() {
       const transition = nextType === 'example' ? 'analogy' : null;
       playMicroStepAudio(sectionIndex, next, transition);
     } else {
-      play(audioUrls['wrapup'], 'wrapup', '');
+      play(audioUrls['wrapup'], 'wrapup', '', () => {
+        if (section.quiz && section.quiz.length === 1) {
+          setShowQuiz(true);
+        } else {
+          handleQuizContinue();
+        }
+      });
     }
   };
 
@@ -1944,15 +1965,6 @@ export default function AIPresentation() {
   const microSteps = getMicroSteps(currentSection, activeSection);
   const isImageFocus = currentSection?.steps?.[microStep]?.type === 'imageFocus';
 
-  const flowSteps = sections.flatMap((_, idx) => [
-    { type: 'section' as const, index: idx },
-    { type: 'quiz' as const, index: idx },
-  ]);
-
-  const currentFlowIndex = flowSteps.findIndex(
-    (step) => step.index === activeSection && step.type === (showQuiz ? 'quiz' : 'section')
-  );
-
   /* ---------------------------------------------------------------- render */
   return (
     <div className="min-h-screen bg-gradient-to-br from-mist-400 via-mist-50 to-mist-400 flex flex-col">
@@ -2107,8 +2119,7 @@ export default function AIPresentation() {
                 setSectionScores((prev) => ({ ...prev, [activeSection]: score }));
                 setMissedQuestions(missed);
                 if (passed) {
-                  const key = `section${activeSection}_quizsuccess`;
-                  play(audioUrls[key], key, '');
+                  play(audioUrls['quizSuccess'], 'quizSuccess', '');
                 } else {
                   play(audioUrls['quizFail'], 'quizFail', '');
                 }
@@ -2188,67 +2199,37 @@ export default function AIPresentation() {
             `}</style>
         
           {/* Navigation */}
-          <div className={`flex justify-between items-center mt-8 transition-opacity duration-300 ${
-            showQuiz || showReview ? 'opacity-0 pointer-events-none' : 'opacity-100'
-          }`}>
-            <button
-              onClick={prevSection}
-              disabled={activeSection === 0}
-              className="px-8 py-4 bg-black/50 hover:bg-black/80 disabled:opacity-30 disabled:cursor-not-allowed text-white font-semibold rounded-full transition-colors flex items-center gap-2"
-            >
-              ← Previous
-            </button>
-
-            {devMode && (
-              <div className="flex gap-2 flex-wrap justify-center max-w-md">
-                {flowSteps.map((step, i) => {
-                  const isActive = i === currentFlowIndex;
-                  const isQuizDone = step.type === 'quiz' ? completedQuizzes.has(step.index) : true;
-  
-                  let dotClasses = 'transition-colors ';
-  
-                  if (step.type === 'section') {
-                    dotClasses += `w-3 h-3 rounded-full ${isActive ? 'bg-cyan-500' : 'bg-blue-600 hover:bg-blue-400'}`;
-                  } else {
-                    dotClasses += `w-3 h-3 rotate-45 ${
-                      !isQuizDone
-                        ? 'bg-black/30 hover:bg-black/60'
-                        : isActive
-                        ? 'bg-cyan-500'
-                        : 'bg-green-500 hover:bg-green-400'
-                    }`;
-                  }
-                  
-                  return (
-                    <button
-                      key={i}
-                      title={step.type === 'quiz' ? `Quiz ${step.index + 1}` : `Section ${step.index + 1}`}
-                      onClick={() => {
-                        stop();
-                        setActiveSection(step.index);
-                        if (step.type === 'quiz') {
-                          setShowQuiz(true);
-                        } else {
-                          setShowQuiz(false);
-                          setTimeout(() => narrateSection(step.index), 300);
-                        }
-                      }}
-                      className={dotClasses}
-                    />
-                  );
-                })}
-              </div>
-            )}
-
-            <button
-              onClick={nextSection}
-              className="px-8 py-4 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold rounded-full transition-colors flex items-center gap-2"
-            >
-              {activeSection < sections.length - 1 ? 'Next →' : 'Finish Lesson →'}
-            </button>
-          </div>
-        </div>
-      )}
+          {!showHub && !showConclusion && (
+            <div className={`flex justify-center mt-8 transition-opacity duration-300 ${
+              showQuiz || showReview ? 'opacity-0 pointer-events-none' : 'opacity-100'
+            }`}>
+              <button
+                onClick={() => {
+                  stop();
+                  setShowHub(true);    
+                }}
+                className="px-8 py-4 bg-black/50 hover:bg-black/80 text-white font-semibold rounded-full transition-colors"
+              >
+                ← Back to topics
+              </button>
+              
+              {devMode && (
+                <button
+                  onClick={() => {
+                    stop();
+                    setShowHub(false);
+                    setShowQuiz(false);
+                    setShowConclusion(true);
+                    setIsNarrating(true);
+                    playConclusion();
+                  }}
+                  className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm rounded-full transition-colors"
+                >
+                  ⏭ Skip to summarywewa
+                </button>
+              )}
+            </div>
+          )}
       </main>
 
       {/* AI Chat Panel */}
