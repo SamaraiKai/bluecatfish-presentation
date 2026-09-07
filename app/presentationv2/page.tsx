@@ -1716,7 +1716,7 @@ export default function AIPresentation() {
         */
         
         const firstTopic = sectionsData.sections[0]?.title || 'the Blue Catfish invasion';
-        const builtIntro = `Hello everyone, and welcome! I'm Professor Marine, and today we're diving into the story of the Blue Catfish invasion in the Chesapeake Bay. By the time we're done, you'll all be experts on the subject. Let's get right into the material — starting with our first topic: ${firstTopic}.`;
+        const builtIntro = `Hey! I'm Professor Marine. Let's talk about a fish that's taking over the Chesapeake Bay. First up: ${firstTopic}.`;
         setIntroText(builtIntro);
 
         setLoadingPhase('audio');
