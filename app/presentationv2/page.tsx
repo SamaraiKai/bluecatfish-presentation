@@ -472,6 +472,7 @@ interface SectionWithBreakdown {
   title: string;
   icon: string;
   image: string;
+  hubImage: string;
   recap: string;
   steps: Step[];
   quiz: { question: string; options: string[]; correctAnswer: number; explanation: string }[];
@@ -710,6 +711,7 @@ function SectionImageBlock({
               </div>
           );
         }
+
 function SectionHub({
   sections,
   completedQuizzes,
@@ -745,7 +747,7 @@ function SectionHub({
                   : 'border-blue-300 hover:border-blue-500 hover:shadow-lg hover:scale-[1.02]'
               }`}
             >
-              {sec.image && (
+              {sec.hubImage && (
                  <img
                   src={sec.hubImage}
                   alt=""
@@ -764,7 +766,8 @@ function SectionHub({
                   <span className={`font-bold text-lg text-white leading-tight`}>
                     {sec.title}
                   </span>
-                {done && <span className="text-2xl">✓</span>}
+                  {done && <span className="text-2xl">✓</span>}
+                </div>
               </div>
             </button>
           );
