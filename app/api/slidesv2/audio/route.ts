@@ -41,7 +41,7 @@ const CONCLUSION_OUTRO_TEXT = "And that's the whole story. Thanks for joining me
 
 //const KEYTERM_INTRO_TEXT = "Let's go over some key terms.";
 
-const WRAP_UP_TEXT = "When you're ready, answer the quiz to head to the next section.";
+const WRAP_UP_TEXT = "Ready for a quick question?";
 
 const FAIL_TEXT = "It seems you didn't answer everything correctly. Let's head to review to cement what you know.";
 
