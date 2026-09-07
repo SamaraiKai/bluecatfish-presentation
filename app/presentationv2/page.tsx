@@ -724,7 +724,7 @@ function SectionHub({
   const allDone = completedQuizzes.size === sections.length;
 
   return (
-    <div className="w-full max-w-3xl mx-auto text-center py-8">
+    <div className="w-full max-w-4xl mx-auto text-center py-8">
       <h2 className="text-3xl md:text-4xl font-bold text-black mb-2">Pick a Topic</h2>
       <p className="text-blue-700 mb-8">
         {allDone
@@ -739,7 +739,7 @@ function SectionHub({
             <button
               key={i}
               onClick={() => onSelect(i)}
-              className={`relative overflow-hidden rounded-2xl border-2 text-left transition-all duration-300 h-40 ${
+              className={`relative overflow-hidden rounded-2xl border-2 text-left transition-all duration-300 h-44 ${
                 done
                   ? 'border-green-500'
                   : 'border-blue-300 hover:border-blue-500 hover:shadow-lg hover:scale-[1.02]'
@@ -764,7 +764,7 @@ function SectionHub({
                   <span className={`font-bold text-lg text-white leading-tight`}>
                     {sec.title}
                   </span>
-                  {done && <span className="text-2xl">✓</span>}
+                  {done && <span className="font-bold text-xl text-white leading-tight">✓</span>}
                 </div>
               </div>
             </button>
@@ -1626,6 +1626,7 @@ export default function AIPresentation() {
     setStarted(true);
     setActiveSection(0);
     setShowConclusion(false);
+    setShowHub(true)
     playIntroduction();
   };
   
@@ -2068,20 +2069,7 @@ export default function AIPresentation() {
           />
         ) : (
         <div className="max-w-7xl w-full relative">
-          {/* Progress Bar */}
-          <div className="mb-8">
-            <div className="flex justify-between text-black text-sm mb-2">
-              <span>Section {activeSection + 1} of {sections.length}</span>
-              <span>{Math.round(((activeSection + 1) / sections.length) * 100)}%</span>
-            </div>
-            <div className="h-2 bg-blue-900/50 rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-gradient-to-r from-blue-500 to-cyan-400 transition-all duration-500"
-                style={{ width: `${((activeSection + 1) / sections.length) * 100}%` }}
-              />
-            </div>
-          </div>
-
+        
           <Notice text={notice} />
           {showHub ? (
             <SectionHub
