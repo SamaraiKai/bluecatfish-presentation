@@ -142,22 +142,31 @@ Output ONLY a JSON object with key "section":
 
 async function assignUniqueImages(sections: any[], sectionTopics: string[]) {
   const usedUrls = new Set<string>();
-  const CANDIDATE_COUNT = 8; 
+  const CANDIDATE_COUNT = 16; 
  
   for (let i = 0; i < sections.length; i++) {
     const query = sections[i].steps?.[0]?.text || sectionTopics[i];
     const candidates = await getMatchingImages(query, CANDIDATE_COUNT);
  
-    const firstUnused = candidates.find((c) => !usedUrls.has(c.url));
- 
-    if (firstUnused) {
-      sections[i].image = firstUnused.url;
-      sections[i].imageDescription = firstUnused.description;
-      usedUrls.add(firstUnused.url);
+    const unused = candidates.find((c) => !usedUrls.has(c.url));
+
+    const main = unused[0] ?? candidates[0];
+    if (main) {
+      sections[i].image = main.url;
+      sections[i].imageDescription = main.description;
+      usedUrls.add(main.url);
     } else {
       console.warn(`Section ${i + 1}: all ${CANDIDATE_COUNT} candidate images already used, reusing top match.`);
-      sections[i].image = candidates[0]?.url ?? "";
-      sections[i].imageDescription = candidates[0]?.description ?? "";
+      sections[i].image = "";
+      sections[i].imageDescription = "";
+    }
+
+    const hub = unused.find((c) => c.url !== main?.url && !usedUrls.has(c.url)) ?? candidates[1] ?? main;
+    if (hub) {
+      sections[i].hubImage = hub.url;
+      usedUrls.add(hub.url);
+    } else {
+      sections[i].hubImage = sections[i].image;
     }
   }
  
