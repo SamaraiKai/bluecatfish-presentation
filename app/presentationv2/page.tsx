@@ -1667,6 +1667,7 @@ export default function AIPresentation() {
 
   /* --------------------------------------------- section nav handlers */
   const handleHubSelect = (index: number) => {
+    stop();
     setShowHub(false);
     setActiveSection(index);
     setMicroStep(0);
@@ -1818,12 +1819,6 @@ export default function AIPresentation() {
 
     loadPresentation();
   }, []);
-
-  // Reset to step 0 whenever the main section changes
-  useEffect(() => {
-    setMicroStep(0);
-    stop();
-  }, [activeSection]);
 
   // Clear the key-terms timer when leaving a section
   useEffect(() => {
