@@ -111,8 +111,6 @@ Output ONLY a JSON object with key "section":
 
   const parsed = JSON.parse(content);
   const section = parsed.section ?? parsed;
-
-  console.log(`Section ${sectionNum} raw:`, JSON.stringify(section, null, 2));
   
   const steps = section.steps;
   const validSteps =
@@ -149,7 +147,7 @@ async function assignUniqueImages(sections: any[], sectionTopics: string[]) {
     const query = sections[i].steps?.[0]?.text || sectionTopics[i];
     const candidates = await getMatchingImages(query, CANDIDATE_COUNT);
  
-    const unused = candidates.find((c) => !usedUrls.has(c.url));
+    const unused = candidates.filter((c) => !usedUrls.has(c.url));
 
     const main = unused[0] ?? candidates[0];
     if (main) {
