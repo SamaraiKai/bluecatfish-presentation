@@ -20,6 +20,7 @@ interface SectionWithBreakdown {
   title: string;
   icon: string;
   image: string;
+  hubImage: string;
   steps: Step[];
   quiz: { question: string; options: string[]; correctAnswer: number; explanation: string }[];
   recap: string,
@@ -746,7 +747,7 @@ function SectionHub({
             >
               {sec.image && (
                  <img
-                  src={sec.image}
+                  src={sec.hubImage}
                   alt=""
                   className="absolute inset-0 w-full h-full object-cover"
                 />
