@@ -518,7 +518,7 @@ function SummaryFlowchart({
 
   const connectors = sections.slice(0, -1).map((_, i) => {
     const a = nodePos(i, sections.length);
-    const b = nodePos(i + 1,, sections.length);
+    const b = nodePos(i + 1, sections.length);
     if (a.row === b.row) {
       // horizontal
       const goingRight = b.x > a.x;
