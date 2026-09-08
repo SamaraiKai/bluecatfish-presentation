@@ -197,7 +197,7 @@ Output ONLY a JSON object with key "section":
 
 async function assignUniqueImages(sections: any[], sectionTopics: string[]) {
   const usedUrls = new Set<string>();
-  const CANDIDATE_COUNT = 16; 
+  const CANDIDATE_COUNT = 20; 
  
   for (let i = 0; i < sections.length; i++) {
     const query = sections[i].steps?.[0]?.text || sectionTopics[i];
