@@ -239,6 +239,37 @@ function normalizeTerm(term: string): string {
     .trim();
 }
 
+function dedupeStats(sections: any[]) {
+  const seen = new Set<string>();
+
+  const norm = (v: string) => String(v ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+  for (const section of sections) {
+    for (const step of section.steps) {
+      if (step.type === 'numberSpotlight') {
+        const key = norm(step.value);
+        if (seen.has(key)) {
+          step._drop = true;
+        } else {
+          seen.add(key);
+        }
+      }
+      if (step.type === 'overview' && Array.isArray(step.stats)) {
+        step.stats = step.stats.filter((s: any) => {
+          const key = norm(s.value);
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+        if (step.stats.length === 0) delete step.stats;
+      }
+    }
+    section.steps = section.steps.filter((s: any) => !s._drop);
+  }
+
+  return sections;
+}
+
 function dedupeKeyTerms(sections: any[]) {
   const seen: string[] = [];
   for (const section of sections) {
