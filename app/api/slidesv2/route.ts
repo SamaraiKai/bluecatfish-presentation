@@ -7,6 +7,62 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY! // server-only, bypasses RLS
 );
 
+async function planSections(): Promise<{ title: string; query: string }[]> {
+  // Pull a broad, cheap survey of what's actually in the knowledge base
+  const surveyQueries = [
+    "blue catfish biology appearance behavior",
+    "blue catfish invasive spread chesapeake bay",
+    "blue catfish impact native species ecosystem",
+    "blue catfish management harvest programs",
+    "blue catfish eating nutrition safety consumer",
+  ];
+  const samples = await Promise.all(surveyQueries.map((q) => getRagContext(q, 10)));
+  const survey = samples.join("\n\n---\n\n");
+
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      response_format: { type: "json_object" },
+      messages: [
+        {
+          role: "system",
+          content: `You are planning the structure of a short educational lesson for young visitors at a science fair, based on the source material provided.
+
+Decide how many sections the lesson should have (between 4 and 7) and what each should cover. Base this ONLY on what the source material actually supports — do not propose a section the material can't fill.
+
+Order them as a guided path: start with the basics (what this animal is), move through the problem and its causes, and end with what a visitor can personally do about it.
+
+For each section provide:
+- "title": a short, engaging heading a young person would want to click (under 5 words)
+- "query": a search phrase packed with the specific nouns and concepts that would retrieve this section's material from the source documents. This is used for semantic search, so favor concrete terms over natural phrasing.
+
+Output JSON: { "sections": [ { "title": "...", "query": "..." } ] }`,
+        },
+        {
+          role: "user",
+          content: `Source material survey:\n\n${survey}`,
+        },
+      ],
+      temperature: 0.7,
+      max_tokens: 1200,
+    }),
+  });
+
+  const data = await res.json();
+  const parsed = JSON.parse(data.choices?.[0]?.message?.content ?? '{}');
+  const planned = parsed.sections;
+
+  if (!Array.isArray(planned) || planned.length < 4 || planned.length > 7) {
+    throw new Error("Section planning returned an invalid structure");
+  }
+  return planned;
+}
+
 async function embed(text: string): Promise<number[]> {
   const res = await fetch("https://api.openai.com/v1/embeddings", {
     method: "POST",
@@ -257,26 +313,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ sections: JSON.parse(cachedRaw), source: "cache" });
     }
 
-    const sectionTopics: [string, string][] = [
-      ["What Are Blue Catfish?", "blue catfish Ictalurus furcatus largest catfish species North America size characteristics"],
-      ["Why Are They Invasive?", "why blue catfish are invasive Chesapeake Bay introduction non-native spread"],
-      ["Impact on the Bay Ecosystem", "blue catfish negative impacts native species Chesapeake Bay ecosystem population concerns"],
-      ["Mitigation Efforts", "what is being done to mitigate blue catfish invasion management harvest programs"],
-      ["Nutrition and Safety", "blue catfish fillet nutrition protein fat cholesterol contaminants safe to eat commercially harvested, food and eating them"],
-      ["How You Can Help", "how can you help blue catfish invasion consumer action buying blue catfish products forms available, food and eating them"]
-    ];
-
+    const plan = await planSections();
+    console.log('PLANNED SECTIONS:', plan);
+  
     const ragContexts = await Promise.all(
-      sectionTopics.map(([, query]) => getRagContext(query, 4))
+      plan.map((p) => getRagContext(p.query, 13))
     );
 
     const sections = await Promise.all(
-      sectionTopics.map(([name], i) =>
-        generateSingleSection(ragContexts[i], name, i + 1)
+      plan.map((p, i) =>
+        generateSingleSection(ragContexts[i], p.title, i + 1)
       )
     );
 
-    await assignUniqueImages(sections, sectionTopics.map(([, query]) => query));
+    await assignUniqueImages(sections, plan.map((p) => p.query));
     /* dedupeKeyTerms(sections); */
     await addImageSteps(sections);
     
