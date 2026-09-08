@@ -479,14 +479,21 @@ interface SectionWithBreakdown {
 const NODE_W = 260;
 const NODE_H = 90;
 const COL_X = [40, 400];
-const ROW_Y = [20, 180, 340];
+const ROW_GAP = 160;
 
 // Snaking order: L→R, down, R→L, down, L→R
-function nodePos(i: number) {
+function nodePos(i: number, total: number) {
   const row = Math.floor(i / 2);
+  const isLastAlone = i === total - 1 && total % 2 === 1;
+
+  if (isLastAlone) {
+    // odd final node — center it across both columns
+    return { x: (COL_X[0] + COL_X[1]) / 2, y: 20 + row * ROW_GAP, col: -1, row };
+  }
+  
   const leftFirst = row % 2 === 0;
   const col = leftFirst ? i % 2 : 1 - (i % 2);
-  return { x: COL_X[col], y: ROW_Y[row], col, row };
+  return { x: COL_X[col], y: 20 + row * ROW_GAP, col, row };
 }
 
 function SummaryFlowchart({
@@ -510,8 +517,8 @@ function SummaryFlowchart({
   }, [currentKey]);
 
   const connectors = sections.slice(0, -1).map((_, i) => {
-    const a = nodePos(i);
-    const b = nodePos(i + 1);
+    const a = nodePos(i, sections.length);
+    const b = nodePos(i + 1,, sections.length);
     if (a.row === b.row) {
       // horizontal
       const goingRight = b.x > a.x;
@@ -525,10 +532,13 @@ function SummaryFlowchart({
     return { d: `M ${x} ${a.y + NODE_H} L ${x} ${b.y}`, from: i };
   });
 
+  const rows = Math.ceil(sections.length / 2);
+  const svgHeight = 20 + rows * ROW_GAP;
+  
   return (
     <svg viewBox="0 0 700 460" className="w-full max-w-3xl mx-auto">
-      {connectors.map((c, i) => {
-        const on = revealed.has(c.from + 1);
+      {sections.map((sec, i) => {
+        const { x, y } = nosPos(i, sections.length);
         return (
           <path
             key={i}
