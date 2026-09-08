@@ -348,10 +348,11 @@ function HighlightedText({
 }
 
 function AnimatedStatValue({ value, start = true }: { value: string; start?: boolean }) {
+  const str = String(value ?? '');
   const match = value.match(/^(\d+(?:\.\d+)?)/);
   const targetNum = match ? parseFloat(match[1]) : null;
-  const suffix = match ? value.slice(match[1].length) : '';
-   const decimals = match && match[1].includes('.') ? match[1].split('.')[1].length : 0;
+  const suffix = match ? str.slice(match[1].length) : '';
+  const decimals = match && match[1].includes('.') ? match[1].split('.')[1].length : 0;
   const [display, setDisplay] = useState<string | null>(targetNum !== null ? (0).toFixed(decimals) : null);
   const hasAnimated = useRef(false);
     
@@ -377,7 +378,7 @@ function AnimatedStatValue({ value, start = true }: { value: string; start?: boo
   }, [targetNum, start, decimals]);
   
   if (targetNum === null) {
-    return <>{value}</>;
+    return <>{str}</>;
   }
   
   return <>{display}{suffix}</>;
