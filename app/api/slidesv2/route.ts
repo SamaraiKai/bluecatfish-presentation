@@ -222,7 +222,7 @@ async function addImageSteps(sections: any[]) {
         messages: [
           {
             role: "system",
-            content: `Write a short spoken line directing a learner's attention to an image on screen, then explaining what it shows and why it matters for this lesson section. 2-3 sentences total. Start by pointing at the image naturally ("Take a look at the image on screen..." / "Notice in the picture..."). Base it ONLY on the provided image description — never invent visual details. Output JSON: { "text": "..." }`,
+            content: `Write a short spoken line directing a learner's attention to an image on screen, then explaining what it shows and why it matters for this lesson section. 1-2 sentences total (20ish words). Start by pointing at the image naturally ("Take a look at the image on screen..." / "Notice in the picture..."). Base it ONLY on the provided image description — never invent visual details. Output JSON: { "text": "..." }`,
           },
           {
             role: "user",
