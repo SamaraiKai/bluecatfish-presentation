@@ -539,7 +539,7 @@ function SummaryFlowchart({
   return (
     <svg viewBox="0 0 700 460" className="w-full max-w-3xl mx-auto">
       {sections.map((sec, i) => {
-        const { x, y } = nosPos(i, sections.length);
+        const { x, y } = nodePos(i, sections.length);
         return (
           <path
             key={i}
