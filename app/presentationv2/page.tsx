@@ -537,9 +537,9 @@ function SummaryFlowchart({
   const svgHeight = 20 + rows * ROW_GAP;
   
   return (
-    <svg viewBox="0 0 700 460" className="w-full max-w-3xl mx-auto">
-      {sections.map((sec, i) => {
-        const { x, y } = nodePos(i, sections.length);
+    <svg viewBox={`0 0 700 ${svgHeight}`} className="w-full max-w-3xl mx-auto">
+      {connectors.map((c, i) => {
+        const on = revealed.has(c.from + 1);
         return (
           <path
             key={i}
@@ -558,11 +558,11 @@ function SummaryFlowchart({
       })}
 
       {sections.map((sec, i) => {
-        const { x, y } = nodePos(i);
+        const { x, y } = nodePos(i, sections.length);
         const on = revealed.has(i);
         const active = currentKey === `section${i}_recap`;
         const score = sectionScores[i];
-        const perfect = score !== undefined && score === (sec.quiz?.length ?? 2);
+        const perfect = score !== undefined && score === (sec.quiz?.length ?? 1);
 
         return (
           <g
