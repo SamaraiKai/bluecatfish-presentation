@@ -393,8 +393,19 @@ export async function POST(req: Request) {
   
     await setValue(cacheKey, JSON.stringify(sections));
 
+    // kick off animations in the background — don't await the work itself
+    fetch(`${process.env.MANIM_RENDER_URL}/animate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        token: process.env.MANIM_RENDER_TOKEN,
+        cache_key: cacheKey,
+        sections,
+      }),
+    }).catch((e) => console.warn("Could not start animation pass:", e));
+    
     return NextResponse.json({ sections, source: "generated" });
-
+    
   } catch (err: any) {
     console.error("Section generation error:", err);
     return NextResponse.json({ error: err.message || "Failed to get sections" }, { status: 500 });
