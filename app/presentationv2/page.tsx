@@ -1205,6 +1205,7 @@ function SplitLayout(props: {
             currentSection={props.currentSection}
             activeSection={props.activeSection}
             totalSections={props.totalSections}
+            animationUrl={props.animationUrl}
           />
         </div>
       </div>
