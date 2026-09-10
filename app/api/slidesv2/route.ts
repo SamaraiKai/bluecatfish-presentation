@@ -370,7 +370,7 @@ export async function POST(req: Request) {
 
     const cachedRaw = await getValue(cacheKey);
     if (cachedRaw) {
-      return NextResponse.json({ sections: JSON.parse(cachedRaw), source: "cache" });
+      return NextResponse.json({ sections: JSON.parse(cachedRaw), source: "cache", cacheKey });
     }
 
     const plan = await planSections();
@@ -404,7 +404,6 @@ export async function POST(req: Request) {
       }),
     }).catch((e) => console.warn("Could not start animation pass:", e));
 
-    return NextResponse.json({ slides: JSON.parse(cachedRaw), source: "cache", cacheKey });
     return NextResponse.json({ sections, source: "generated", cacheKey });
     
   } catch (err: any) {
