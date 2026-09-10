@@ -372,3 +372,133 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: err.message || "Failed to get sections" }, { status: 500 });
   }
 }
+
+const MANIM_SYSTEM_PROMPT = `You write Manim Community Edition code for short educational animations.
+
+STRICT CONSTRAINTS — code that violates these will fail:
+- The scene class MUST be named exactly "GeneratedScene" and extend Scene.
+- Start the file with: from manim import *
+- Use ONLY these objects: Text, Circle, Square, Rectangle, Dot, Line, Arrow, VGroup, NumberLine, Axes
+- Use ONLY these animations: Write, FadeIn, FadeOut, Create, Transform, ReplacementTransform, GrowArrow, Indicate
+- NEVER use MathTex, Tex, or anything requiring LaTeX — LaTeX is not installed.
+- NEVER use SVGMobject, ImageMobject, or any external asset.
+- Keep the total animation under 15 seconds.
+- Keep all objects inside the frame: x roughly -6 to 6, y roughly -3.5 to 3.5.
+- Use .scale(), .shift(), .next_to(), .to_edge() for positioning.
+- End with self.wait(1).
+
+Output ONLY the Python code. No markdown fences, no explanation.`;
+
+async function generateManimCode(description: string, previousError?: string, previousCode?: string): Promise<string> {
+  const messages: any[] = [
+    { role: "system", content: MANIM_SYSTEM_PROMPT },
+    { role: "user", content: `Animate this: ${description}` },
+  ];
+
+  if (previousError && previousCode) {
+    messages.push({ role: "assistant", content: previousCode });
+    messages.push({
+      role: "user",
+      content: `That code failed to render with this error:\n\n${previousError}\n\nFix it and output the corrected code only.`,
+    });
+  }
+
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: "gpt-4o",
+      messages,
+      temperature: 0.3,
+      max_tokens: 1200,
+    }),
+  });
+
+  const data = await res.json();
+  let code = data.choices?.[0]?.message?.content?.trim() ?? '';
+  code = code.replace(/^```(?:python)?\n?/, '').replace(/\n?```$/, '');
+  return code;
+}
+
+async function planAnimations(section: any, ragContext: string) {
+  const stepSummary = section.steps.map((s: any, i: number) => {
+    if (s.type === 'processFlow') return `${i}: processFlow — ${s.intro}`;
+    if (s.type === 'numberSpotlight') return `${i}: numberSpotlight — ${s.value} ${s.label}`;
+    if (s.type === 'imageFocus') return `${i}: imageFocus (has an image already, skip)`;
+    return `${i}: ${s.type} — ${s.text ?? s.question ?? s.statement ?? ''}`;
+  }).join('\n');
+
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      response_format: { type: "json_object" },
+      messages: [
+        {
+          role: "system",
+          content: `You decide which teaching steps in a lesson section would benefit from a simple animated diagram.
+
+Only choose a step if it describes something with real visual structure: a quantity growing or shrinking, a sequence of causes, a comparison of amounts, movement across space, or a relationship between parts. Do NOT choose a step that is just a stated fact, a definition, or a question — those gain nothing from animation.
+
+Choose AT MOST 2 steps per section. It is completely acceptable to choose none.
+
+Never choose a step marked "imageFocus" — those already have a visual.
+
+For each chosen step, write a "description": a plain-language description of a SIMPLE animation, using only basic shapes, text, arrows, and lines. It must be describable in under 15 seconds of animation. Do not describe anything photographic, detailed, or requiring illustration — think diagram, not picture.
+
+Output JSON: { "animations": [ { "stepIndex": 0, "description": "..." } ] }`,
+        },
+        {
+          role: "user",
+          content: `Section: "${section.title}"\n\nSteps:\n${stepSummary}`,
+        },
+      ],
+      temperature: 0.6,
+      max_tokens: 500,
+    }),
+  });
+
+  const data = await res.json();
+  const parsed = JSON.parse(data.choices?.[0]?.message?.content ?? '{}');
+  return Array.isArray(parsed.animations) ? parsed.animations : [];
+}
+
+async function renderAnimation(description: string, maxAttempts = 3): Promise<Buffer | null> {
+  let code = await generateManimCode(description);
+  let lastError = '';
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const res = await fetch(`${process.env.MANIM_RENDER_URL}/render`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        token: process.env.MANIM_RENDER_TOKEN,
+        scene_name: "GeneratedScene",
+        code,
+      }),
+    });
+
+    if (res.ok) {
+      const arrayBuffer = await res.arrayBuffer();
+      return Buffer.from(arrayBuffer);
+    }
+
+    const errText = await res.text();
+    lastError = errText.slice(-1500);
+    console.warn(`Manim render attempt ${attempt} failed:`, lastError.slice(0, 300));
+
+    if (attempt < maxAttempts) {
+      code = await generateManimCode(description, lastError, code);
+    }
+  }
+
+  console.error(`Animation failed after ${maxAttempts} attempts:`, description);
+  return null;
+}
