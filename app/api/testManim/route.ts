@@ -65,13 +65,7 @@ export async function GET() {
 
     if (res.ok) {
       const buf = await res.arrayBuffer();
-      return NextResponse.json({
-        success: true,
-        attempt,
-        bytes: buf.byteLength,
-        code,
-        attempts,
-      });
+      return new Response(buf, { headers: { 'Content-Type': 'video/mp4' } });
     }
 
     lastError = (await res.text()).slice(-1500);
