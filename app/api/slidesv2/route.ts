@@ -196,6 +196,34 @@ Output ONLY a JSON object with key "section":
   return section;
 }
 
+async function addAnimations(sections: any[], version: string) {
+  for (let i = 0; i < sections.length; i++) {
+    const section = sections[i];
+    const chosen = await planAnimations(section, '');
+
+    for (const a of chosen) {
+      const stepIndex = a.stepIndex;
+      const step = section.steps?.[stepIndex];
+      if (!step || step.type === 'imageFocus') continue;
+
+      const buffer = await renderAnimation(a.description);
+      if (!buffer) {
+        console.warn(`No animation produced for section ${i} step ${stepIndex}`);
+        continue;
+      }
+
+      try {
+        const url = await uploadAnimation(buffer, `${version}/section${i}_step${stepIndex}.mp4`);
+        step.animationUrl = url;
+        console.log(`Animation attached: section ${i} step ${stepIndex}`);
+      } catch (e) {
+        console.warn(`Upload failed for section ${i} step ${stepIndex}:`, e);
+      }
+    }
+  }
+  return sections;
+}
+
 async function assignUniqueImages(sections: any[], sectionTopics: string[]) {
   const usedUrls = new Set<string>();
   const CANDIDATE_COUNT = 20; 
@@ -359,12 +387,12 @@ export async function POST(req: Request) {
     );
 
     dedupeStats(sections);
-
     await assignUniqueImages(sections, plan.map((p) => p.query));
-    /* dedupeKeyTerms(sections); */
     await addImageSteps(sections);
-    
+    await addAnimations(sections, cacheKey);   // cacheKey doubles as the folder name
+  
     await setValue(cacheKey, JSON.stringify(sections));
+
     return NextResponse.json({ sections, source: "generated" });
 
   } catch (err: any) {
@@ -502,4 +530,18 @@ async function renderAnimation(description: string, maxAttempts = 3): Promise<Bu
 
   console.error(`Animation failed after ${maxAttempts} attempts:`, description);
   return null;
+}
+
+async function uploadAnimation(buffer: Buffer, fileName: string): Promise<string> {
+  const { error } = await supabase.storage
+    .from("slide-animations")
+    .upload(fileName, buffer, {
+      contentType: "video/mp4",
+      upsert: true,
+    });
+
+  if (error) throw new Error(`Animation upload failed: ${error.message}`);
+
+  const { data } = supabase.storage.from("slide-animations").getPublicUrl(fileName);
+  return data.publicUrl;
 }
