@@ -1400,6 +1400,7 @@ export default function AIPresentation() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [introText, setIntroText] = useState('');
   const [inIntro, setInIntro] = useState(false);
+  const [animations, setAnimations] = useState<Record<string, string>>({});
 
   // Navigation
   const [selectedTemplate, setSelectedTemplate] = useState<'classic' | 'split' | null>('classic');
@@ -1819,6 +1820,19 @@ export default function AIPresentation() {
 
         if (audioData.audioUrls) {
           setAudioUrls(audioData.audioUrls);
+        }
+
+        // Animations render in the background on Railway, so they may not exist yet
+        try {
+          const animRes = await fetch('/api/animations', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cacheKey: sectionsData.cacheKey }),
+          });
+          const animData = await animRes.json();
+          if (animData.animations) setAnimations(animData.animations);
+        } catch (e) {
+          console.warn('Could not load animations:', e);
         }
       } catch (err: any) {
         console.error('Failed to load presentation:', err);
