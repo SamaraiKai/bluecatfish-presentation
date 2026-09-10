@@ -403,8 +403,9 @@ export async function POST(req: Request) {
         sections,
       }),
     }).catch((e) => console.warn("Could not start animation pass:", e));
-    
-    return NextResponse.json({ sections, source: "generated" });
+
+    return NextResponse.json({ slides: JSON.parse(cachedRaw), source: "cache", cacheKey });
+    return NextResponse.json({ sections, source: "generated", cacheKey });
     
   } catch (err: any) {
     console.error("Section generation error:", err);
