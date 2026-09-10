@@ -378,8 +378,9 @@ const MANIM_SYSTEM_PROMPT = `You write Manim Community Edition code for short ed
 STRICT CONSTRAINTS — code that violates these will fail:
 - The scene class MUST be named exactly "GeneratedScene" and extend Scene.
 - Start the file with: from manim import *
-- Use ONLY these objects: Text, Circle, Square, Rectangle, Dot, Line, Arrow, VGroup, NumberLine, Axes
+- Use ONLY these objects: Text, Circle, Square, Rectangle, Dot, Line, Arrow, VGroup
 - Use ONLY these animations: Write, FadeIn, FadeOut, Create, Transform, ReplacementTransform, GrowArrow, Indicate
+- For charts or comparisons, build bars from Rectangle objects positioned manually. Do not use built-in chart or axis objects.
 - NEVER use MathTex, Tex, or anything requiring LaTeX — LaTeX is not installed.
 - NEVER use SVGMobject, ImageMobject, or any external asset.
 - Keep the total animation under 15 seconds.
