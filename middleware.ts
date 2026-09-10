@@ -1,4 +1,4 @@
-/*
+
 import { type NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
@@ -41,14 +41,14 @@ export async function middleware(request: NextRequest) {
   const isPublic = 
     pathname === "/" ||
     PUBLIC_PATHS.some((path) => pathname.startsWith(path));
-
+  /*
   // Everything is protected UNLESS it's in PUBLIC_PATHS
   if (!isPublic && !user) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("next", request.nextUrl.pathname);
     return NextResponse.redirect(loginUrl);
   }
-
+  */
   return response;
 }
 
@@ -57,4 +57,3 @@ export const config = {
     "/((?!_next/static|_next/image|favicon.ico|api|.*\\.(?:svg|png|jpg|jpeg|gif|webp|mp3)$).*)",
   ],
 };
-*/
