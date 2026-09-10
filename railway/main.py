@@ -146,12 +146,15 @@ def plan_animations(section: dict):
         messages=[
             {"role": "system", "content": """You decide which teaching steps would benefit from a simple animated diagram.
 
-Only choose a step if it describes something with real visual structure: a quantity growing or shrinking, a sequence of causes, a comparison of amounts, movement across space, or a relationship between parts. Do NOT choose a step that is just a stated fact, a definition, or a question.
+Choose a step if it involves ANY of: a number, quantity, proportion or percentage; a comparison between two or more things; a sequence of causes or stages; growth, decline, or change over time; movement or spread across space; a relationship between parts.
+Steps of type "numberSpotlight" and "processFlow" should almost always be chosen — they are inherently visual.
 
-Choose AT MOST 2 steps per section. Choosing none is completely acceptable.
+Skip a step only if it is purely a definition, a question with no quantity, or a statement with no visual structure at all.
 Never choose a step marked "imageFocus".
 
-For each chosen step write a "description": a SIMPLE animation using only basic shapes, text, arrows and lines, describable in under 15 seconds. Diagram, not picture.
+Choose 1-2 steps per section.
+
+For each chosen step write a "description": a SIMPLE animation using only basic shapes, text, arrows and lines, describable in under 15 seconds. Diagram, not picture. Be specific about what appears and what moves.
 
 Output JSON: { "animations": [ { "stepIndex": 0, "description": "..." } ] }"""},
             {"role": "user", "content": f"Section: \"{section.get('title')}\"\n\nSteps:\n" + "\n".join(lines)},
