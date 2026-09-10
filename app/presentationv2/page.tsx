@@ -680,44 +680,32 @@ function SectionImageBlock({
     currentSection: SectionWithBreakdown;
     activeSection: number;
     totalSections: number;
+    animationUrl?: string;
   }) {
     return (
-              <div className="relative h-full min-h-[500px] bg-gradient-to-br overflow-hidden">
-                
-                {/* Main Image */}
-                {currentSection.image && (
-                  <img 
-                    key={currentSection.image}
-                    src={currentSection.image} 
-                    alt={currentSection.title}
-                    className="absolute inset-0 w-full h-full object-contain"
-                    onError={(e) => {
-                      e.currentTarget.style.display='none';
-                    }}
-                  />
-                )}
-
-                {/*
-                <div className="absolute inset-0 bg-gradient-to-t from-mist-400/50 via-transparent to-mist-500/50" />
-                */}
-                
-                
-                {/* Stats Overlay */}
-                {/*
-                <div className="absolute top-4 right-4 flex flex-col gap-2">
-                  {currentSection.stats.slice(0, 2).map((stat, idx) => (
-                    <div 
-                      key={idx}
-                      className="bg-cyan-500/80 backdrop-blur-sm px-3 py-2 rounded-lg animate-[fadeInUp_0.5s_ease-out_forwards] shadow-lg"
-                      style={{ animationDelay: `${idx * 0.2}s` }}
-                    >
-                      <div className="text-lg font-bold text-white">{stat.value}</div>
-                      <div className="text-xs text-cyan-100">{stat.label}</div>
-                    </div>
-                  ))}
-                </div>
-                */}
-              </div>
+            <div className="relative h-full min-h-[500px] bg-gradient-to-br overflow-hidden">
+              {animationUrl ? (
+                <video
+                  key={animationUrl}
+                  src={animationUrl}
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  className="absolute inset-0 w-full h-full object-contain"
+                />
+              ) : currentSection.image ? (
+                <img 
+                  key={currentSection.image}
+                  src={currentSection.image} 
+                  alt={currentSection.title}
+                  className="absolute inset-0 w-full h-full object-contain"
+                  onError={(e) => {
+                    e.currentTarget.style.display='none';
+                  }}
+                />
+              ) : null}
+            </div>
           );
         }
 
@@ -1109,17 +1097,24 @@ function ClassicLayout(props: {
   return (
     <div className="bg-white/5 backdrop-blur-md rounded-3xl border border-white-500/30 shadow-2xl overflow-hidden">
       <div className="flex items-stretch">
-        <div className="flex-1 min-h-[500px]">
+        <div 
+          className="overflow-hidden transition-all duration-700 ease-in-out min-h-[500px]"
+          style={{
+            width: props.hideVisual ? '0%' : props.isImageFocus ? '100%' : '50%',
+            opacity: props.hideVisual ? 0 : 1,
+          }}
+        >
           <SectionImageBlock
             currentSection={props.currentSection}
             activeSection={props.activeSection}
             totalSections={props.totalSections}
+            animationUrl={props.animationUrl}
           />
         </div>
         <div
           className="overflow-hidden transition-all duration-700 ease-in-out"
           style={{
-            width: props.isImageFocus ? '0%' : '50%',
+            width: props.isImageFocus ? '0%' : props.hideVisual ? '100%' : '50%',
             opacity: props.isImageFocus ? 0 : 1,
           }}
         >
@@ -1447,6 +1442,7 @@ export default function AIPresentation() {
 
   const presentationStarted = !!selectedTemplate && !showConclusion;
   const bargeInActive = isChatSpeaking || inConversation;
+  const hasVisual = !!currentAnimation || !!currentSection?.image;
   
   const { status: micStatus, toggleMic } = useVoiceInput(
     (text) => {
@@ -1973,6 +1969,7 @@ export default function AIPresentation() {
   /* ------------------------------------------------------ derived values */
   const microSteps = getMicroSteps(currentSection, activeSection);
   const isImageFocus = currentSection?.steps?.[microStep]?.type === 'imageFocus';
+  const currentAnimation = animations[`${activeSection}_${microStep}`];
 
   /* ---------------------------------------------------------------- render */
   return (
@@ -2144,6 +2141,7 @@ export default function AIPresentation() {
               play={play}
               devMode={devMode}
               isImageFocus={isImageFocus}
+              animationUrl={currentAnimation}
             />
           ) : (
             <SplitLayout
@@ -2167,6 +2165,8 @@ export default function AIPresentation() {
               audioUrls={audioUrls}
               play={play}
               devMode={devMode}
+              isImageFocus={isImageFocus}
+              animationUrl={currentAnimation}
             />
           )}
           
