@@ -1092,6 +1092,8 @@ function ClassicLayout(props: {
   play: (url: string | undefined, key: string, text?: string, onComplete?: () => void) => void;
   devMode: boolean;
   isImageFocus: boolean;
+  animationUrl?: string;
+  hideVisual: boolean;
 }) {
   //console.log('layout isImageFocus:', props.isImageFocus);
   return (
@@ -1138,6 +1140,8 @@ function ClassicLayout(props: {
               audioUrls={props.audioUrls}
               play={props.play}
               devMode={props.devMode}
+              animationUrl={props.animationUrl}
+              hideVisual={props. hideVisual}
             />
           </div>
         </div>
@@ -1442,7 +1446,6 @@ export default function AIPresentation() {
 
   const presentationStarted = !!selectedTemplate && !showConclusion;
   const bargeInActive = isChatSpeaking || inConversation;
-  const hasVisual = !!currentAnimation || !!currentSection?.image;
   
   const { status: micStatus, toggleMic } = useVoiceInput(
     (text) => {
@@ -1970,6 +1973,7 @@ export default function AIPresentation() {
   const microSteps = getMicroSteps(currentSection, activeSection);
   const isImageFocus = currentSection?.steps?.[microStep]?.type === 'imageFocus';
   const currentAnimation = animations[`${activeSection}_${microStep}`];
+  const hasVisual = !!currentAnimation || !!currentSection?.image;
 
   /* ---------------------------------------------------------------- render */
   return (
@@ -2142,6 +2146,8 @@ export default function AIPresentation() {
               devMode={devMode}
               isImageFocus={isImageFocus}
               animationUrl={currentAnimation}
+              animationUrl={currentAnimation}
+              hideVisual={!hasVisual}
             />
           ) : (
             <SplitLayout
