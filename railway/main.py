@@ -172,45 +172,49 @@ class AnimateRequest(BaseModel):
 
 
 def run_animation_pass(cache_key: str, sections: list):
-    results = {}
-    for i, section in enumerate(sections):
-        for a in plan_animations(section):
-            step_index = a.get("stepIndex")
-            description = a.get("description")
-            if step_index is None or not description:
-                continue
-
-            code = write_manim_code(description)
-            video, err = None, None
-            for attempt in range(3):
-                video, err = render_to_bytes(code)
-                if video:
-                    break
-                code = write_manim_code(description, err, code)
-
-            if not video:
-                print(f"FAILED section {i} step {step_index}: {err[:300] if err else ''}")
-                continue
-
-            path = f"{cache_key}/section{i}_step{step_index}.mp4"
-            try:
-                supabase.storage.from_("slide-animations").upload(
-                    path, video, {"content-type": "video/mp4", "upsert": "true"}
-                )
-                url = supabase.storage.from_("slide-animations").get_public_url(path)
-                results[f"{i}_{step_index}"] = url
-                print(f"OK section {i} step {step_index}")
-            except Exception as e:
-                print(f"UPLOAD FAILED section {i} step {step_index}: {e}")
-
-    # Store the finished map so the app can pick it up later
-    supabase.table("animation_jobs").upsert({
-        "cache_key": cache_key,
-        "animations": results,
-        "status": "done",
-    }).execute()
-    print(f"Animation pass complete for {cache_key}: {len(results)} animations")
-
+    try:
+        results = {}
+        for i, section in enumerate(sections):
+            for a in plan_animations(section):
+                step_index = a.get("stepIndex")
+                description = a.get("description")
+                if step_index is None or not description:
+                    continue
+    
+                code = write_manim_code(description)
+                video, err = None, None
+                for attempt in range(3):
+                    video, err = render_to_bytes(code)
+                    if video:
+                        break
+                    code = write_manim_code(description, err, code)
+    
+                if not video:
+                    print(f"FAILED section {i} step {step_index}: {err[:300] if err else ''}")
+                    continue
+    
+                path = f"{cache_key}/section{i}_step{step_index}.mp4"
+                try:
+                    supabase.storage.from_("slide-animations").upload(
+                        path, video, {"content-type": "video/mp4", "upsert": "true"}
+                    )
+                    url = supabase.storage.from_("slide-animations").get_public_url(path)
+                    results[f"{i}_{step_index}"] = url
+                    print(f"OK section {i} step {step_index}")
+                except Exception as e:
+                    print(f"UPLOAD FAILED section {i} step {step_index}: {e}")
+    
+        # Store the finished map so the app can pick it up later
+        supabase.table("animation_jobs").upsert({
+            "cache_key": cache_key,
+            "animations": results,
+            "status": "done",
+        }).execute()
+        print(f"Animation pass complete for {cache_key}: {len(results)} animations")
+    except Exception as e:
+        import traceback
+        print(f"ANIMATION PASS CRASHED for {cache_key}: {e}")
+        traceback.print_exc()
 
 @app.post("/animate")
 def animate(req: AnimateRequest):
