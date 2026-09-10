@@ -53,7 +53,7 @@ def render(req: RenderRequest):
     if result.returncode != 0:
         raise HTTPException(
             status_code=422,
-            detail=result.stderr[-2000:],   # tail of the error, for GPT to fix
+            detail=(result.stdout[-1500:] + "\n---STDERR---\n" + result.stderr[-2500:]),
         )
 
     videos = list(workdir.rglob("*.mp4"))
