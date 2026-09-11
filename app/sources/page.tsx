@@ -49,7 +49,7 @@ export default function SourcesPage() {
 
         <div className="space-y-4">
           {SOURCES.map((s, i) => (
-            
+            <a
               key={i}
               href={s.url}
               target="_blank"
