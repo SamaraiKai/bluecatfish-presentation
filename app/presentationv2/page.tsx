@@ -1140,8 +1140,6 @@ function ClassicLayout(props: {
               audioUrls={props.audioUrls}
               play={props.play}
               devMode={props.devMode}
-              animationUrl={props.animationUrl}
-              hideVisual={props. hideVisual}
             />
           </div>
         </div>
