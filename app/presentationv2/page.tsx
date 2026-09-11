@@ -1117,9 +1117,10 @@ function ClassicLayout(props: {
         className="flex items-stretch"
       >
         <div 
-          className="overflow-hidden transition-all duration-700 ease-in-out"
+          className="overflow-hidden transition-all duration-700 ease-in-out flex-1"
           style={{
-            width: props.hideVisual ? '0%' : props.isImageFocus ? '1300px' : '650px',
+            flexGrow: 1,
+            width: props.hideVisual ? '0%' : '650px',
             opacity: props.hideVisual ? 0 : 1,
           }}
         >
