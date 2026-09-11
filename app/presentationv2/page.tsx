@@ -2353,21 +2353,12 @@ export default function AIPresentation() {
             </div>
           </div>
         </div>
-      )}
 
       {/* Source Attribution */}
       <footer className="text-center py-4 text-blue-700 text-sm">
-        <p>
-          Source: University of Maryland Extension - 
-          <a 
-            href="https://extension.umd.edu/resource/chesapeake-bay-blue-catfish-invasive-delicious-and-nutritious/" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="underline hover:text-cyan-300"
-          >
-            Chesapeake Bay Blue Catfish Factsheet
-          </a>
-        </p>
+        <Link href="/sources" className="underline hover:text-cyan-600">
+          View sources
+        </Link>
       </footer>
     </div>
   );
