@@ -79,9 +79,11 @@ STRICT CONSTRAINTS — code that violates these will fail:
 - Use ONLY these objects: Text, Circle, Square, Rectangle, Dot, Line, Arrow, VGroup
 - Use ONLY these animations: Write, FadeIn, FadeOut, Create, Transform, ReplacementTransform, GrowArrow, Indicate
 - NEVER use MathTex, Tex, Axes, NumberLine, or anything requiring LaTeX.
+- Any number shown in the animation must match the source content exactly. Do not round, approximate, or invent figures.
 - For charts or comparisons, build bars from Rectangle objects positioned manually.
 - NEVER use SVGMobject, ImageMobject, or any external asset.
 - Keep the total animation under 15 seconds.
+- The animation must last approximately {duration} seconds in total. Use run_time values on self.play() and self.wait() to reach that length.
 - Keep all objects inside the frame: x roughly -6 to 6, y roughly -3.5 to 3.5.
 - End with self.wait(1).
 
@@ -105,11 +107,18 @@ def render_to_bytes(code: str):
         return None, "no output produced"
     return videos[0].read_bytes(), None
 
-
-def write_manim_code(description: str, prev_error=None, prev_code=None) -> str:
+def estimate_duration(step: dict) -> int:
+    text = " ".join(str(v) for v in step.values() if isinstance(v, str))
+    words = len(text.split())
+    return max(5, min(20, int(words / 2.5)))
+    
+def write_manim_code(description: str, source_step: str = "", prev_error=None, prev_code=None) -> str:
+    user_msg = f"Animate this: {description}"
+    if source_step:
+        user_msg += f"\n\nThe animation must be factually consistent with this source content. Use its exact numbers and wording — never round, rephrase, or invent figures:\n{source_step}"
     messages = [
-        {"role": "system", "content": MANIM_SYSTEM_PROMPT},
-        {"role": "user", "content": f"Animate this: {description}"},
+        {"role": "system", "content": MANIM_SYSTEM_PROMPT + f"\n- The animation must last approximately {duration} seconds. Use run_time and self.wait() to reach that length."},
+        {"role": "user", "content": user_msg},
     ]
     if prev_error and prev_code:
         messages.append({"role": "assistant", "content": prev_code})
@@ -183,14 +192,17 @@ def run_animation_pass(cache_key: str, sections: list):
                 description = a.get("description")
                 if step_index is None or not description:
                     continue
+
+                step = section.get("steps", [])[step_index]       
+                source = json.dumps(step) 
     
-                code = write_manim_code(description)
+                code = write_manim_code(description, source_step=source)
                 video, err = None, None
                 for attempt in range(3):
                     video, err = render_to_bytes(code)
                     if video:
                         break
-                    code = write_manim_code(description, err, code)
+                    code = write_manim_code(description, source_step=source, prev_error=err, prev_code=code)
     
                 if not video:
                     print(f"FAILED section {i} step {step_index}: {err[:300] if err else ''}")
