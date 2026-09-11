@@ -2353,6 +2353,7 @@ export default function AIPresentation() {
             </div>
           </div>
         </div>
+      )}
 
       {/* Source Attribution */}
       <footer className="text-center py-4 text-blue-700 text-sm">
