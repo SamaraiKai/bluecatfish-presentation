@@ -1110,6 +1110,7 @@ function ClassicLayout(props: {
   hideVisual: boolean;
   showImage: boolean;
 }) {
+  console.log('SectionImageBlock got:', { animationUrl, showImage, image: currentSection.image });
   return (
     <div className="bg-white/5 backdrop-blur-md rounded-3xl border border-white-500/30 shadow-2xl overflow-hidden">
       <div 
