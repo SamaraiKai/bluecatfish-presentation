@@ -2147,7 +2147,6 @@ export default function AIPresentation() {
               devMode={devMode}
               isImageFocus={isImageFocus}
               animationUrl={currentAnimation}
-              animationUrl={currentAnimation}
               hideVisual={!hasVisual}
             />
           ) : (
