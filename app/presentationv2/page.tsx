@@ -1111,7 +1111,7 @@ function ClassicLayout(props: {
   showImage: boolean;
 }) {
   return (
-    <div className="bg-white/5 backdrop-blur-md rounded-3xl border border-white-500/30 shadow-2xl w-fit mx-auto overflow-hidden transition-all duration-700">
+    <div className="bg-white/5 backdrop-blur-md rounded-3xl border border-white-500/30 shadow-2xl overflow-hidden">
       <div 
         className="flex items-stretch"
         style={{ justifyContent: props.hideVisual ? 'center' : 'flex-start' }}
@@ -1995,6 +1995,8 @@ export default function AIPresentation() {
   const currentStepType = currentSection?.steps?.[microStep]?.type;
   const hasVisual = !!currentAnimation || currentStepType === 'imageFocus';
 
+  console.log('animations map:', animations, 'current:', currentAnimation, 'key:', `${activeSection}_${microStep}`);
+  
   /* ---------------------------------------------------------------- render */
   return (
     <div className="min-h-screen bg-gradient-to-br from-mist-400 via-mist-50 to-mist-400 flex flex-col">
