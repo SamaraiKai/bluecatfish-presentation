@@ -1111,7 +1111,7 @@ function ClassicLayout(props: {
   showImage: boolean;
 }) {
   return (
-    <div className="bg-white/5 backdrop-blur-md rounded-3xl border border-white-500/30 shadow-2xl overflow-hidden mx-auto">
+    <div className="bg-white/5 backdrop-blur-md rounded-3xl border border-white-500/30 shadow-2xl w-fit mx-auto overflow-hidden transition-all duration-700">
       <div 
         className="flex items-stretch transition-all duration-700"
         style={{ minHeight: props.hideVisual ? '260px' : '500px' }}
