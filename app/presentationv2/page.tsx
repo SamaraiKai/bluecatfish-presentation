@@ -676,6 +676,7 @@ function SectionImageBlock({
     currentSection,
     activeSection,
     totalSections,
+    animationUrl,
   }: {
     currentSection: SectionWithBreakdown;
     activeSection: number;
@@ -1169,6 +1170,8 @@ function SplitLayout(props: {
   audioUrls: Record<string, string>;
   play: (url: string | undefined, key: string, text?: string, onComplete?: () => void) => void;
   devMode: boolean;
+  animationUrl?: string;
+  hideVisual: boolean;
 }) {
   return (
     <div className="bg-white/5 backdrop-blur-md rounded-3xl border border-white-500/30 shadow-2xl overflow-hidden">
@@ -2171,6 +2174,7 @@ export default function AIPresentation() {
               devMode={devMode}
               isImageFocus={isImageFocus}
               animationUrl={currentAnimation}
+              hideVisual={!hasVisual}
             />
           )}
           
