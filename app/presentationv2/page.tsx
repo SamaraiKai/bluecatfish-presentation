@@ -520,6 +520,7 @@ function SummaryFlowchart({
   const connectors = sections.slice(0, -1).map((_, i) => {
     const a = nodePos(i, sections.length);
     const b = nodePos(i + 1, sections.length);
+    
     if (a.row === b.row) {
       // horizontal
       const goingRight = b.x > a.x;
@@ -528,9 +529,20 @@ function SummaryFlowchart({
       const y = a.y + NODE_H / 2;
       return { d: `M ${x1} ${y} L ${x2} ${y}`, from: i };
     }
-    // vertical, down the side the node sits on
-    const x = a.x + NODE_W / 2;
-    return { d: `M ${x} ${a.y + NODE_H} L ${x} ${b.y}`, from: i };
+
+    const ax = a.x + NODE_W / 2;
+    const bx = b.x + NODE_W / 2;
+
+    if (Math.abs(ax - bx) < 1) {
+      return { d: `M ${ax} ${a.y + NODE_H} L ${ax} ${b.y}`, from: i };
+    }
+
+    // diagonal — drop, cross, then drop into the node
+    const midY = (a.y + NODE_H + b.y) / 2;
+    return {
+      d: `M ${ax} ${a.y + NODE_H} L ${ax} ${midY} L ${bx} ${midY} L ${bx} ${b.y}`,
+      from: i,
+    };
   });
 
   const rows = Math.ceil(sections.length / 2);
@@ -549,8 +561,8 @@ function SummaryFlowchart({
             strokeWidth="3"
             strokeLinecap="round"
             style={{
-              strokeDasharray: 200,
-              strokeDashoffset: on ? 0 : 200,
+              strokeDasharray: 300,
+              strokeDashoffset: on ? 0 : 300,
               transition: 'stroke-dashoffset 0.6s ease-out',
             }}
           />
