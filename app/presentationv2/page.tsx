@@ -697,7 +697,6 @@ function SectionImageBlock({
     animationUrl?: string;
     showImage: boolean;
   }) {
-    console.log('SectionImageBlock got:', { animationUrl, showImage });
     return (
             <div className="relative h-full rounded-3xl bg-gradient-to-br overflow-hidden">
               {animationUrl ? (
@@ -2000,8 +1999,6 @@ export default function AIPresentation() {
   const currentAnimation = animations[`${activeSection}_${microStep}`];
   const currentStepType = currentSection?.steps?.[microStep]?.type;
   const hasVisual = !!currentAnimation || currentStepType === 'imageFocus';
-
-  console.log('animations map:', animations, 'current:', currentAnimation, 'key:', `${activeSection}_${microStep}`);
   
   /* ---------------------------------------------------------------- render */
   return (
