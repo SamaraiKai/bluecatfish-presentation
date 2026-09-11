@@ -697,7 +697,7 @@ function SectionImageBlock({
     animationUrl?: string;
     showImage: boolean;
   }) {
-    console.log('ClassicLayout got:', { animationUrl: props.animationUrl, hideVisual: props.hideVisual });
+    console.log('SectionImageBlock got:', { animationUrl, showImage });
     return (
             <div className="relative h-full bg-gradient-to-br overflow-hidden">
               {animationUrl ? (
