@@ -1113,13 +1113,13 @@ function ClassicLayout(props: {
   return (
     <div className="bg-white/5 backdrop-blur-md rounded-3xl border border-white-500/30 shadow-2xl w-fit mx-auto overflow-hidden transition-all duration-700">
       <div 
-        className="flex items-stretch transition-all duration-700"
-        style={{ minHeight: props.hideVisual ? '260px' : '500px' }}
+        className="flex items-stretch"
+        style={{ justifyContent: props.hideVisual ? 'center' : 'flex-start' }}
       >
         <div 
           className="overflow-hidden transition-all duration-700 ease-in-out"
           style={{
-            width: props.hideVisual ? '0%' : props.isImageFocus ? '900px' : '450x',
+            width: props.hideVisual ? '0%' : props.isImageFocus ? '1300px' : '650x',
             opacity: props.hideVisual ? 0 : 1,
           }}
         >
@@ -1134,7 +1134,7 @@ function ClassicLayout(props: {
         <div
           className="overflow-hidden transition-all duration-700 ease-in-out"
           style={{
-            width: props.isImageFocus ? '0%' : '450px',
+            width: props.isImageFocus ? '0%' : '650px',
             opacity: props.isImageFocus ? 0 : 1,
           }}
         >
