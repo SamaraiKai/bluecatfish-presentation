@@ -677,11 +677,13 @@ function SectionImageBlock({
     activeSection,
     totalSections,
     animationUrl,
+    showImage,
   }: {
     currentSection: SectionWithBreakdown;
     activeSection: number;
     totalSections: number;
     animationUrl?: string;
+    showImage: boolean;
   }) {
     return (
             <div className="relative h-full min-h-[500px] bg-gradient-to-br overflow-hidden">
@@ -695,7 +697,7 @@ function SectionImageBlock({
                   playsInline
                   className="absolute inset-0 w-full h-full object-contain"
                 />
-              ) : currentSection.image ? (
+              ) : showImage && currentSection.image ? (
                 <img 
                   key={currentSection.image}
                   src={currentSection.image} 
@@ -1095,6 +1097,7 @@ function ClassicLayout(props: {
   isImageFocus: boolean;
   animationUrl?: string;
   hideVisual: boolean;
+  showImage: boolean;
 }) {
   //console.log('layout isImageFocus:', props.isImageFocus);
   return (
@@ -1112,6 +1115,7 @@ function ClassicLayout(props: {
             activeSection={props.activeSection}
             totalSections={props.totalSections}
             animationUrl={props.animationUrl}
+            showImage={props.showImage}las
           />
         </div>
         <div
@@ -1975,7 +1979,8 @@ export default function AIPresentation() {
   const microSteps = getMicroSteps(currentSection, activeSection);
   const isImageFocus = currentSection?.steps?.[microStep]?.type === 'imageFocus';
   const currentAnimation = animations[`${activeSection}_${microStep}`];
-  const hasVisual = !!currentAnimation || !!currentSection?.image;
+  const currentStepType = currentSection?.steps?.[microStep]?.type;
+  const hasVisual = !!currentAnimation || currentStepType === 'imageFocus';
 
   /* ---------------------------------------------------------------- render */
   return (
@@ -2149,6 +2154,7 @@ export default function AIPresentation() {
               isImageFocus={isImageFocus}
               animationUrl={currentAnimation}
               hideVisual={!hasVisual}
+              showImage={currentStepType === 'imageFocus'}
             />
           ) : (
             <SplitLayout
