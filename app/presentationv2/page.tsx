@@ -686,14 +686,13 @@ function SectionImageBlock({
     showImage: boolean;
   }) {
     return (
-            <div className="relative h-full min-h-[500px] bg-gradient-to-br overflow-hidden">
+            <div className="relative h-full bg-gradient-to-br overflow-hidden">
               {animationUrl ? (
                 <video
                   key={animationUrl}
                   src={animationUrl}
                   autoPlay
                   muted
-                  loop
                   playsInline
                   className="absolute inset-0 w-full h-full object-contain"
                 />
@@ -1102,9 +1101,12 @@ function ClassicLayout(props: {
   //console.log('layout isImageFocus:', props.isImageFocus);
   return (
     <div className="bg-white/5 backdrop-blur-md rounded-3xl border border-white-500/30 shadow-2xl overflow-hidden">
-      <div className="flex items-stretch">
+      <div 
+        className="flex items-stretch transition-all duration-700"
+        style={{ minHeight: props.hideVisual ? '260px' : '500px' }}
+      >
         <div 
-          className="overflow-hidden transition-all duration-700 ease-in-out min-h-[500px]"
+          className="overflow-hidden transition-all duration-700 ease-in-out"
           style={{
             width: props.hideVisual ? '0%' : props.isImageFocus ? '100%' : '50%',
             opacity: props.hideVisual ? 0 : 1,
