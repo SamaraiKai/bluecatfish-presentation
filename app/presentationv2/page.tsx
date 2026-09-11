@@ -699,7 +699,7 @@ function SectionImageBlock({
   }) {
     console.log('SectionImageBlock got:', { animationUrl, showImage });
     return (
-            <div className="relative h-full bg-gradient-to-br overflow-hidden">
+            <div className="relative h-full rounded-3xl bg-gradient-to-br overflow-hidden">
               {animationUrl ? (
                 <video
                   key={animationUrl}
@@ -1117,10 +1117,10 @@ function ClassicLayout(props: {
         className="flex items-stretch"
       >
         <div 
-          className="overflow-hidden transition-all duration-700 ease-in-out flex-1"
+          className="overflow-hidden transition-all duration-700 ease-in-out"
           style={{
             flexGrow: 1,
-            width: props.hideVisual ? '0%' : '650px',
+            width: props.hideVisual ? '0%' : props.isImageFocus ? '1300px' : '650px',
             opacity: props.hideVisual ? 0 : 1,
           }}
         >
@@ -1135,7 +1135,7 @@ function ClassicLayout(props: {
         <div
           className="overflow-hidden transition-all duration-700 ease-in-out"
           style={{
-            width: props.isImageFocus ? '0px' : '650px',
+            width: props.isImageFocus ? '0px' : '750px',
             opacity: props.isImageFocus ? 0 : 1,
           }}
         >
