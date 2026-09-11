@@ -1110,9 +1110,8 @@ function ClassicLayout(props: {
   hideVisual: boolean;
   showImage: boolean;
 }) {
-  //console.log('layout isImageFocus:', props.isImageFocus);
   return (
-    <div className="bg-white/5 backdrop-blur-md rounded-3xl border border-white-500/30 shadow-2xl overflow-hidden">
+    <div className="bg-white/5 backdrop-blur-md rounded-3xl border border-white-500/30 shadow-2xl overflow-hidden mx-auto">
       <div 
         className="flex items-stretch transition-all duration-700"
         style={{ minHeight: props.hideVisual ? '260px' : '500px' }}
@@ -1135,7 +1134,7 @@ function ClassicLayout(props: {
         <div
           className="overflow-hidden transition-all duration-700 ease-in-out"
           style={{
-            width: props.isImageFocus ? '0%' : props.hideVisual ? '100%' : '50%',
+            width: props.isImageFocus ? '0%' : '50%',
             opacity: props.isImageFocus ? 0 : 1,
           }}
         >
