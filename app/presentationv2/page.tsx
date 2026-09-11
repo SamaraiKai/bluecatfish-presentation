@@ -697,6 +697,7 @@ function SectionImageBlock({
     animationUrl?: string;
     showImage: boolean;
   }) {
+    console.log('ClassicLayout got:', { animationUrl: props.animationUrl, hideVisual: props.hideVisual });
     return (
             <div className="relative h-full bg-gradient-to-br overflow-hidden">
               {animationUrl ? (
@@ -1110,7 +1111,6 @@ function ClassicLayout(props: {
   hideVisual: boolean;
   showImage: boolean;
 }) {
-  console.log('SectionImageBlock got:', { animationUrl, showImage, image: currentSection.image });
   return (
     <div className="bg-white/5 backdrop-blur-md rounded-3xl border border-white-500/30 shadow-2xl overflow-hidden">
       <div 
@@ -1120,7 +1120,7 @@ function ClassicLayout(props: {
         <div 
           className="overflow-hidden transition-all duration-700 ease-in-out"
           style={{
-            width: props.hideVisual ? '0%' : props.isImageFocus ? '1300px' : '650x',
+            width: props.hideVisual ? '0%' : props.isImageFocus ? '1300px' : '650px',
             opacity: props.hideVisual ? 0 : 1,
           }}
         >
