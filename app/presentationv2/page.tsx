@@ -1119,7 +1119,7 @@ function ClassicLayout(props: {
         <div 
           className="overflow-hidden transition-all duration-700 ease-in-out"
           style={{
-            width: props.hideVisual ? '0%' : props.isImageFocus ? '100%' : '50%',
+            width: props.hideVisual ? '0%' : props.isImageFocus ? '900px' : '450x',
             opacity: props.hideVisual ? 0 : 1,
           }}
         >
@@ -1134,7 +1134,7 @@ function ClassicLayout(props: {
         <div
           className="overflow-hidden transition-all duration-700 ease-in-out"
           style={{
-            width: props.isImageFocus ? '0%' : '50%',
+            width: props.isImageFocus ? '0%' : '450px',
             opacity: props.isImageFocus ? 0 : 1,
           }}
         >
