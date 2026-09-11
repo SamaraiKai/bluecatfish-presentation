@@ -1112,7 +1112,12 @@ function ClassicLayout(props: {
   showImage: boolean;
 }) {
   return (
-    <div className="bg-white/5 backdrop-blur-md rounded-3xl border border-white-500/30 shadow-2xl overflow-hidden w-fit mx-auto">
+    <div 
+      className="bg-white/5 backdrop-blur-md rounded-3xl border border-white-500/30 shadow-2xl overflow-hidden mx-auto transition-all duration-700 ease-in-out"
+      style={{
+        width: props.hideVisual ? '650px' : '1300px',
+      }}
+    >
       <div 
         className="flex items-stretch"
       >
