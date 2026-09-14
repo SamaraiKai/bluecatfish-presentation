@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { getValue } from "@/src/redisClient";
+import { SECTIONS_CACHE_KEY } from "@/src/cacheVersion";
 
 export async function POST() {
-  const cacheKey = `bluecatfish_sections_ai_vAfterPilotv5`; // match your current key
+  const cacheKey = SECTIONS_CACHE_KEY
   const cachedRaw = await getValue(cacheKey);
   if (!cachedRaw) return NextResponse.json({ error: "no cached sections" }, { status: 404 });
 
