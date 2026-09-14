@@ -112,7 +112,7 @@ def estimate_duration(step: dict) -> int:
     words = len(text.split())
     return max(5, min(20, int(words / 2.5)))
     
-def write_manim_code(description: str, source_step: str = "", prev_error=None, prev_code=None) -> str:
+def write_manim_code(description: str, source_step: str = "", duration: int = 10, prev_error=None, prev_code=None) -> str:
     user_msg = f"Animate this: {description}"
     if source_step:
         user_msg += f"\n\nThe animation must be factually consistent with this source content. Use its exact numbers and wording — never round, rephrase, or invent figures:\n{source_step}"
@@ -196,13 +196,13 @@ def run_animation_pass(cache_key: str, sections: list):
                 step = section.get("steps", [])[step_index]       
                 source = json.dumps(step) 
     
-                code = write_manim_code(description, source_step=source)
+                code = write_manim_code(description, source_step=source, duration=duration)
                 video, err = None, None
                 for attempt in range(3):
                     video, err = render_to_bytes(code)
                     if video:
                         break
-                    code = write_manim_code(description, source_step=source, prev_error=err, prev_code=code)
+                    code = write_manim_code(description, source_step=source, duration=duration, prev_error=err, prev_code=code)
     
                 if not video:
                     print(f"FAILED section {i} step {step_index}: {err[:300] if err else ''}")
