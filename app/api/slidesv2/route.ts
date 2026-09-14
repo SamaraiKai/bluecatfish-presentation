@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { getValue, setValue } from "@/src/redisClient";
+import { SECTIONS_CACHE_KEY } from "@/src/cacheVersion";
 
 const supabase = createClient(
   process.env.SUPABASE_URL!,
@@ -366,7 +367,7 @@ async function addImageSteps(sections: any[]) {
 
 export async function POST(req: Request) {
   try {
-    const cacheKey = `bluecatfish_sections_ai_vAfterPilotv5`;
+    const cacheKey = SECTIONS_CACHE_KEY;
 
     const cachedRaw = await getValue(cacheKey);
     if (cachedRaw) {
