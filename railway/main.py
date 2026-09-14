@@ -96,6 +96,9 @@ STRICT CONSTRAINTS — code that violates these will fail:
 - Every object on screen must serve the explanation. Do not add decorative shapes, dots, or markers that are not labeled and not part of the idea being conveyed.
 - Prefer showing a change over showing a static arrangement. The viewer should see something grow, shrink, move, appear, or disappear — a diagram that simply assembles itself teaches less than one where a quantity visibly changes.
 - Aim for slightly under the target duration rather than over. Finishing early is fine; running long is not.
+- When labeling multiple parts of one object, place each label using .next_to() with a different direction (UP, DOWN, LEFT, RIGHT) so they cannot overlap. Never place more than one label on the same side.
+- Do not use a small shape inside a larger shape to represent a proportion — it does not read to a viewer. To show a proportion, use two side-by-side bars whose heights differ in that ratio, or a circle with a labeled arrow indicating the fraction.
+- Do not invent visual metaphors. If a number cannot be shown clearly with a bar, a timeline, or a labeled arrow, just display the number prominently with its label and animate it appearing.
 - End with self.wait(1).
 
 Output ONLY the Python code. No markdown fences, no explanation."""
