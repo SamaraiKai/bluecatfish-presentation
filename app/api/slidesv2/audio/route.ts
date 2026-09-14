@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { AUDIO_FOLDER } from "@/src/cacheVersion";
 
 const supabase = createClient(
   process.env.SUPABASE_URL!,
@@ -10,8 +11,7 @@ const supabase = createClient(
  * CONFIG
  * ========================================================================== */
 const BUCKET = "slide-audio";
-const FOLDER = "sections_vAfterPilotv5";
-
+const FOLDER = AUDIO_FOLDER;
 // How many TTS calls to run at once. Higher = faster, but risks rate limits.
 const BATCH_SIZE = 8;
 
