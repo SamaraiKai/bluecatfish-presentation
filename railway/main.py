@@ -164,7 +164,7 @@ def plan_animations(section: dict):
             lines.append(f"{idx}: {t} — {s.get('text') or s.get('question') or s.get('statement') or ''}")
 
     resp = openai_client.chat.completions.create(
-        model="gpt-4o-mini",
+        model="gpt-4o",
         response_format={"type": "json_object"},
         messages=[
             {"role": "system", "content": """You decide which teaching steps would benefit from a simple animated diagram.
