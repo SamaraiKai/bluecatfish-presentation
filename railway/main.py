@@ -5,6 +5,7 @@ import uuid
 from pathlib import Path
 import json
 import threading
+import time
 from openai import OpenAI
 from supabase import create_client
 
@@ -212,12 +213,14 @@ def run_animation_pass(cache_key: str, sections: list):
                     video, err = render_to_bytes(code)
                     if video:
                         break
-                    code = write_manim_code(description, source_step=source, duration=duration, prev_error=err, prev_code=code)
-    
+                    code = write_manim_code(
+                        description, source_step=source, duration=duration,
+                        prev_error=err, prev_code=code,
+                    )
                 if not video:
                     print(f"FAILED section {i} step {step_index}: {err[:300] if err else ''}")
                     continue
-    
+
                 path = f"{cache_key}/section{i}_step{step_index}.mp4"
                 try:
                     supabase.storage.from_("slide-animations").upload(
@@ -226,26 +229,44 @@ def run_animation_pass(cache_key: str, sections: list):
                     url = supabase.storage.from_("slide-animations").get_public_url(path)
                     results[f"{i}_{step_index}"] = url
                     print(f"OK section {i} step {step_index}")
+                    
+                    try:
+                     supabase.table("animation_jobs").upsert({
+                            "cache_key": cache_key,
+                            "animations": results,
+                            "status": "done",
+                        }).execute()
+                    except Exception as e:
+                        print(f"Interim write failed: {e}")
                 except Exception as e:
-                    print(f"UPLOAD FAILED section {i} step {step_index}: {e}")
-    
-        # Store the finished map so the app can pick it up later
-        supabase.table("animation_jobs").upsert({
-            "cache_key": cache_key,
-            "animations": results,
-            "status": "done",
-        }).execute()
-        print(f"Animation pass complete for {cache_key}: {len(results)} animations")
+                        print(f"UPLOAD FAILED section {i} step {step_index}: {e}")
+                    
+        for attempt in range(3):
+            try:
+                supabase.table("animation_jobs").upsert({
+                    "cache_key": cache_key,
+                    "animations": results,
+                    "status": "done",
+                }).execute()
+                print(f"Animation pass complete for {cache_key}: {len(results)} animations")
+                break
+            except Exception as e:
+                print(f"Status write failed (attempt {attempt + 1}): {e}")
+                time.sleep(3)
+
     except Exception as e:
         import traceback
         print(f"ANIMATION PASS CRASHED for {cache_key}: {e}")
         traceback.print_exc()
-        supabase.table("animation_jobs").upsert({
-            "cache_key": cache_key,
-            "animations": {},
-            "status": "failed",
-        }).execute()
-
+        try:
+            supabase.table("animation_jobs").upsert({
+                "cache_key": cache_key,
+                "animations": results if 'results' in dir() else {},
+                "status": "failed",
+            }).execute()
+        except Exception:
+            pass
+            
 @app.post("/animate")
 def animate(req: AnimateRequest):
     if RENDER_TOKEN and req.token != RENDER_TOKEN:
