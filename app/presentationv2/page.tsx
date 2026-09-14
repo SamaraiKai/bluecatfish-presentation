@@ -1999,6 +1999,14 @@ export default function AIPresentation() {
   const currentAnimation = animations[`${activeSection}_${microStep}`];
   const currentStepType = currentSection?.steps?.[microStep]?.type;
   const hasVisual = !!currentAnimation || currentStepType === 'imageFocus';
+
+  console.log('ANIM DEBUG:', {
+    key: `${activeSection}_${microStep}`,
+    currentAnimation,
+    stepType: currentStepType,
+    hasVisual,
+    mapKeys: Object.keys(animations),
+  });
   
   /* ---------------------------------------------------------------- render */
   return (
