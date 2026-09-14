@@ -85,6 +85,13 @@ STRICT CONSTRAINTS — code that violates these will fail:
 - Keep the total animation under 15 seconds.
 - The animation must last approximately {duration} seconds in total. Use run_time values on self.play() and self.wait() to reach that length.
 - Keep all objects inside the frame: x roughly -6 to 6, y roughly -3.5 to 3.5.
+- Every Text object must use font_size=28 or smaller, and .scale(0.6) if longer than 20 characters.
+- Place text using .next_to(object, direction, buff=0.4) or .to_edge(). Never place two Text objects at the same location.
+- A title, if used, goes at .to_edge(UP). Nothing else may occupy the top of the frame.
+- Every shape must have a Text label placed directly beside or inside it. An unlabeled shape is not acceptable.
+- Use at most 5 objects total including labels.
+- Show one single idea. If the description mentions multiple ideas, animate only the first.
+- Any number displayed must appear verbatim in the source content. Never invent, round, or substitute figures.
 - End with self.wait(1).
 
 Output ONLY the Python code. No markdown fences, no explanation."""
@@ -164,6 +171,8 @@ Never choose a step marked "imageFocus".
 Choose 1-2 steps per section.
 
 For each chosen step write a "description": a SIMPLE animation using only basic shapes, text, arrows and lines, describable in under 15 seconds. Diagram, not picture. Be specific about what appears and what moves.
+
+The description must specify exactly what shapes appear, what text labels them, and what single change occurs. If you cannot describe it that concretely in one sentence, do not choose that step.
 
 Output JSON: { "animations": [ { "stepIndex": 0, "description": "..." } ] }"""},
             {"role": "user", "content": f"Section: \"{section.get('title')}\"\n\nSteps:\n" + "\n".join(lines)},
