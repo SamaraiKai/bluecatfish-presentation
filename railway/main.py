@@ -93,6 +93,9 @@ STRICT CONSTRAINTS — code that violates these will fail:
 - Use at most 5 objects total including labels.
 - Show one single idea. If the description mentions multiple ideas, animate only the first.
 - Any number displayed must appear verbatim in the source content. Never invent, round, or substitute figures.
+- Every object on screen must serve the explanation. Do not add decorative shapes, dots, or markers that are not labeled and not part of the idea being conveyed.
+- Prefer showing a change over showing a static arrangement. The viewer should see something grow, shrink, move, appear, or disappear — a diagram that simply assembles itself teaches less than one where a quantity visibly changes.
+- Aim for slightly under the target duration rather than over. Finishing early is fine; running long is not.
 - End with self.wait(1).
 
 Output ONLY the Python code. No markdown fences, no explanation."""
@@ -118,7 +121,7 @@ def render_to_bytes(code: str):
 def estimate_duration(step: dict) -> int:
     text = " ".join(str(v) for v in step.values() if isinstance(v, str))
     words = len(text.split())
-    return max(5, min(20, int(words / 2.5)))
+    return max(4, min(18, int(words / 3)))
     
 def write_manim_code(description: str, source_step: str = "", duration: int = 10, prev_error=None, prev_code=None) -> str:
     user_msg = f"Animate this: {description}"
@@ -174,6 +177,8 @@ Choose 1-2 steps per section.
 For each chosen step write a "description": a SIMPLE animation using only basic shapes, text, arrows and lines, describable in under 15 seconds. Diagram, not picture. Be specific about what appears and what moves.
 
 The description must specify exactly what shapes appear, what text labels them, and what single change occurs. If you cannot describe it that concretely in one sentence, do not choose that step.
+
+Favor steps where a quantity can be shown changing, or where one thing visibly affects another. A description should be able to complete this sentence: "the viewer watches ___ happen." If it cannot, skip that step.
 
 Output JSON: { "animations": [ { "stepIndex": 0, "description": "..." } ] }"""},
             {"role": "user", "content": f"Section: \"{section.get('title')}\"\n\nSteps:\n" + "\n".join(lines)},
