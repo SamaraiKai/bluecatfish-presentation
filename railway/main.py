@@ -230,6 +230,11 @@ def run_animation_pass(cache_key: str, sections: list):
         import traceback
         print(f"ANIMATION PASS CRASHED for {cache_key}: {e}")
         traceback.print_exc()
+        supabase.table("animation_jobs").upsert({
+            "cache_key": cache_key,
+            "animations": {},
+            "status": "failed",
+        }).execute()
 
 @app.post("/animate")
 def animate(req: AnimateRequest):
