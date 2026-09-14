@@ -195,6 +195,7 @@ def run_animation_pass(cache_key: str, sections: list):
 
                 step = section.get("steps", [])[step_index]       
                 source = json.dumps(step) 
+                duration = estimate_duration(step)
     
                 code = write_manim_code(description, source_step=source, duration=duration)
                 video, err = None, None
