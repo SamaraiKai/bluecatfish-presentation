@@ -9,9 +9,7 @@ export async function POST() {
   if (!cachedRaw) return NextResponse.json({ error: "no cached sections" }, { status: 404 });
 
   const sections = JSON.parse(cachedRaw);
-
-  const sections = JSON.parse(cachedRaw);
-
+  
   const rawUrl = process.env.MANIM_RENDER_URL || '';
   const renderUrl = rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`;
 
