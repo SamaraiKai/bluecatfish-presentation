@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { getValue } from "@/src/redisClient";
 import { SECTIONS_CACHE_KEY } from "@/src/cacheVersion";
 
-console.log('render url:', process.env.MANIM_RENDER_URL);
 export async function POST() {
+  console.log('render url:', process.env.MANIM_RENDER_URL);
   const cacheKey = SECTIONS_CACHE_KEY
   const cachedRaw = await getValue(cacheKey);
   if (!cachedRaw) return NextResponse.json({ error: "no cached sections" }, { status: 404 });
