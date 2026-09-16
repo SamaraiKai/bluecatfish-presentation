@@ -104,6 +104,9 @@ Never invent your own visual metaphor for a proportion — use proportion_circle
 - Keep all objects inside the frame: x roughly -6 to 6, y roughly -3.5 to 3.5.
 - Every Text object must use font_size=28 or smaller, and .scale(0.6) if longer than 20 characters.
 - Place text using .next_to(object, direction, buff=0.4) or .to_edge(). Never place two Text objects at the same location.
+- Use proportion_circles or labeled_bars ONLY when the step contains two explicit percentages or quantities that sum to a whole. Never use them to represent a relationship, an action, or an effect.
+- If the step describes an action or effect rather than a quantity, use fish() shapes with a labeled arrow between them — not circles.
+- Never remove or replace the labels that a helper function generates.
 - A title, if used, goes at .to_edge(UP). Nothing else may occupy the top of the frame.
 - Every shape must have a Text label placed directly beside or inside it. An unlabeled shape is not acceptable.
 - Use at most 7 objects total including labels.
