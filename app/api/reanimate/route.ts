@@ -10,7 +10,12 @@ export async function POST() {
 
   const sections = JSON.parse(cachedRaw);
 
-  fetch(`${process.env.MANIM_RENDER_URL}/animate`, {
+  const sections = JSON.parse(cachedRaw);
+
+  const rawUrl = process.env.MANIM_RENDER_URL || '';
+  const renderUrl = rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`;
+
+  fetch(`${renderUrl}/animate`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
