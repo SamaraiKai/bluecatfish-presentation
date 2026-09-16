@@ -9,6 +9,7 @@ import time
 from openai import OpenAI
 from supabase import create_client
 from manim import *
+import shutil
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
@@ -78,7 +79,22 @@ MANIM_SYSTEM_PROMPT = """You write Manim Community Edition code for short educat
 STRICT CONSTRAINTS — code that violates these will fail:
 - The scene class MUST be named exactly "GeneratedScene" and extend Scene.
 - Start the file with: from manim import *
+
 - Use ONLY these objects: Text, Circle, Square, Rectangle, Dot, Line, Arrow, VGroup
+
+You have a helper module available. Start your file with:
+from manim import *
+from catfish_shapes import fish, proportion_circles, labeled_bars, timeline
+
+Build your animation using these helpers wherever possible:
+- fish(color, scale, label) — a labeled fish shape
+- proportion_circles(big_pct, small_pct, big_label, small_label) — two correctly-sized circles showing a proportion
+- labeled_bars([(label, value), ...]) — a labeled bar chart
+- timeline(start_label, end_label) — returns (timeline_group, dot) for animating a dot along it
+
+Use plain Manim objects only for things the helpers do not cover.
+Never invent your own visual metaphor for a proportion — use proportion_circles or labeled_bars.
+
 - Use ONLY these animations: Write, FadeIn, FadeOut, Create, Transform, ReplacementTransform, GrowArrow, Indicate
 - NEVER use MathTex, Tex, Axes, NumberLine, or anything requiring LaTeX.
 - Any number shown in the animation must match the source content exactly. Do not round, approximate, or invent figures.
@@ -91,7 +107,7 @@ STRICT CONSTRAINTS — code that violates these will fail:
 - Place text using .next_to(object, direction, buff=0.4) or .to_edge(). Never place two Text objects at the same location.
 - A title, if used, goes at .to_edge(UP). Nothing else may occupy the top of the frame.
 - Every shape must have a Text label placed directly beside or inside it. An unlabeled shape is not acceptable.
-- Use at most 5 objects total including labels.
+- Use at most 7 objects total including labels.
 - Show one single idea. If the description mentions multiple ideas, animate only the first.
 - Any number displayed must appear verbatim in the source content. Never invent, round, or substitute figures.
 - Every object on screen must serve the explanation. Do not add decorative shapes, dots, or markers that are not labeled and not part of the idea being conveyed.
@@ -109,6 +125,7 @@ def render_to_bytes(code: str):
     workdir = Path(tempfile.mkdtemp())
     script = workdir / "scene.py"
     script.write_text(code)
+    shutil.copy("/app/catfish_shapes.py", workdir / "catfish_shapes.py")
 
     result = subprocess.run(
         ["manim", "-ql", "--media_dir", str(workdir), str(script), "GeneratedScene"],
