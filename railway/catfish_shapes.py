@@ -39,3 +39,50 @@ def timeline(start_label, end_label, width=8.0):
     b = Text(end_label, font_size=20).next_to(line, RIGHT, buff=0.3)
     dot = Dot(line.get_start(), color=BLUE)
     return VGroup(line, a, b), dot
+
+def big_number(value, label, color=TEAL):
+    """One striking figure, displayed large with its caption. The fallback
+    for any stat that doesn't fit a chart."""
+    num = Text(str(value), font_size=96, color=color)
+    cap = Text(label, font_size=28).next_to(num, DOWN, buff=0.4)
+    return VGroup(num, cap).move_to(ORIGIN)
+
+
+def flow_chain(labels, color=BLUE):
+    """Left-to-right cause chain: [box] -> [box] -> [box]."""
+    boxes = VGroup()
+    for text in labels:
+        t = Text(text, font_size=20)
+        box = Rectangle(width=max(1.8, t.width + 0.5), height=1.0, color=color)
+        boxes.add(VGroup(box, t.move_to(box.get_center())))
+    boxes.arrange(RIGHT, buff=1.0)
+
+    arrows = VGroup(*[
+        Arrow(boxes[i].get_right(), boxes[i + 1].get_left(), buff=0.1, color=WHITE)
+        for i in range(len(labels) - 1)
+    ])
+    return VGroup(boxes, arrows).scale_to_fit_width(12)
+
+
+def eats(predator_label, prey_labels, color=TEAL):
+    """One fish with arrows pointing to several prey items."""
+    pred = fish(color=color, scale=1.2, label=predator_label).to_edge(LEFT, buff=1.0)
+    prey = VGroup(*[
+        Text(p, font_size=20) for p in prey_labels
+    ]).arrange(DOWN, buff=0.6).to_edge(RIGHT, buff=1.5)
+
+    arrows = VGroup(*[
+        Arrow(pred.get_right(), p.get_left(), buff=0.3, color=WHITE, stroke_width=3)
+        for p in prey
+    ])
+    return VGroup(pred, prey, arrows)
+
+
+def growth_curve(start_label, end_label, color=TEAL):
+    """A rising line — returns (axes_group, line) so you can animate Create(line)."""
+    base = Line(LEFT * 4 + DOWN * 2, RIGHT * 4 + DOWN * 2, color=WHITE)
+    side = Line(LEFT * 4 + DOWN * 2, LEFT * 4 + UP * 2, color=WHITE)
+    curve = Line(LEFT * 4 + DOWN * 2, RIGHT * 3.5 + UP * 1.5, color=color, stroke_width=6)
+    a = Text(start_label, font_size=20).next_to(base, DOWN, buff=0.2).align_to(base, LEFT)
+    b = Text(end_label, font_size=20).next_to(base, DOWN, buff=0.2).align_to(base, RIGHT)
+    return VGroup(base, side, a, b), curve
