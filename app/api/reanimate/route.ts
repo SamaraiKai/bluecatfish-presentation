@@ -13,15 +13,21 @@ export async function POST() {
   const rawUrl = process.env.MANIM_RENDER_URL || '';
   const renderUrl = rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`;
 
-  fetch(`${renderUrl}/animate`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      token: process.env.MANIM_RENDER_TOKEN,
-      cache_key: cacheKey,
-      sections,
-    }),
-  }).catch((e) => console.warn("reanimate failed to start:", e));
-
+  try {
+    await fetch(`${renderUrl}/animate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        token: process.env.MANIM_RENDER_TOKEN,
+        cache_key: cacheKey,
+        sections,
+      }),
+      signal: AbortSignal.timeout(15000),
+    });
+    console.log('animation pass requested');
+  } catch (e) {
+    console.warn("reanimate failed to start:", e);
+  }
+  
   return NextResponse.json({ started: true, cacheKey, sectionCount: sections.length });
 }
