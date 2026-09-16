@@ -390,11 +390,6 @@ export async function POST(req: Request) {
     dedupeStats(sections);
     await assignUniqueImages(sections, plan.map((p) => p.query));
     await addImageSteps(sections);
-    await addAnimations(sections, cacheKey);   // cacheKey doubles as the folder name
-  
-    await setValue(cacheKey, JSON.stringify(sections));
-
-    // kick off animations in the background — don't await the work itself
 
     await setValue(cacheKey, JSON.stringify(sections));
 
@@ -436,6 +431,7 @@ STRICT CONSTRAINTS — code that violates these will fail:
 
 Output ONLY the Python code. No markdown fences, no explanation.`;
 
+/*
 async function generateManimCode(description: string, previousError?: string, previousCode?: string): Promise<string> {
   const messages: any[] = [
     { role: "system", content: MANIM_SYSTEM_PROMPT },
@@ -517,6 +513,7 @@ Output JSON: { "animations": [ { "stepIndex": 0, "description": "..." } ] }`,
   return Array.isArray(parsed.animations) ? parsed.animations : [];
 }
 
+
 async function renderAnimation(description: string, maxAttempts = 3): Promise<Buffer | null> {
   let code = await generateManimCode(description);
   let lastError = '';
@@ -563,3 +560,4 @@ async function uploadAnimation(buffer: Buffer, fileName: string): Promise<string
   const { data } = supabase.storage.from("slide-animations").getPublicUrl(fileName);
   return data.publicUrl;
 }
+*/
