@@ -395,7 +395,13 @@ export async function POST(req: Request) {
     await setValue(cacheKey, JSON.stringify(sections));
 
     // kick off animations in the background — don't await the work itself
-    fetch(`${process.env.MANIM_RENDER_URL}/animate`, {
+
+    await setValue(cacheKey, JSON.stringify(sections));
+
+    const rawUrl = process.env.MANIM_RENDER_URL || '';
+    const renderUrl = rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`;
+    
+    fetch(`${renderUrl}/animate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
