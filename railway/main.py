@@ -156,7 +156,7 @@ def write_manim_code(description: str, source_step: str = "", duration: int = 10
         })
 
     resp = openai_client.chat.completions.create(
-        model="gpt-6-sol", reasoning_effort="medium", messages=messages, temperature=0.3, max_tokens=4200,
+        model="gpt-6-sol", reasoning_effort="medium", messages=messages, temperature=0.3, max_completion_tokens=4200,
     )
     code = resp.choices[0].message.content.strip()
     if code.startswith("```"):
@@ -202,7 +202,7 @@ Output JSON: { "animations": [ { "stepIndex": 0, "description": "..." } ] }"""},
             {"role": "user", "content": f"Section: \"{section.get('title')}\"\n\nSteps:\n" + "\n".join(lines)},
         ],
         temperature=0.6,
-        max_tokens=500,
+        max_completion_tokens=1500,
     )
     try:
         return json.loads(resp.choices[0].message.content).get("animations", [])
