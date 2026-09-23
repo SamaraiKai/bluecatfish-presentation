@@ -28,6 +28,7 @@ async function planSections(): Promise<{ title: string; query: string }[]> {
     },
     body: JSON.stringify({
       model: "gpt-6-luna",
+      reasoning_effort: "low", 
       response_format: { type: "json_object" },
       messages: [
         {
@@ -111,6 +112,7 @@ async function generateSingleSection(
     },
     body: JSON.stringify({
       model: "gpt-6-luna",
+      reasoning_effort: "low", 
       response_format: { type: "json_object" },
       messages: [
         {
@@ -340,6 +342,7 @@ async function addImageSteps(sections: any[]) {
       },
       body: JSON.stringify({
         model: "gpt-6-luna",
+        reasoning_effort: "low", 
         response_format: { type: "json_object" },
         messages: [
           {
