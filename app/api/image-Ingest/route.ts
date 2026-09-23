@@ -14,7 +14,8 @@ async function describeImage(imageUrl: string): Promise<string> {
       Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
     },
     body: JSON.stringify({
-      model: "gpt-4o-mini",
+      model: "gpt-6-luna",
+      reasoning_effort: "low",
       messages: [
         {
           role: "system",
@@ -27,7 +28,7 @@ async function describeImage(imageUrl: string): Promise<string> {
           ],
         },
       ],
-      max_tokens: 350,
+      max_tokens: 1000,
     }),
   });
 
