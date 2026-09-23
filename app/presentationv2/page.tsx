@@ -38,7 +38,7 @@ type Step =
   | { type: 'imageFocus'; text: string }
   | { type: 'numberSpotlight'; value: string; label: string; context: string }
   | { type: ''; question: string; answer: string  }
-  | { type: 'checkYourself'; statement: string; isTrue: boolean; feedback: string };
+  | { type: 'checkYourself'; statement: string; isTrue: boolean; feedback: string }
   | { type: 'predictThen'; question: string; options: string[]; correctIndex: number; answer: string };
 
 /* ============================================================================
