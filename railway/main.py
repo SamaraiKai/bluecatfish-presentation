@@ -153,7 +153,7 @@ def write_manim_code(description: str, source_step: str = "", duration: int = 10
         })
 
     resp = openai_client.chat.completions.create(
-        model="gpt-6-sol", messages=messages, temperature=0.3, max_tokens=1200,
+        model="gpt-6-sol", reasoning_effort="medium", messages=messages, temperature=0.3, max_tokens=4200,
     )
     code = resp.choices[0].message.content.strip()
     if code.startswith("```"):
@@ -176,6 +176,7 @@ def plan_animations(section: dict):
 
     resp = openai_client.chat.completions.create(
         model="gpt-6-luna",
+        reasoning_effort: "low", 
         response_format={"type": "json_object"},
         messages=[
             {"role": "system", "content": """You decide which teaching steps would benefit from a simple animated diagram.
