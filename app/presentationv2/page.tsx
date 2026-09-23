@@ -23,7 +23,8 @@ interface SectionWithBreakdown {
   hubImage: string;
   steps: Step[];
   quiz: { question: string; options: string[]; correctAnswer: number; explanation: string }[];
-  recap: string,
+  recap: string;
+  remediation?: string;
 }
 
 type MicroStep = {
@@ -387,6 +388,60 @@ function AnimatedStatValue({ value, start = true }: { value: string; start?: boo
 /* ============================================================================
  * SCREEN COMPONENTS
  * ========================================================================== */
+function SelfCheckSlide({ onPick }: { onPick: (r: 'got' | 'kind' | 'lost') => void }) {
+  const options = [
+    { r: 'got', emoji: '😀', label: 'Got it' },
+    { r: 'kind', emoji: '😐', label: 'Kind of' },
+    { r: 'lost', emoji: '😕', label: 'Lost me' },
+  ] as const;
+
+  return (
+    <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl p-10 max-w-2xl mx-auto text-center animate-[fadeInUp_0.5s_ease-out]">
+      <h3 className="text-3xl font-bold text-slate-900 mb-8">How did that go?</h3>
+      <div className="flex justify-center gap-6">
+        {options.map((o) => (
+          <button
+            key={o.r}
+            onClick={() => onPick(o.r)}
+            className="flex flex-col items-center gap-2 px-8 py-6 rounded-2xl border-2 border-slate-200 hover:border-blue-400 hover:bg-blue-50 hover:scale-105 transition-all"
+          >
+            <span className="text-6xl">{o.emoji}</span>
+            <span className="text-lg font-semibold text-slate-700">{o.label}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function RemediationSlide({
+  text,
+  isActive,
+  currentTime,
+  duration,
+  isSpeaking,
+}: {
+  text: string;
+  isActive: boolean;
+  currentTime: number;
+  duration: number;
+  isSpeaking: boolean;
+}) {
+  return (
+    <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl p-10 max-w-2xl mx-auto animate-[fadeInUp_0.5s_ease-out]">
+      <div className="text-sm font-semibold text-cyan-700 mb-4 text-center">Let's try that another way</div>
+      <HighlightedText
+        text={text}
+        currentTime={currentTime}
+        duration={duration}
+        isSpeaking={isSpeaking}
+        isActive={isActive}
+        className="text-xl text-black leading-relaxed text-center"
+      />
+    </div>
+  );
+}
+
 function CameraSelector({ onSelect }: { onSelect: (useCamera: boolean) => void }) {
   return (
     <div className="h-screen w-screen flex flex-col items-center justify-center bg-gradient-to-br from-mist-50 to-mist-400 p-8">
@@ -1447,6 +1502,8 @@ export default function AIPresentation() {
   const [started, setStarted] = useState(false);
   const [devMode, setDevMode] = useState(false);
   const [showHub, setShowHub] = useState(false);
+  const [showSelfCheck, setShowSelfCheck] = useState(false);
+  const [showRemediation, setShowRemediation] = useState(false);
   
   // Refs
   const keyTermsTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -1690,15 +1747,10 @@ export default function AIPresentation() {
       const transition = nextType === 'example' ? 'analogy' : null;
       playMicroStepAudio(sectionIndex, next, transition);
     } else {
-      play(audioUrls['wrapup'], 'wrapup', '', () => {
-        if (section.quiz && section.quiz.length === 1) {
-          setShowQuiz(true);
-        } else {
-          handleQuizContinue();
-        }
-      });
-    }
-  };
+      setShowSelfCheck(true);
+      play(audioUrls['wrapup'], 'wrapup', '');
+      }
+    };
 
   /* --------------------------------------------- section nav handlers */
   const handleHubSelect = (index: number) => {
@@ -1709,6 +1761,8 @@ export default function AIPresentation() {
     setShowQuiz(false);
     setShowReview(false);
     narrateSection(index);
+    setShowSelfCheck(false);
+    setShowRemediation(false);
   };
   
   const handleFinishFromHub = () => {
@@ -1746,6 +1800,27 @@ export default function AIPresentation() {
     }
     stop();
     sendMessage(text);
+  };
+
+  const handleSelfCheck = (rating: 'got' | 'kind' | 'lost') => {
+    setShowSelfCheck(false);
+  
+    const goToQuiz = () => {
+      if (currentSection.quiz?.length === 1) setShowQuiz(true);
+      else handleQuizContinue();
+    };
+  
+    if (rating === 'lost' && currentSection.remediation) {
+      setShowRemediation(true);
+      const key = `section${activeSection}_remediation`;
+      play(audioUrls[key], key, currentSection.remediation, () => {
+        setShowRemediation(false);
+        goToQuiz();
+      });
+    } else {
+      stop();
+      goToQuiz();
+    }
   };
   
   const handleQuizReview = () => {
@@ -1790,6 +1865,8 @@ export default function AIPresentation() {
     setCompletedQuizzes(new Set());
     setMissedQuestions([]);
     setStarted(false)
+    setShowSelfCheck(false);
+    setShowRemediation(false);
   };
 
   const playConclusion = () => {
@@ -2132,6 +2209,16 @@ export default function AIPresentation() {
               onSelect={handleHubSelect}
               onFinish={handleFinishFromHub}
             />
+          ) : showRemediation ? (
+            <RemediationSlide
+              text={currentSection.remediation ?? ''}
+              isActive={currentKey === `section${activeSection}_remediation`}
+              currentTime={currentTime}
+              duration={duration}
+              isSpeaking={isSpeaking}
+            />
+          ) : showSelfCheck ? (
+            <SelfCheckSlide onPick={handleSelfCheck} />
           ) : showReview ? (
             <ReviewSlide
               missedQuestions={missedQuestions}
@@ -2237,7 +2324,7 @@ export default function AIPresentation() {
           {/* Navigation */}
           {!showHub && !showConclusion && (
             <div className={`flex justify-center mt-8 transition-opacity duration-300 ${
-              showQuiz || showReview ? 'opacity-0 pointer-events-none' : 'opacity-100'
+              showQuiz || showReview || showSelfCheck || showRemediation ? 'opacity-0 pointer-events-none' : 'opacity-100'
             }`}>
               <button
                 onClick={() => {
