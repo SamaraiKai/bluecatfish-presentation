@@ -59,6 +59,17 @@ const STEP_LABELS: Record<Step['type'], string> = {
   keyTerms: 'Key Terms',
 };
 
+// Pre-rendered Manim CE animations for each section topic, in section order.
+// These replace the static section photo in the slide's image stage.
+const SECTION_ANIMATIONS: Record<number, string> = {
+  1: '/animations/topic1-t1_whatarebluecatfish.mp4',
+  2: '/animations/topic2-t2_whyinvasive.mp4',
+  3: '/animations/topic3-t3_impact.mp4',
+  4: '/animations/topic4-t4_mitigation.mp4',
+  5: '/animations/topic5-t5_nutrition.mp4',
+  6: '/animations/topic6-t6_howyoucanhelp.mp4',
+};
+
 /* ============================================================================
  * MICRO-STEP CONFIG
  * ========================================================================== */
@@ -517,10 +528,12 @@ function SectionImageBlock({
     currentSection,
     activeSection,
     totalSections,
+    animationUrl,
   }: {
     currentSection: SectionWithBreakdown;
     activeSection: number;
     totalSections: number;
+    animationUrl?: string;
   }) {
     return (
               <div className="relative h-72 md:h-auto min-h-[500px] bg-gradient-to-br overflow-hidden">
@@ -548,15 +561,26 @@ function SectionImageBlock({
                   </div>
                 </div>
                 
-                {/* Main Image */}
-                {currentSection.image && (
-                  <img 
-                    src={currentSection.image} 
+                {/* Main Image — replaced by the section's Manim animation when available */}
+                {currentSection.image && !animationUrl && (
+                  <img
+                    src={currentSection.image}
                     alt={currentSection.title}
                     className="absolute inset-0 w-full h-full object-contain opacity-80"
                     onError={(e) => {
                       e.currentTarget.style.display='none';
                     }}
+                  />
+                )}
+                {animationUrl && (
+                  <video
+                    key={animationUrl}
+                    src={animationUrl}
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    className="absolute inset-0 w-full h-full object-contain opacity-90"
                   />
                 )}
                 
@@ -626,7 +650,8 @@ function MiniSlideshowBlock({
   duration: number;
   isSpeaking: boolean;
   currentKey: string | null;
-  playMicroStepAudio: (sectionIndex: number, stepIndex: number, transitionType: 'means' | 'analogy' | null) => void;fix
+  playMicroStepAudio: (sectionIndex: number, stepIndex: number, transitionType: 'means' | 'analogy' | null) => void;
+  animationUrl?: string;
 }) {
   return (
     <div className="p-8 md:p-12 flex flex-col justify-center bg-gradient-to-br from-mauve-200/70 to-mauve-300/70 rounded-3xl border border-white-500/30">
@@ -773,6 +798,7 @@ function ClassicLayout(props: {
   handleQuizContinue: () => void;
   currentKey: string | null;
   playMicroStepAudio: (sectionIndex: number, stepIndex: number, transitionType: 'means' | 'analogy' | null) => void;
+  animationUrl?: string;
 }) {
   return (
     <div className="bg-white/5 backdrop-blur-md rounded-3xl border border-white-500/30 shadow-2xl overflow-hidden">
@@ -780,8 +806,7 @@ function ClassicLayout(props: {
         <SectionImageBlock
           currentSection={props.currentSection}
           activeSection={props.activeSection}
-          totalSections={props.totalSections}
-        />
+          totalSections={props.totalSections} animationUrl={props.animationUrl} />
         <div className="p-8 md:p-12 flex flex-col justify-center bg-gradient-to-br from-mist-400/50 to-mist-500/50">
           <MiniSlideshowBlock
             currentSection={props.currentSection}
@@ -822,7 +847,8 @@ function SplitLayout(props: {
   showQuiz: boolean;
   handleQuizContinue: () => void;
   playMicroStepAudio: (sectionIndex: number, stepIndex: number, transitionType: 'means' | 'analogy' | null) => void;
-  
+  animationUrl?: string;
+
 }) {
   return (
     <div className="bg-white/5 backdrop-blur-md rounded-3xl border border-white-500/30 shadow-2xl overflow-hidden">
@@ -852,8 +878,7 @@ function SplitLayout(props: {
           <SectionImageBlock
             currentSection={props.currentSection}
             activeSection={props.activeSection}
-            totalSections={props.totalSections}
-          />
+            totalSections={props.totalSections} animationUrl={props.animationUrl} />
         </div>
       </div>
     </div>
@@ -1042,6 +1067,7 @@ export default function AIPresentation() {
   // Content loading
   const [sections, setSections] = useState<SectionWithBreakdown[]>([]);
   const [audioUrls, setAudioUrls] = useState<Record<string, string>>({});
+  const [animationUrls, setAnimationUrls] = useState<Record<number, string>>({});
   const [isContentLoading, setIsContentLoading] = useState(true);
   const [loadingPhase, setLoadingPhase] = useState<'content' | 'audio'>('content');
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -1392,6 +1418,10 @@ export default function AIPresentation() {
 
         setSections(sectionsData.sections);
 
+        // Manim topic animations (pre-rendered, served from /public/animations).
+        // Indexed by section order: 1-6. Section titles come from the API in this order.
+        setAnimationUrls(SECTION_ANIMATIONS);
+
         const firstTopic = sectionsData.sections[0]?.title || 'the Blue Catfish invasion';
         const builtIntro = `Hello everyone, and welcome! I'm Professor Marine, and today we're diving into the story of the Blue Catfish invasion in the Chesapeake Bay. By the time we're done, you'll all be experts on the subject. Let's get right into the material — starting with our first topic: ${firstTopic}.`;
         setIntroText(builtIntro);
@@ -1706,6 +1736,7 @@ export default function AIPresentation() {
               showQuiz={showQuiz}
               handleQuizContinue={handleQuizContinue}
               playMicroStepAudio={playMicroStepAudio}
+              animationUrl={animationUrls[activeSection + 1]}
             />
           ) : (
             <SplitLayout
@@ -1725,6 +1756,7 @@ export default function AIPresentation() {
               showQuiz={showQuiz}
               handleQuizContinue={handleQuizContinue}
               playMicroStepAudio={playMicroStepAudio}
+              animationUrl={animationUrls[activeSection + 1]}
             />
           )}
           
