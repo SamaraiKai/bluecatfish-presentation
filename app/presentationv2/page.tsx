@@ -1063,34 +1063,6 @@ function ReviewSlide({
   );
 }
 
-function PromptChips({
-  onChip,
-  disabled,
-}: {
-  onChip: (text: string) => void;
-  disabled: boolean;
-}) {
-  const chips = [
-    { label: '🔁 Explain that again', text: 'Can you explain that again?' },
-    { label: '💡 Simpler please', text: 'Can you explain that more simply?' },
-    { label: '⏭ Skip ahead', text: 'Skip ahead to the next section' },
-  ];
-  return (
-    <div className="fixed bottom-6 left-6 z-50 flex flex-col gap-2">
-      {chips.map((c) => (
-        <button
-          key={c.label}
-          onClick={() => onChip(c.text)}
-          disabled={disabled}
-          className="px-4 py-2 rounded-full bg-blue-600/90 hover:bg-blue-500 disabled:bg-gray-600 disabled:opacity-40 text-white text-sm font-medium shadow-lg backdrop-blur-sm transition-colors text-left"
-        >
-          {c.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
 /* ============================================================================
  * MAIN COMPONENT
  * ========================================================================== */
@@ -2028,17 +2000,6 @@ export default function AIPresentation() {
             </div>
           </div>
         </div>
-      )}
-
-      {/* Prompt Chips — the AdaptEd-style interrupt controls */}
-      {presentationStarted && !showQuiz && !showReview && !showConclusion && (
-        <PromptChips
-          onChip={(text) => {
-            if (isSpeaking) stop();
-            handleSendMessage(text);
-          }}
-          disabled={isLoading || isChatSpeaking}
-        />
       )}
 
       {/* Source Attribution */}
