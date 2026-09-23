@@ -50,7 +50,7 @@ Output JSON: { "sections": [ { "title": "...", "query": "..." } ] }`,
           content: `Source material survey:\n\n${survey}`,
         },
       ],
-      max_tokens: 4500,
+      max_completion_tokens: 5000,
     }),
   });
 
@@ -171,7 +171,7 @@ Output ONLY a JSON object with key "section":
           content: `Generate section ${sectionNum} about: ${sectionTopic}`,
         },
       ],
-      max_tokens: 4000,
+      max_completion_tokens: 3500,
     }),
   });
 
@@ -361,7 +361,7 @@ async function addImageSteps(sections: any[]) {
             content: `Section: "${section.title}"\nImage description: "${section.imageDescription}"`,
           },
         ],
-        max_tokens: 1250,
+        max_completion_tokens: 1500,
       }),
     });
 
