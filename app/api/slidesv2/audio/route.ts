@@ -41,7 +41,7 @@ const CONCLUSION_OUTRO_TEXT = "And that's the whole story. Thanks for joining me
 
 //const KEYTERM_INTRO_TEXT = "Let's go over some key terms.";
 
-const WRAP_UP_TEXT = "Ready for a quick question?";
+const WRAP_UP_TEXT = "How did that section go?";
 
 const FAIL_TEXT = "It seems you didn't answer everything correctly. Let's head to review to cement what you know.";
 
@@ -277,6 +277,14 @@ function buildSectionJobs(sections: any[]): AudioJob[] {
       });
     }
 
+    if (section.remediation) {
+      jobs.push({
+        key: `section${i}_remediation`,
+        text: section.remediation,
+        fileName: `${FOLDER}/section${i + 1}_remediation.mp3`,
+      });
+    }
+    
     for (let s = 0; s < section.steps.length; s++) {
       const step = section.steps[s];
 
@@ -334,7 +342,7 @@ function buildSectionJobs(sections: any[]): AudioJob[] {
           text: step.text,
           fileName: `${FOLDER}/section${i + 1}_step${s}.mp3`,
         });
-      }
+      } 
 
       if (step.type === 'overview' && step.stats?.length) {
         step.stats.forEach((stat: any, f: number) => {
