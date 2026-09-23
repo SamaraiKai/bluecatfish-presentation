@@ -1559,6 +1559,7 @@ export default function AIPresentation() {
       } else if (isSpeaking && !inIntro && !showQuiz && !showReview && !showConclusion) {
         interruptedRef.current = { section: activeSection, step: microStep };
       }
+      if (isSpeaking) signals.track('barge_in', { section: activeSection, step: microStep });  // ← add
       stop();
       stopSpeaking();
     },
@@ -1771,6 +1772,7 @@ export default function AIPresentation() {
       const transition = nextType === 'example' ? 'analogy' : null;
       playMicroStepAudio(sectionIndex, next, transition);
     } else {
+      signals.stepExit()
       setShowSelfCheck(true);
       play(audioUrls['wrapup'], 'wrapup', '');
       }
@@ -1779,6 +1781,10 @@ export default function AIPresentation() {
   /* --------------------------------------------- section nav handlers */
   const handleHubSelect = (index: number) => {
     stop();
+      signals.track('section_start', {                        // ← add
+      section: index,
+      value: { title: sections[index]?.title },
+    });
     setShowHub(false);
     setActiveSection(index);
     setMicroStep(0);
@@ -1822,6 +1828,11 @@ export default function AIPresentation() {
     if (isSpeaking && !inIntro && !showQuiz && !showReview && !showConclusion) {
       interruptedRef.current = { section: activeSection, step: microStep };
     }
+    signals.track('tutor_question', {                       // ← add
+      section: activeSection,
+      step: microStep,
+      value: { text: text.slice(0, 200) },
+    });
     stop();
     sendMessage(text);
   };
@@ -1992,6 +2003,21 @@ export default function AIPresentation() {
     }
   }, [showReview]);
 
+  // Flush any queued events if the tab closes
+  useEffect(() => {
+    const offUnload = signals.installUnloadFlush();
+    return () => { offUnload(); signals.stepExit(); };
+  }, []);
+  
+  // Lesson completion
+  useEffect(() => {
+    if (showConclusion) {
+      signals.stepExit();
+      signals.track('lesson_complete', {
+        value: { score: Object.values(sectionScores).reduce((a, b) => a + b, 0) },
+      });
+    }
+  }, [showConclusion]);
   // Pause narration when the viewer looks away
   useEffect(() => {
     if (!cameraEnabled) return;
@@ -2260,6 +2286,16 @@ export default function AIPresentation() {
                 const score = currentSection.quiz.length - missed.length;
                 setSectionScores((prev) => ({ ...prev, [activeSection]: score }));
                 setMissedQuestions(missed);
+              
+                signals.track('quiz_submitted', {                       // ← add
+                  section: activeSection,
+                  value: { passed, wrong: missed.length, score },
+                });
+                signals.upsertState(activeSection, {                    // ← add
+                  quiz_misses: missed.length,
+                  last_state: passed ? 'engaged' : 'confused',
+                });
+              
                 if (passed) {
                   play(audioUrls['quizSuccess'], 'quizSuccess', '');
                 } else {
@@ -2365,6 +2401,7 @@ export default function AIPresentation() {
                 <button
                   onClick={() => {
                     stop();
+                    signals.stepExit();
                     setShowHub(false);
                     setShowQuiz(false);
                     setShowConclusion(true);
