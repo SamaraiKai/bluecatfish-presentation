@@ -122,6 +122,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const decisionAction = response.headers.get('X-Tutor-Decision');
+    if (decisionAction && decisionAction !== 'none' && onDecision) onDecision(decisionAction);
+    
     // Non-streaming path — unchanged, so existing callers keep working
     if (!stream) {
       const data = await response.json();
