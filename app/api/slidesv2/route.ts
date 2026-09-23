@@ -183,6 +183,7 @@ Output ONLY a JSON object with key "section":
       if (s.type === 'numberSpotlight') return typeof s.value === 'string' && typeof s.label === 'string' && typeof s.context === 'string';
       if (s.type === 'predictThen') return typeof s.question === 'string' && typeof s.answer === 'string' && typeof s.reveal === 'string';
       if (s.type === 'checkYourself') return typeof s.statement === 'string' && typeof s.isTrue === 'boolean' && typeof s.feedback === 'string';
+      if (s.type === 'predictThen') return typeof s.question === 'string' && Array.isArray(s.options) && s.options.length === 4 && Number.isInteger(s.correctIndex) && s.correctIndex >= 0 && s.correctIndex < 4 && typeof s.answer === 'string';
       return typeof s.text === 'string' && s.text.trim().length > 0;
     });
 
