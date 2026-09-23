@@ -7,6 +7,7 @@ import { useFacePresence } from "@/components/hooks/useFacePresence";
 import { useVoiceInput } from '@/components/hooks/useVoiceInput';
 import { useSpeechQueue } from '@/components/hooks/useSpeechQueue';
 import { useHandRaise } from '@/components/hooks/useHandRaise';
+import { signals } from '@/lib/signals';
 
 /* ============================================================================
  * TYPES
@@ -1142,6 +1143,8 @@ export default function AIPresentation() {
       } else if (isSpeaking && !inIntro && !showQuiz && !showReview && !showConclusion) {
         interruptedRef.current = { section: activeSection, step: microStep };
       }
+      // signal: voice interruption of the professor
+      if (isSpeaking) signals.track('barge_in', { section: activeSection, step: microStep });
       stop();
       stopSpeaking();
     },
@@ -1184,7 +1187,12 @@ export default function AIPresentation() {
     const section = sections[sectionIndex];
     const step = section.steps[stepIndex];
     const text = getMicroStepText(section, stepIndex);
-  
+
+    // signal: step enter (also starts dwell clock)
+    signals.stepExit();
+    signals.stepEnter(sectionIndex, stepIndex);
+    signals.track('step_start', { section: sectionIndex, step: stepIndex });
+
     const playActualStep = () => {
       const baseKey = `section${sectionIndex}_step${stepIndex}`;
 
@@ -1375,6 +1383,8 @@ export default function AIPresentation() {
     if (isSpeaking && !inIntro && !showQuiz && !showReview && !showConclusion) {
       interruptedRef.current = { section: activeSection, step: microStep };
     }
+    // signal: learner asked the tutor something
+    signals.track('tutor_question', { section: activeSection, step: microStep, value: { text: text.slice(0, 200) } });
     stop();
     sendMessage(text);
   };
@@ -1384,9 +1394,14 @@ export default function AIPresentation() {
   const applyDecisionImpl = (action: string) => {
     if (action === 'repeat') {
       repeatCountsRef.current[activeSection] = (repeatCountsRef.current[activeSection] ?? 0) + 1;
+      // signal: repeat request + rollup
+      signals.track('repeat_request', { section: activeSection, step: microStep });
+      signals.upsertState(activeSection, { repeats: 1, last_state: 'confused' });
       // replay the current micro-step after the tutor's acknowledgment finishes
       setTimeout(() => playMicroStepAudio(activeSection, microStep, null), 800);
     } else if (action === 'simplify') {
+      signals.track('simplify_request', { section: activeSection, step: microStep });
+      signals.upsertState(activeSection, { confusion_marks: 1, last_state: 'confused' });
       const section = sections[activeSection];
       const simpleIdx = section.steps.findIndex((s) => s.type === 'simple');
       if (simpleIdx >= 0) {
@@ -1394,6 +1409,7 @@ export default function AIPresentation() {
       }
       // no simple step: the professor's reworded reply is the simplification
     } else if (action === 'advance') {
+      signals.track('advance_request', { section: activeSection, step: microStep });
       if (showQuiz || showReview) {
         // quiz gate respected — no advance; the tutor already says so
         return;
@@ -1503,6 +1519,24 @@ export default function AIPresentation() {
       if (keyTermsTimerRef.current) clearTimeout(keyTermsTimerRef.current);
     };
   }, [activeSection]);
+
+  // Signal: section transitions + lesson completion; flush pending on unload
+  useEffect(() => {
+    const offUnload = signals.installUnloadFlush();
+    return () => { offUnload(); signals.stepExit(); };
+  }, []);
+
+  useEffect(() => {
+    if (!presentationStarted || showConclusion) return;
+    signals.track('section_start', { section: activeSection, value: { title: currentSection?.title } });
+  }, [activeSection, presentationStarted]);
+
+  useEffect(() => {
+    if (showConclusion) {
+      signals.stepExit();
+      signals.track('lesson_complete', { value: { score: Object.values(sectionScores).reduce((a, b) => a + b, 0) } });
+    }
+  }, [showConclusion]);
   
   // Scroll to bottom of chat
   useEffect(() => {
@@ -1762,6 +1796,15 @@ export default function AIPresentation() {
                 const score = currentSection.quiz.length - missed.length;
                 setSectionScores((prev) => ({ ...prev, [activeSection]: score }));
                 setMissedQuestions(missed);
+                // signal: quiz outcome + rollup
+                signals.track('quiz_submitted', {
+                  section: activeSection,
+                  value: { passed, wrong: missed.length, score },
+                });
+                signals.upsertState(activeSection, {
+                  quiz_misses: missed.length,
+                  last_state: passed ? 'engaged' : 'confused',
+                });
                 if (passed) {
                   const key = `section${activeSection}_quizsuccess`;
                   play(audioUrls[key], key, '');
