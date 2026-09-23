@@ -50,7 +50,7 @@ Output JSON: { "sections": [ { "title": "...", "query": "..." } ] }`,
           content: `Source material survey:\n\n${survey}`,
         },
       ],
-      max_tokens: 2500,
+      max_tokens: 4500,
     }),
   });
 
@@ -63,6 +63,15 @@ Output JSON: { "sections": [ { "title": "...", "query": "..." } ] }`,
   }
   return planned;
 }
+
+const data = await res.json();
+if (data.error) {
+  throw new Error(`Planning API error: ${data.error.message}`);
+}
+if (data.choices?.[0]?.finish_reason === 'length') {
+  throw new Error('Planning ran out of tokens — raise max_completion_tokens');
+}
+console.log('PLAN RAW:', data.choices?.[0]?.message?.content?.slice(0, 1500));
 
 async function embed(text: string): Promise<number[]> {
   const res = await fetch("https://api.openai.com/v1/embeddings", {
