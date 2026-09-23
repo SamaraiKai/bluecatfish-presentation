@@ -7,6 +7,7 @@ import { useFacePresence } from "@/components/hooks/useFacePresence";
 import { useVoiceInput } from '@/components/hooks/useVoiceInput';
 import { useSpeechQueue } from '@/components/hooks/useSpeechQueue';
 import { useHandRaise } from '@/components/hooks/useHandRaise';
+import { signals } from '@/lib/signals';
 
 /* ============================================================================
  * TYPES
@@ -1599,7 +1600,10 @@ export default function AIPresentation() {
     const section = sections[sectionIndex];
     const step = section.steps[stepIndex];
     const text = getMicroStepText(section, stepIndex);
-  
+
+    signals.stepExit();
+    signals.stepEnter(sectionIndex, stepIndex);
+    
     const playActualStep = () => {
       const step = section.steps[stepIndex];
       if (!step) return;
@@ -1734,6 +1738,7 @@ export default function AIPresentation() {
   };
 
   const handleStart = () => {
+    signals.newSession();
     setStarted(true);
     setActiveSection(0);
     setShowConclusion(false);
@@ -1874,6 +1879,7 @@ export default function AIPresentation() {
   */
   
   const handleRestart = () => {
+    signals.newSession();
     stop();
     setActiveSection(0);
     setMicroStep(0);
