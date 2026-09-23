@@ -116,22 +116,25 @@ Output ONLY the Python code. No markdown fences, no explanation."""
 
 def render_to_bytes(code: str):
     workdir = Path(tempfile.mkdtemp())
-    script = workdir / "scene.py"
-    script.write_text(code)
-    shutil.copy("/app/catfish_shapes.py", workdir / "catfish_shapes.py")
-
-    result = subprocess.run(
-        ["manim", "-ql", "--media_dir", str(workdir), str(script), "GeneratedScene"],
-        capture_output=True, text=True, timeout=180,
-    )
-    if result.returncode != 0:
-        return None, (result.stdout[-1000:] + "\n" + result.stderr[-2000:])
-
-    videos = list(workdir.rglob("*.mp4"))
-    if not videos:
-        return None, "no output produced"
-    return videos[0].read_bytes(), None
-
+    try:
+        script = workdir / "scene.py"
+        script.write_text(code)
+        shutil.copy("/app/catfish_shapes.py", workdir / "catfish_shapes.py")
+    
+        result = subprocess.run(
+            ["manim", "-ql", "--media_dir", str(workdir), str(script), "GeneratedScene"],
+            capture_output=True, text=True, timeout=180,
+        )
+        if result.returncode != 0:
+            return None, (result.stdout[-1000:] + "\n" + result.stderr[-2000:])
+    
+        videos = list(workdir.rglob("*.mp4"))
+        if not videos:
+            return None, "no output produced"
+        return videos[0].read_bytes(), None
+    finally:
+        shutil.rmtree(workdir, ignore_errors=True)
+        
 def estimate_duration(step: dict) -> int:
     text = " ".join(str(v) for v in step.values() if isinstance(v, str))
     words = len(text.split())
