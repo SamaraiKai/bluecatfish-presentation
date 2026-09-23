@@ -8,7 +8,7 @@ export async function POST(req: Request) {
 
     const formData = new FormData();
     formData.append("file", file, file.name || "recording.webm");
-    formData.append("model", "whisper-1");
+    formData.append("model", "gpt-transcribe");
 
     const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
       method: "POST",
