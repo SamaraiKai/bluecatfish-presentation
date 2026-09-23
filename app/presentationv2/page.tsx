@@ -741,6 +741,34 @@ function Notice({ text }: { text: string | null }) {
 /* ============================================================================
  * SLIDE BLOCKS
  * ========================================================================== */
+function PromptChips({
+  onChip,
+  disabled,
+}: {
+  onChip: (text: string, kind: 'repeat' | 'simplify' | 'advance') => void;
+  disabled: boolean;
+}) {
+  const chips = [
+    { label: '🔁 Explain that again', text: 'Can you explain that again?', kind: 'repeat' as const },
+    { label: '💡 Simpler please', text: 'Can you explain that more simply?', kind: 'simplify' as const },
+    { label: '⏭ Skip ahead', text: 'Skip ahead to the next section', kind: 'advance' as const },
+  ];
+  return (
+    <div className="fixed bottom-6 left-6 z-50 flex flex-col gap-2">
+      {chips.map((c) => (
+        <button
+          key={c.label}
+          onClick={() => onChip(c.text, c.kind)}
+          disabled={disabled}
+          className="px-4 py-2 rounded-full bg-blue-600/90 hover:bg-blue-500 disabled:bg-gray-600 disabled:opacity-40 text-white text-sm font-medium shadow-lg backdrop-blur-sm transition-colors text-left"
+        >
+          {c.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function SectionImageBlock({
     currentSection,
     activeSection,
@@ -1543,10 +1571,21 @@ export default function AIPresentation() {
 
   const { enqueue, stopSpeaking, isSpeaking: isChatSpeaking, beginStream, endStream } = useSpeechQueue();
   
-  const { messages, isLoading, input, setInput, sendMessage } = useAIChat(currentSection, missedQuestions, enqueue, beginStream, endStream);
+  const { messages, isLoading, input, setInput, sendMessage } = useAIChat(currentSection, missedQuestions, enqueue, beginStream, endStream, onDecision);
 
   const presentationStarted = !!selectedTemplate && !showConclusion;
-  const bargeInActive = isChatSpeaking || inConversation;
+  
+ const micReadyRef = useRef(false);
+
+  // Opt-in voice interruption: the learner can talk over the professor during
+  // the lesson, not just during a chat conversation.
+  const bargeInActive =
+    voiceInterruptionsEnabled &&
+    micReadyRef.current &&
+    (isChatSpeaking ||
+     inConversation ||
+     (isSpeaking && started && !inIntro && !showQuiz && !showReview &&
+      !showSelfCheck && !showRemediation && !showConclusion));
   
   const { status: micStatus, toggleMic } = useVoiceInput(
     (text) => {
@@ -1559,12 +1598,14 @@ export default function AIPresentation() {
       } else if (isSpeaking && !inIntro && !showQuiz && !showReview && !showConclusion) {
         interruptedRef.current = { section: activeSection, step: microStep };
       }
-      if (isSpeaking) signals.track('barge_in', { section: activeSection, step: microStep });  // ← add
+      if (isSpeaking) signals.track('barge_in', { section: activeSection, step: microStep });
       stop();
       stopSpeaking();
     },
     bargeInActive
   );
+  
+  micReadyRef.current = micStatus === 'idle';   // feeds bargeInActive on the next render
 
   const { present, error } = useFacePresence(cameraEnabled);
 
@@ -2212,6 +2253,16 @@ export default function AIPresentation() {
                 </button>
               </div>
   
+              {started && !inIntro && !showHub && !showQuiz && !showReview &&
+               !showSelfCheck && !showRemediation && !showConclusion && (
+                <PromptChips
+                  onChip={(text, kind) => {
+                    if (kind === 'simplify') signals.track('confusion_click', { section: activeSection, step: microStep });
+                    handleSendMessage(text);
+                  }}
+                  disabled={isLoading || isChatSpeaking}
+                />
+              )}
               
               <button
                 onClick={() => setShowChat(!showChat)}
@@ -2508,7 +2559,7 @@ export default function AIPresentation() {
           </div>
         </div>
       )}
-
+    
       {/* Source Attribution */}
       <footer className="text-center py-4 text-blue-700 text-sm">
         <Link href="/sources" className="underline hover:text-cyan-600">
