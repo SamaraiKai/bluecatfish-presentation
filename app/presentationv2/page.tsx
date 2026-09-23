@@ -2275,7 +2275,16 @@ export default function AIPresentation() {
                 💬 Ask AI
               </button>
 
-              
+              <button
+                onClick={() => setVoiceInterruptionsEnabled((v) => !v)}
+                title="Lets you speak over the professor (needs a microphone)"
+                className={`px-4 py-2 rounded-full font-semibold transition-colors ${
+                  voiceInterruptionsEnabled
+                    ? 'bg-cyan-500 text-white'
+                    : 'bg-black/40 hover:bg-black/60 text-white'
+                }`}
+              >
+                🎙 Interrupt {voiceInterruptionsEnabled ? 'on' : 'off'}
             </div>
           )}
           <button
