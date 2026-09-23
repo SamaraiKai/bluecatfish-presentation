@@ -1065,6 +1065,38 @@ function ReviewSlide({
 }
 
 /* ============================================================================
+ * VARIANT SLIDE OVERLAY — the knowledge-base swap (Phase B)
+ * Shows a reviewed alternate slide when the learner signals difficulty,
+ * narrates it, then closes and returns to the main sequence.
+ * ========================================================================== */
+function VariantSlideOverlay({
+  variant,
+  onDone,
+}: {
+  variant: { title: string; body: string; narration: string; audio_url: string | null } | null;
+  onDone: () => void;
+}) {
+  if (!variant) return null;
+  return (
+    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-6">
+      <div className="max-w-2xl w-full bg-gradient-to-br from-blue-900 to-slate-900 rounded-3xl border border-cyan-500/40 shadow-2xl p-10">
+        <div className="text-cyan-400 text-xs font-bold tracking-widest uppercase mb-3">
+          Professor Marine · a different way to see it
+        </div>
+        <h2 className="text-3xl font-bold text-white mb-5">{variant.title}</h2>
+        <p className="text-xl leading-relaxed text-blue-100 mb-8">{variant.body}</p>
+        <button
+          onClick={onDone}
+          className="px-6 py-3 bg-cyan-500 hover:bg-cyan-400 text-slate-900 rounded-xl font-semibold transition-colors"
+        >
+          Got it — back to the lesson →
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================================
  * MAIN COMPONENT
  * ========================================================================== */
 export default function AIPresentation() {
@@ -1113,6 +1145,7 @@ export default function AIPresentation() {
   const [voiceInterruptionsEnabled, setVoiceInterruptionsEnabled] = useState(false);
   const decisionRef = useRef<{ action: string } | null>(null);
   const repeatCountsRef = useRef<Record<number, number>>({});
+  const [variantSlide, setVariantSlide] = useState<{ title: string; body: string; narration: string; audio_url: string | null } | null>(null);
   
   /* ---------------------------------------------------------- hook calls */
   const currentSection = sections[activeSection];
@@ -1402,12 +1435,35 @@ export default function AIPresentation() {
     } else if (action === 'simplify') {
       signals.track('simplify_request', { section: activeSection, step: microStep });
       signals.upsertState(activeSection, { confusion_marks: 1, last_state: 'confused' });
-      const section = sections[activeSection];
-      const simpleIdx = section.steps.findIndex((s) => s.type === 'simple');
-      if (simpleIdx >= 0) {
-        setTimeout(() => goToMicroStep(simpleIdx), 800);
-      }
-      // no simple step: the professor's reworded reply is the simplification
+      // Phase B: try the slide knowledge base first — a reviewed variant
+      // slide matched to the learner's state. Falls back to the simple step.
+      fetch(`/api/tutor/variant?section=${activeSection}&state=confused`)
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.ok && data.variant) {
+            setVariantSlide(data.variant);
+            // narrate the variant through the existing audio pipeline when a
+            // pre-rendered clip exists; otherwise the tutor's spoken reply
+            // already carries the reworded explanation.
+            if (data.variant.audio_url) {
+              play(data.variant.audio_url, `variant_${activeSection}`, data.variant.narration);
+            }
+          } else {
+            const section = sections[activeSection];
+            const simpleIdx = section.steps.findIndex((s) => s.type === 'simple');
+            if (simpleIdx >= 0) {
+              setTimeout(() => goToMicroStep(simpleIdx), 800);
+            }
+            // no variant, no simple step: the professor's reworded reply is the simplification
+          }
+        })
+        .catch(() => {
+          const section = sections[activeSection];
+          const simpleIdx = section.steps.findIndex((s) => s.type === 'simple');
+          if (simpleIdx >= 0) {
+            setTimeout(() => goToMicroStep(simpleIdx), 800);
+          }
+        });
     } else if (action === 'advance') {
       signals.track('advance_request', { section: activeSection, step: microStep });
       if (showQuiz || showReview) {
@@ -2043,6 +2099,14 @@ export default function AIPresentation() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Variant slide swap — knowledge-base overlay (Phase B) */}
+      {variantSlide && (
+        <VariantSlideOverlay
+          variant={variantSlide}
+          onDone={() => setVariantSlide(null)}
+        />
       )}
 
       {/* Source Attribution */}
