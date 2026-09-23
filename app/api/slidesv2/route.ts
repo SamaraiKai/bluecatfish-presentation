@@ -55,6 +55,15 @@ Output JSON: { "sections": [ { "title": "...", "query": "..." } ] }`,
   });
 
   const data = await res.json();
+
+  if (data.error) {
+    throw new Error(`Planning API error: ${data.error.message}`);
+  }
+  if (data.choices?.[0]?.finish_reason === 'length') {
+    throw new Error('Planning ran out of tokens — raise max_completion_tokens');
+  }
+  console.log('PLAN RAW:', data.choices?.[0]?.message?.content?.slice(0, 1500));
+  
   const parsed = JSON.parse(data.choices?.[0]?.message?.content ?? '{}');
   const planned = parsed.sections;
 
@@ -63,15 +72,6 @@ Output JSON: { "sections": [ { "title": "...", "query": "..." } ] }`,
   }
   return planned;
 }
-
-const data = await res.json();
-if (data.error) {
-  throw new Error(`Planning API error: ${data.error.message}`);
-}
-if (data.choices?.[0]?.finish_reason === 'length') {
-  throw new Error('Planning ran out of tokens — raise max_completion_tokens');
-}
-console.log('PLAN RAW:', data.choices?.[0]?.message?.content?.slice(0, 1500));
 
 async function embed(text: string): Promise<number[]> {
   const res = await fetch("https://api.openai.com/v1/embeddings", {
