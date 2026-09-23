@@ -59,6 +59,25 @@ async function runOpenClawBluecatfish(message: string): Promise<string> {
   return runOpenClawLocal(message);
 }
 
+// Deterministic intent classification for deck-control decisions.
+// Keyword rules only — no LLM call, testable, same behavior every time.
+export function classifyIntent(userText: string): {
+  action: 'repeat' | 'simplify' | 'advance' | 'none';
+  matched: string | null;
+} {
+  const t = userText.toLowerCase();
+  if (/\b(again|repeat|repeat that|one more time|confus|lost|slower|didn'?t (get|follow)|say that again)\b/.test(t)) {
+    return { action: 'repeat', matched: 'repeat-cue' };
+  }
+  if (/\b(simpler|simply|dumb it down|explain (it )?like|easier|plain (english|words)|eli5)\b/.test(t)) {
+    return { action: 'simplify', matched: 'simplify-cue' };
+  }
+  if (/\b(skip|skip ahead|next (section|slide|topic)|move on|bored|hurry)\b/.test(t)) {
+    return { action: 'advance', matched: 'advance-cue' };
+  }
+  return { action: 'none', matched: null };
+}
+
 // Production path: HTTP to the Minisforum OpenClaw bridge. Contract:
 // POST { message, agent, thinking } -> { reply } | openclaw --json shape.
 async function callOpenClawGatewayHttp(message: string): Promise<string> {
@@ -150,6 +169,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing user text.' }, { status: 400 });
     }
 
+    // Deterministic intent classification → deck-control decision.
+    // The client reads X-Tutor-Decision and moves the presentation accordingly.
+    const intent = classifyIntent(userText);
+    const decision = { action: intent.action, target: null as string | null };
+
     // OpenAI key is still needed for embeddings (text-embedding-3-small) until
     // the embeddings move to a local model (bge-m3) in a later phase.
     const apiKey = process.env.OPENAI_API_KEY;
@@ -197,21 +221,26 @@ export async function POST(request: NextRequest) {
       `Relevant facts retrieved from the knowledge base (ground your answer in these; do not contradict them):\n${context || '(none retrieved)'}\n\n` +
       (conversationLines ? `Conversation so far:\n${conversationLines}\n\n` : '') +
       `Student now says: ${userText}\n\n` +
+      (intent.action !== 'none'
+        ? `The student's message signals: ${intent.action}. Acknowledge their state first (e.g. "No problem, let's look at that again" / "Let me put that more simply" / "Of course, moving ahead"), then respond.\n\n`
+        : '') +
       `Respond as Professor Marine, in 2-3 natural spoken sentences, no formatting.`;
 
     const reply = await runOpenClawBluecatfish(prompt);
 
     // Non-streaming callers (e.g. the TTS voice loop) get JSON.
     if (!stream) {
-      return NextResponse.json({ reply });
+      return NextResponse.json({ reply, decision }, { headers: { 'X-Tutor-Decision': intent.action } });
     }
 
     // Streaming callers get the full reply as a single text chunk so the
     // existing SSE-expecting client keeps working without OpenAI streaming.
+    // The decision rides the response header; the client reads it before consuming the body.
     return new Response(reply, {
       headers: {
         'Content-Type': 'text/plain; charset=utf-8',
         'Cache-Control': 'no-cache',
+        'X-Tutor-Decision': intent.action,
       },
     });
   } catch (error) {
