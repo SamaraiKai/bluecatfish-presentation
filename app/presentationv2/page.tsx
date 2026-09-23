@@ -39,6 +39,7 @@ type Step =
   | { type: 'numberSpotlight'; value: string; label: string; context: string }
   | { type: ''; question: string; answer: string  }
   | { type: 'checkYourself'; statement: string; isTrue: boolean; feedback: string };
+  | { type: 'predictThen'; question: string; options: string[]; correctIndex: number; answer: string }
 
 /* ============================================================================
  * CONSTANTS
@@ -891,12 +892,12 @@ function MiniSlideshowBlock({
   play: (url: string | undefined, key: string, text?: string, onComplete?: () => void) => void;
   devMode: boolean;
 }) {
-  const [revealed, setRevealed] = useState(false);
+  const [guess, setGuess] = useState<number | null>(null);
   const [checkAnswer, setCheckAnswer] = useState<boolean | null>(null);
   const [scaled, setScaled] = useState(false);
 
   useEffect(() => {
-    setRevealed(false);
+    setGuess(null);
     setCheckAnswer(null);
   }, [microStep, activeSectionIndex]);
 
@@ -996,24 +997,42 @@ function MiniSlideshowBlock({
                 className="text-xl font-semibold text-black mb-6"
               />
               
-              {!revealed ? (
-                <button
-                  onClick={() => {
-                    setRevealed(true);
-                    const aKey = `${baseKey}_answer`;
-                    play(audioUrls[aKey], aKey, '', () => autoAdvanceFrom(activeSectionIndex, microStep));
-                  }}
-                  className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-colors"
-                >
-                  Reveal the answer →
-                </button>
-                
-              ) : (
-                <div className="animate-[fadeIn_0.4s_ease-out]">
-                  <div className="text-4xl font-black text-blue-700 mb-3">{step.answer}</div>
-                </div>
-              )}
+              <div className="grid grid-cols-2 gap-3 max-w-md mx-auto">
+                {step.options.map((opt, idx) => {
+                  const picked = guess === idx;
+                  const isRight = idx === step.correctIndex;
               
+                  let cls = 'bg-white border-blue-300 hover:border-blue-500 hover:bg-blue-50';
+                  if (guess !== null) {
+                    if (isRight) cls = 'bg-green-100 border-green-500';
+                    else if (picked) cls = 'bg-red-50 border-red-400';
+                    else cls = 'bg-white border-slate-200 opacity-40';
+                  }
+
+                  return (
+                    <button
+                      key={idx}
+                      disabled={guess !== null}
+                      onClick={() => {
+                        setGuess(idx);
+                        const aKey = `${baseKey}_answer`;
+                        play(audioUrls[aKey], aKey, '', () => autoAdvanceFrom(activeSectionIndex, microStep));
+                      }}
+                      className={`px-4 py-4 rounded-xl border-2 text-lg font-bold text-blue-900 transition-all duration-300 ${cls}`}
+                    >  
+                      {opt}
+                    </button>
+                  );
+                })}
+              </div>
+            
+              {guess !== null && (
+                <p className="mt-5 text-lg text-slate-700 animate-[fadeIn_0.4s_ease-out]">
+                  {guess === step.correctIndex
+                    ? 'Nice — you got it!'
+                    : `You guessed ${step.options[guess]}. It's actually ${step.options[step.correctIndex]}!`}
+                </p>
+              )}
             </div>
           );
         }
