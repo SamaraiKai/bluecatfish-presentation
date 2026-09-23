@@ -131,6 +131,7 @@ STRICT RULES YOU MUST FOLLOW:
 7. "quiz" must contain EXACTLY 1 multiple-choice question testing THIS section's specific content. It must have exactly 4 "options", a "correctAnswer" index (0-3), and an "explanation" (1 short sentence stating the specific fact that makes the answer correct). CRITICAL — write the options so the correct answer is not identifiable by format alone: - All 4 options must be similar in length (within a few words of each other). The correct answer must NOT be the longest or most detailed option — that is the single most common giveaway. - All 4 options must be similar in specificity. Do not pair one precise, qualified answer against three vague ones. - Wrong options must be plausible to someone who didn't pay attention — draw them from real-sounding facts about Blue Catfish, not obviously absurd choices. - Vary which index is correct across sections; do not default to the same position. The question must be answerable ONLY by someone who paid attention to THIS section. Do not ask about general Blue Catfish knowledge that other sections also cover — anchor it to a specific fact, number, or claim unique to this section's content.
 8. "recap" must be ONE sentence (12-20 words) summarizing this section's single most important takeaway, written to be read aloud as part of an end-of-lesson recap. Start it naturally so it flows in a list (e.g. "Blue Catfish were introduced in the 1970s for sport fishing." not "In this section we learned that...").
 9. "value" must be a STRING, even when it is purely numeric (write "19", not 19). Every stat's "value" and "label" must state a fact exactly as it appears in the source content. Do not combine numbers from one fact with the subject of another.
+10. "remediation" must be 2-3 short sentences that re-explain this section's single most important idea in the simplest possible way, for a learner who said they were lost. Use a different angle than the overview — a concrete everyday comparison works well. Do not introduce any new facts.
 
 Output ONLY a JSON object with key "section":
 
@@ -150,6 +151,7 @@ Output ONLY a JSON object with key "section":
     "quiz": [
       { "question": "...", "options": ["...","...","...","..."], "correctAnswer": 0, "explanation": "..." }
     ]
+    "remediation": "2-3 simple sentences",
   }
 }`,
         },
@@ -187,8 +189,9 @@ Output ONLY a JSON object with key "section":
     section.quiz.every((q: any) => q.options?.length === 4 && typeof q.explanation === 'string');
 
   const validRecap = typeof section.recap === 'string' && section.recap.trim().length > 0;
+  const validRemediation = typeof section.remediation === 'string' && section.remediation.trim().length > 0;
   
-   if ((!validSteps || !validQuiz || !validRecap) && attempt < 3) {
+   if ((!validSteps || !validQuiz || !validRecap || !validRemediation) && attempt < 3) {
     console.warn(`Section ${sectionNum} malformed (steps/quiz), retrying...`);
     return generateSingleSection(ragContext, sectionTopic, sectionNum, attempt + 1);
   }
