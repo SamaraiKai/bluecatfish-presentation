@@ -1559,7 +1559,7 @@ export default function AIPresentation() {
   const presenceAudioRef = useRef<HTMLAudioElement | null>(null);
   const firstRunRef = useRef(true);
   const resumeTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const interruptedRef = useRef<{ type: 'intro'; time: number } | { type: 'section'; section: number; step: number } | null>(null);
+  const interruptedRef = useRef<{ section: number; step: number } | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const noticeTimerRef = useRef<NodeJS.Timeout | null>(null);
   const prevPresentRef = useRef(true);
@@ -2084,34 +2084,50 @@ export default function AIPresentation() {
   }, [present, cameraEnabled, isChatSpeaking]);
 
   useEffect(() => {
-    if (isChatSpeaking) return;           // still answering
-    if (micStatus !== 'idle') return;      // still listening/processing
-    if (cameraEnabled && !present) return;  // user still away from camera         
-    if (!interruptedRef.current) return;  // nothing was interrupted
-    if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);  
+    if (isChatSpeaking) return;                 // still answering
+    if (micStatus !== 'idle') return;           // still listening/processing
+    if (cameraEnabled && !present) return;      // user away from camera
+    if (!interruptedRef.current && !pendingDecisionRef.current) return;  // nothing to do
+  
+    if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
+  
+    // a decision (chip tap / "simpler please") acts fast;
+    // a plain question leaves 7s of room for a follow-up
+    const delay = pendingDecisionRef.current ? 1500 : 7000;
+  
     resumeTimerRef.current = setTimeout(() => {
-      console.log('7s timer fired, resuming now');
       const pending = interruptedRef.current;
-      if (!pending) {
-        setInConversation(false);
+      const decision = pendingDecisionRef.current;
+      interruptedRef.current = null;
+      pendingDecisionRef.current = null;
+      setInConversation(false);
+  
+      if (decision === 'simplify') {
+        showVariantOrRemediation(() => {
+          if (pending) playMicroStepAudio(pending.section, pending.step, null);
+        });
         return;
       }
-      interruptedRef.current = null;
-      setInConversation(false);
-      
+  
+      if (decision === 'advance') {
+        if (showQuiz || showReview) return;     // never skip past a quiz
+        stop();
+        signals.stepExit();
+        setShowSelfCheck(true);
+        return;
+      }
+  
+      // 'repeat', or a plain question: pick up where they left off
+      if (!pending) return;
       play(audioUrls['presence_back'], 'presence_back', '', () => {
-        if (pending.type === 'intro') {
-            resumeIntro(pending.time);
-        } else {
-          playMicroStepAudio(pending.section, pending.step, null);
-        }  
+        playMicroStepAudio(pending.section, pending.step, null);
       });
-    }, 7000);
-    
-  return () => {
-    if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
-  };
-}, [isChatSpeaking, cameraEnabled, present, micStatus]);
+    }, delay);
+  
+    return () => {
+      if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
+    };
+  }, [isChatSpeaking, micStatus, cameraEnabled, present]);
   
   /* -------------------------------------------------------- early returns */
   // Loading / error states before rendering the presentation
