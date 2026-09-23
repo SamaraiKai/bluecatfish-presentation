@@ -1104,6 +1104,9 @@ export default function AIPresentation() {
   const [notice, setNotice] = useState<string | null>(null);
   const noticeTimerRef = useRef<NodeJS.Timeout | null>(null);
   const prevPresentRef = useRef(true);
+  const [voiceInterruptionsEnabled, setVoiceInterruptionsEnabled] = useState(false);
+  const decisionRef = useRef<{ action: string } | null>(null);
+  const repeatCountsRef = useRef<Record<number, number>>({});
   
   /* ---------------------------------------------------------- hook calls */
   const currentSection = sections[activeSection];
@@ -1115,8 +1118,13 @@ export default function AIPresentation() {
   const { messages, isLoading, input, setInput, sendMessage } = useAIChat(currentSection, missedQuestions, enqueue, beginStream, endStream);
 
   const presentationStarted = !!selectedTemplate && !showConclusion;
-  const bargeInActive = isChatSpeaking || inConversation;
-  
+
+  // Opt-in voice interruption (barge-in) during the lesson — extended from the
+  // original chat-only behavior so the learner can speak over the professor.
+  const micReadyRef = useRef(false);
+  const bargeInActive = voiceInterruptionsEnabled && micReadyRef.current &&
+    (isChatSpeaking || inConversation || (isSpeaking && presentationStarted && !showQuiz && !showReview));
+
   const { status: micStatus, toggleMic } = useVoiceInput(
     (text) => {
       setShowChat(true);
@@ -1133,6 +1141,7 @@ export default function AIPresentation() {
     },
     bargeInActive
   );
+  micReadyRef.current = micStatus === 'idle';
 
   const { present, error } = useFacePresence(cameraEnabled);
 
