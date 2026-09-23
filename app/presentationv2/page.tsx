@@ -188,11 +188,12 @@ const useAudioPlayer = () => {
   };
 };
 
-const useAIChat = (currentSection: SectionWithBreakdown | undefined, 
-                   missedQuestions: { question: string; options: string[]; correctAnswer: number; explanation: string }[], 
+const useAIChat = (currentSection: SectionWithBreakdown | undefined,
+                   missedQuestions: { question: string; options: string[]; correctAnswer: number; explanation: string }[],
                    onSentence?: (sentence: string) => void,
                    beginStream?: () => void,
-                   endStream?: () => void
+                   endStream?: () => void,
+                   onDecision?: (action: string) => void
                   ) => {
   const [messages, setMessages] = useState<Message[]>([
     { role: 'ai', text: `Good day! I'm ${PRESENTATION.professor.name}, and I'll be your guide through today's lecture on the Blue Catfish invasion in the Chesapeake Bay. Feel free to ask me any questions as we go through the material. What would you like to explore first?` }
@@ -243,6 +244,10 @@ const useAIChat = (currentSection: SectionWithBreakdown | undefined,
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       beginStream?.();
+
+      // Decision rides the response header — available before body streaming.
+      const decisionAction = response.headers.get('X-Tutor-Decision');
+      if (decisionAction && decisionAction !== 'none' && onDecision) onDecision(decisionAction);
 
       let full = '';        // everything received so far
       let pending = '';     // text not yet sent to TTS
@@ -1058,6 +1063,34 @@ function ReviewSlide({
   );
 }
 
+function PromptChips({
+  onChip,
+  disabled,
+}: {
+  onChip: (text: string) => void;
+  disabled: boolean;
+}) {
+  const chips = [
+    { label: '🔁 Explain that again', text: 'Can you explain that again?' },
+    { label: '💡 Simpler please', text: 'Can you explain that more simply?' },
+    { label: '⏭ Skip ahead', text: 'Skip ahead to the next section' },
+  ];
+  return (
+    <div className="fixed bottom-6 left-6 z-50 flex flex-col gap-2">
+      {chips.map((c) => (
+        <button
+          key={c.label}
+          onClick={() => onChip(c.text)}
+          disabled={disabled}
+          className="px-4 py-2 rounded-full bg-blue-600/90 hover:bg-blue-500 disabled:bg-gray-600 disabled:opacity-40 text-white text-sm font-medium shadow-lg backdrop-blur-sm transition-colors text-left"
+        >
+          {c.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 /* ============================================================================
  * MAIN COMPONENT
  * ========================================================================== */
@@ -1115,13 +1148,14 @@ export default function AIPresentation() {
 
   const { enqueue, stopSpeaking, isSpeaking: isChatSpeaking, beginStream, endStream } = useSpeechQueue();
   
-  const { messages, isLoading, input, setInput, sendMessage } = useAIChat(currentSection, missedQuestions, enqueue, beginStream, endStream);
+  const { messages, isLoading, input, setInput, sendMessage } = useAIChat(currentSection, missedQuestions, enqueue, beginStream, endStream, (action) => applyTutorDecisionRef.current(action));
 
   const presentationStarted = !!selectedTemplate && !showConclusion;
 
   // Opt-in voice interruption (barge-in) during the lesson — extended from the
   // original chat-only behavior so the learner can speak over the professor.
   const micReadyRef = useRef(false);
+  const applyTutorDecisionRef = useRef<(action: string) => void>(() => {});
   const bargeInActive = voiceInterruptionsEnabled && micReadyRef.current &&
     (isChatSpeaking || inConversation || (isSpeaking && presentationStarted && !showQuiz && !showReview));
 
@@ -1372,6 +1406,30 @@ export default function AIPresentation() {
     stop();
     sendMessage(text);
   };
+
+  /* --------------------------------------------- tutor decision applier */
+  // Applies the tutor's deck-control decision after its reply finishes.
+  const applyDecisionImpl = (action: string) => {
+    if (action === 'repeat') {
+      repeatCountsRef.current[activeSection] = (repeatCountsRef.current[activeSection] ?? 0) + 1;
+      // replay the current micro-step after the tutor's acknowledgment finishes
+      setTimeout(() => playMicroStepAudio(activeSection, microStep, null), 800);
+    } else if (action === 'simplify') {
+      const section = sections[activeSection];
+      const simpleIdx = section.steps.findIndex((s) => s.type === 'simple');
+      if (simpleIdx >= 0) {
+        setTimeout(() => goToMicroStep(simpleIdx), 800);
+      }
+      // no simple step: the professor's reworded reply is the simplification
+    } else if (action === 'advance') {
+      if (showQuiz || showReview) {
+        // quiz gate respected — no advance; the tutor already says so
+        return;
+      }
+      setTimeout(() => autoAdvanceFrom(activeSection, microStep), 800);
+    }
+  };
+  applyTutorDecisionRef.current = applyDecisionImpl;
   
   const handleQuizReview = () => {
     setShowQuiz(false);
@@ -1673,6 +1731,19 @@ export default function AIPresentation() {
             >
               💬 Ask AI
             </button>
+
+            {/* Voice interruption toggle (opt-in barge-in) */}
+            <button
+              onClick={() => setVoiceInterruptionsEnabled((v) => !v)}
+              title={micStatus !== 'idle' ? '' : 'Requires microphone — lets you speak over the professor'}
+              className={`px-4 py-2 rounded-full font-semibold transition-colors ${
+                voiceInterruptionsEnabled
+                  ? 'bg-cyan-500 text-white'
+                  : 'bg-black/40 hover:bg-black/60 text-white'
+              }`}
+            >
+              🎙 Interrupt
+            </button>
           </div>
         </div>
       </header>
@@ -1957,6 +2028,17 @@ export default function AIPresentation() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Prompt Chips — the AdaptEd-style interrupt controls */}
+      {presentationStarted && !showQuiz && !showReview && !showConclusion && (
+        <PromptChips
+          onChip={(text) => {
+            if (isSpeaking) stop();
+            handleSendMessage(text);
+          }}
+          disabled={isLoading || isChatSpeaking}
+        />
       )}
 
       {/* Source Attribution */}
