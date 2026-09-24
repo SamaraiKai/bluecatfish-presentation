@@ -136,7 +136,8 @@ def render_to_bytes(code: str):
         shutil.rmtree(workdir, ignore_errors=True)
         
 def estimate_duration(step: dict) -> int:
-    text = " ".join(str(v) for v in step.values() if isinstance(v, str))
+    # match the animation to what is spoken when there is a narration script
+    text = step.get("narration") or " ".join(str(v) for v in step.values() if isinstance(v, str))
     words = len(text.split())
     return max(4, min(18, int(words / 3)))
     
@@ -175,7 +176,7 @@ def plan_animations(section: dict):
         elif t == "processFlow":
             lines.append(f"{idx}: processFlow — {s.get('intro')}")
         else:
-            lines.append(f"{idx}: {t} — {s.get('text') or s.get('question') or s.get('statement') or ''}")
+            lines.append(f"{idx}: {t} — {s.get('narration') or s.get('text') or s.get('question') or s.get('statement') or ''}")
 
     resp = openai_client.chat.completions.create(
         model="gpt-6-luna",

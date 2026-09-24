@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { AUDIO_FOLDER } from "@/src/cacheVersion";
 import { COMMAND_ACK_TEXT } from "@/lib/deckCommands";
+import { TTS_VOICE, VOICE_INSTRUCTIONS } from "@/lib/voice";
 
 const supabase = createClient(
   process.env.SUPABASE_URL!,
@@ -111,7 +112,8 @@ async function generateAndUpload(text: string, fileName: string): Promise<string
     },
     body: JSON.stringify({
       model: "gpt-4o-mini-tts",
-      voice: "alloy",
+      voice: TTS_VOICE,
+      instructions: VOICE_INSTRUCTIONS,
       input: cleanForTTS(text),
     }),
   });
@@ -311,7 +313,7 @@ function buildSectionJobs(sections: any[]): AudioJob[] {
         });
         jobs.push({
           key: `section${i}_step${s}`,
-          text: step.context,
+          text: step.narration ?? step.context,   // spoken explanation; "context" is the on-screen line
           fileName: `${FOLDER}/section${i + 1}_step${s}.mp3`,
         });
       } else if (step.type === 'predictThen') {
@@ -351,10 +353,11 @@ function buildSectionJobs(sections: any[]): AudioJob[] {
             fileName: `${FOLDER}/section${i + 1}_keyterm${termIdx}.mp3`,
           });
         });
-      } else if (step.text) {
+      } else if (step.narration || step.text) {
+        // The spoken script; the slide only shows short bullets
         jobs.push({
           key: `section${i}_step${s}`,
-          text: step.text,
+          text: step.narration ?? step.text,
           fileName: `${FOLDER}/section${i + 1}_step${s}.mp3`,
         });
       } 
