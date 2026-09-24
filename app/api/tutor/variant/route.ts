@@ -21,11 +21,23 @@ const STATE_VARIANT_PREFERENCE: Record<string, string[]> = {
   neutral: ['visual', 'analogy', 'remedial'],
 };
 
+const STOP = new Set(['the', 'a', 'an', 'are', 'is', 'they', 'them', 'why', 'what', 'how', 'do', 'does', 'of', 'to', 'and', 'in', 'on', 'blue', 'catfish', 'fish']);
+const words = (t: string) =>
+  new Set((t.toLowerCase().match(/[a-z]+/g) ?? []).filter((w) => w.length > 2 && !STOP.has(w)).map((w) => w.slice(0, 6)));
+
+// "Why Are They Invasive?" vs "Why They're Invasive": share at least one real word
+function sameTopic(concept: string, title: string): boolean {
+  const a = words(concept ?? '');
+  for (const w of words(title)) if (a.has(w)) return true;
+  return false;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const params = new URL(request.url).searchParams;
     const section = Number(params.get('section'));
     const state = (params.get('state') ?? 'confused').toLowerCase();
+    const title = params.get('title') ?? '';
 
     // was `section > 5` — the planner can make up to 7 sections
     if (!Number.isInteger(section) || section < 0 || section > 9) {
@@ -42,10 +54,14 @@ export async function GET(request: NextRequest) {
 
     if (error) throw new Error(error.message);
 
+    // Section numbers come from the AI planner and can shift when the lesson is
+    // regenerated, so a variant must also be about this section's topic.
+    const rows = (data ?? []).filter((row: any) => !title || sameTopic(row.concept, title));
+
     // pick the highest-preference variant that exists
     let chosen = null;
     for (const v of preferences) {
-      chosen = (data ?? []).find((row: any) => row.variant === v);
+      chosen = rows.find((row: any) => row.variant === v);
       if (chosen) break;
     }
 

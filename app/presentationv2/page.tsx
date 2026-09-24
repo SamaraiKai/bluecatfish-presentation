@@ -1265,10 +1265,13 @@ function ClassicLayout(props: {
       className="bg-white/5 backdrop-blur-md rounded-3xl border border-white-500/30 shadow-2xl overflow-hidden mx-auto transition-all duration-700 ease-in-out"
       style={{
         width: props.hideVisual ? '650px' : '1300px',
+        // ~20% taller than the usual tallest slide (~410px); also stops the card resizing between slides
+        minHeight: '500px',
       }}
     >
       <div 
         className="flex items-stretch"
+        style={{ minHeight: '500px' }}
       >
         <div 
           className="overflow-hidden transition-all duration-700 ease-in-out"
@@ -2186,7 +2189,8 @@ export default function AIPresentation() {
       // Asked for help, so at least "confused"; "frustrated" gets the gentlest variant
       const mood = signals.getState(idx).last_state;
       const state = mood === 'frustrated' ? 'frustrated' : 'confused';
-      const r = await fetch(`/api/tutor/variant?section=${idx}&state=${state}`);
+      const title = encodeURIComponent(sections[idx]?.title ?? '');
+      const r = await fetch(`/api/tutor/variant?section=${idx}&state=${state}&title=${title}`);
       const data = await r.json();
       if (data.ok && data.variant) {
         signals.track('tutor_decision', { section: idx, value: { action: 'variant', variant: data.variant.variant, state } });
@@ -2517,13 +2521,6 @@ export default function AIPresentation() {
   const currentStepType = currentSection?.steps?.[microStep]?.type;
   const hasVisual = !!currentAnimation || currentStepType === 'imageFocus';
 
-  console.log('ANIM DEBUG:', {
-    key: `${activeSection}_${microStep}`,
-    currentAnimation,
-    stepType: currentStepType,
-    hasVisual,
-    mapKeys: Object.keys(animations),
-  });
   
   /* ---------------------------------------------------------------- render */
   return (
@@ -2789,8 +2786,8 @@ export default function AIPresentation() {
             }`}>
               <button
                 onClick={() => {
-                  stop();
-                  setShowHub(true);    
+                  resetForJump();   // also cancels a pending "pick up where we left off"
+                  setShowHub(true);
                 }}
                 className="px-8 py-4 bg-black/50 hover:bg-black/80 text-white font-semibold rounded-full transition-colors"
               >

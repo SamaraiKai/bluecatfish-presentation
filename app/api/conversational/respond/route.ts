@@ -68,16 +68,18 @@ export async function POST(request: NextRequest) {
       ? `\nThe student's message signals: ${intent.action}. Acknowledge their state first (e.g. "No problem, let's look at that again" / "Let me put that more simply" / "Of course, moving ahead"), then respond.`
       : '';
     
-    const queryEmbedding = await getEmbedding(userText);
-
-    const { data: docs, error } = await supabase.rpc('match_documents3', {
+    // A failed knowledge-base lookup shouldn't kill the answer — reply without it
+    let docs: any[] | null = null;
+    try {
+      const queryEmbedding = await getEmbedding(userText);
+      const { data, error } = await supabase.rpc('match_documents3', {
         query_embedding: queryEmbedding,
         match_count: 4,
-      }
-    );
-    
-    if (error) {
-      console.error('Supabase RPC error:', error);
+      });
+      if (error) console.error('Supabase RPC error:', error);
+      docs = data;
+    } catch (e) {
+      console.error('Knowledge-base lookup failed:', e);
     }
     
     const context = docs 
