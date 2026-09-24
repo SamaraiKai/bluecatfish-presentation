@@ -59,6 +59,10 @@ export async function POST(request: NextRequest) {
       `Use the Socratic method. Speak in 2-3 natural sentences only — no formatting, no bullets, pure spoken language. ` +
       `If student goes off-topic, redirect warmly: "Let's come back to ${topic || 'our topic'} — right where we left off..."` +
       `Style: ${style || 'warm, authoritative, and genuinely enthusiastic about the subject'}.`;
+
+    const intentLine = intent.action !== 'none'
+      ? `\nThe student's message signals: ${intent.action}. Acknowledge their state first (e.g. "No problem, let's look at that again" / "Let me put that more simply" / "Of course, moving ahead"), then respond.`
+      : '';
     
     const queryEmbedding = await getEmbedding(userText);
 
@@ -79,7 +83,7 @@ export async function POST(request: NextRequest) {
     const messages = [
       {
         role: 'system',
-        content: effectiveSystemPrompt + ` 
+        content: effectiveSystemPrompt + intentLine + ` 
 
       You MUST follow the knowledge base below.
       If the knowledge base contains an answer, you MUST use it exactly and do not modify it.
