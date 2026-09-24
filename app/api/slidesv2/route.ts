@@ -96,7 +96,7 @@ async function getRagContext(topic: string, matchCount = 13): Promise<string> {
   return (data ?? []).map((row: any) => row.content).join("\n\n");
 }
 
-async function getMatchingImages(query: string, count: number): Promise<string[]> {
+async function getMatchingImages(query: string, count: number): Promise<{ url: string; description: string }[]> {
   const queryEmbedding = await embed(query);
   const { data, error } = await supabase.rpc("match_images2", {
     query_embedding: queryEmbedding,
@@ -134,7 +134,7 @@ SOURCE CONTENT:
 STRICT RULES YOU MUST FOLLOW:
 1. "steps" is an ordered array of teaching steps for this section. YOU decide how many steps and which types, based on what this specific content actually needs. Use between 2 and 5 steps.
 2. The FIRST step must always be type "overview" — it introduces the section. Its "text" is 2 short sentences. It may optionally include "stats": 1-2 short quantitative facts as {value, label} pairs. Prefer surprising magnitudes over plain dates. Omit "stats" entirely if the source content has no meaningful numbers for this topic — do not invent them or pad with trivia.
-3. Available step types after the overview: "example" (an analogy to something unrelated and familiar, 1-2 sentences), "numberSpotlight" is for a single STRIKING quantity that makes a learner react — a surprising scale, magnitude, or proportion. "100+ million fish" or "8-9% of body weight daily" are good. Plain dates ("2011", "September 2019"), small counts, or routine figures are NOT — they're facts, not attention-grabbers. If this section has no genuinely surprising number, omit the numberSpotlight step entirely, "label" as a 3-6 word caption, and "context" as 1-2 sentences explaining why this number matters), "predictThen" (invites the learner to guess a surprising number or fact BEFORE it's revealed. Provide "question" (1 sentence), "options" (exactly 4 short guesses — one correct, three plausible but wrong, spread far enough apart that the right one isn't obvious), "correctIndex" (0-3, and vary its position rather than always using the same slot), and "answer" (the short factual answer, read aloud after they guess). Only use this for a number or specific fact someone could reasonably guess at.), "checkYourself" (a single quick true/false comprehension check — provide "statement", "isTrue" (boolean), and "feedback" (1 sentence explaining why)).
+3. Available step types after the overview: "example" (an analogy to something unrelated and familiar, 1-2 sentences), "numberSpotlight" (a single STRIKING quantity that makes a learner react — a surprising scale, magnitude, or proportion. Provide "value" as the short number/quantity, "label" as a 3-6 word caption, and "context" as 1-2 sentences explaining why this number matters. "100+ million fish" or "8-9% of body weight daily" are good; plain dates ("2011", "September 2019"), small counts, or routine figures are NOT — they're facts, not attention-grabbers), "predictThen" (invites the learner to guess a surprising number or fact BEFORE it's revealed. Provide "question" (1 sentence), "options" (exactly 4 short guesses — one correct, three plausible but wrong, spread far enough apart that the right one isn't obvious), "correctIndex" (0-3, and vary its position rather than always using the same slot), and "answer" (the short factual answer, read aloud after they guess). Only use this for a number or specific fact someone could reasonably guess at.), "checkYourself" (a single quick true/false comprehension check — provide "statement", "isTrue" (boolean), and "feedback" (1 sentence explaining why)).
 4. Include a step type ONLY if it genuinely helps for THIS content. Skip "example" if no honest analogy fits. Only use "numberSpotlight" if this section contains a genuinely surprising number — omit the step entirely if it doesn't; never settle for a date or a routine figure just to include one. Only use "predictThen" for facts a learner could plausibly guess at. Do not include the same type twice.
 5. Every step's content must be grounded strictly in the SOURCE CONTENT — never invent facts to fill out a step.
 6. Every section SHOULD include at least one interactive step ("predictThen" or "checkYourself") unless the content genuinely doesn't support one.
@@ -151,18 +151,17 @@ Output ONLY a JSON object with key "section":
     "icon": "emoji",
     "image": "",
     "recap": "one sentence takeaway",
+    "remediation": "2-3 simple sentences",
     "steps": [
       { "type": "overview", "text": "...", "stats": [{"value": "...", "label": "..."}] },
       { "type": "example", "text": "..." },
       { "type": "numberSpotlight", "value": "...", "label": "...", "context": "..." },
-      { "type": "predictThen", "question": "...", "answer": "...",
+      { "type": "predictThen", "question": "...", "options": ["...", "...", "...", "..."], "correctIndex": 2, "answer": "..." },
       { "type": "checkYourself", "statement": "...", "isTrue": true, "feedback": "..." }
     ],
     "quiz": [
-      { "question": "...", "options": ["...","...","...","..."], "correctAnswer": 0, "explanation": "..." }
+      { "question": "...", "options": ["...", "...", "...", "..."], "correctAnswer": 0, "explanation": "..." }
     ]
-    "remediation": "2-3 simple sentences",
-    { "type": "predictThen", "question": "...", "options": ["...", "...", "...", "..."], "correctIndex": 2, "answer": "..." },
   }
 }`,
         },
@@ -190,7 +189,6 @@ Output ONLY a JSON object with key "section":
     new Set(steps.map((s: any) => s.type)).size === steps.length &&
     steps.every((s: any) => {
       if (s.type === 'numberSpotlight') return typeof s.value === 'string' && typeof s.label === 'string' && typeof s.context === 'string';
-      if (s.type === 'predictThen') return typeof s.question === 'string' && typeof s.answer === 'string' && typeof s.reveal === 'string';
       if (s.type === 'checkYourself') return typeof s.statement === 'string' && typeof s.isTrue === 'boolean' && typeof s.feedback === 'string';
       if (s.type === 'predictThen') return typeof s.question === 'string' && Array.isArray(s.options) && s.options.length === 4 && Number.isInteger(s.correctIndex) && s.correctIndex >= 0 && s.correctIndex < 4 && typeof s.answer === 'string';
       return typeof s.text === 'string' && s.text.trim().length > 0;
@@ -209,34 +207,6 @@ Output ONLY a JSON object with key "section":
     
   section.image = "";
   return section;
-}
-
-async function addAnimations(sections: any[], version: string) {
-  for (let i = 0; i < sections.length; i++) {
-    const section = sections[i];
-    const chosen = await planAnimations(section, '');
-
-    for (const a of chosen) {
-      const stepIndex = a.stepIndex;
-      const step = section.steps?.[stepIndex];
-      if (!step || step.type === 'imageFocus') continue;
-
-      const buffer = await renderAnimation(a.description);
-      if (!buffer) {
-        console.warn(`No animation produced for section ${i} step ${stepIndex}`);
-        continue;
-      }
-
-      try {
-        const url = await uploadAnimation(buffer, `${version}/section${i}_step${stepIndex}.mp4`);
-        step.animationUrl = url;
-        console.log(`Animation attached: section ${i} step ${stepIndex}`);
-      } catch (e) {
-        console.warn(`Upload failed for section ${i} step ${stepIndex}:`, e);
-      }
-    }
-  }
-  return sections;
 }
 
 async function assignUniqueImages(sections: any[], sectionTopics: string[]) {
