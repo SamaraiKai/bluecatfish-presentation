@@ -1743,13 +1743,12 @@ export default function AIPresentation() {
   );
 
   
- const micReadyRef = useRef(false);
 
   // Opt-in voice interruption: the learner can talk over the professor during
-  // the lesson, not just during a chat conversation.
+  // the lesson, not just during a chat conversation. (useVoiceInput only listens
+  // while its own status is idle, so this doesn't need to track the mic.)
   const bargeInActive =
     voiceInterruptionsEnabled &&
-    micReadyRef.current &&
     (isChatSpeaking ||
      inConversation ||
      (isSpeaking && started && !inIntro && !showQuiz && !showReview &&
@@ -1758,9 +1757,9 @@ export default function AIPresentation() {
   const { status: micStatus, toggleMic } = useVoiceInput(
     (text) => handleSendMessage(text, { fromVoice: true }),
     () => {
-      if (isChatSpeaking) {
-        interruptedRef.current = null;
-      } else if (isSpeaking && !inIntro && !showQuiz && !showReview && !showConclusion) {
+      // Remember where the lesson was. Talking over the tutor's answer keeps the
+      // position saved earlier, so the lesson still picks up after the follow-up.
+      if (!isChatSpeaking && isSpeaking && !inIntro && !showQuiz && !showReview && !showConclusion) {
         interruptedRef.current = { section: activeSection, step: microStep };
       }
       if (isSpeaking) {
@@ -1773,7 +1772,6 @@ export default function AIPresentation() {
     bargeInActive
   );
   
-  micReadyRef.current = micStatus === 'idle';   // feeds bargeInActive on the next render
 
   const { present, error } = useFacePresence(cameraEnabled);
 
@@ -1931,7 +1929,9 @@ export default function AIPresentation() {
     setInIntro(true);
     play(audioUrls['intro'], 'intro', introText, () => {
       setInIntro(false);
-      setShowHub(true);
+      // Topics run in order now; the topic picker is switched off.
+      // setShowHub(true);
+      startTopic(0);
     });
     setIsNarrating(true);
   };
@@ -1952,7 +1952,7 @@ export default function AIPresentation() {
     setStarted(true);
     setActiveSection(0);
     setShowConclusion(false);
-    setShowHub(true)
+    // setShowHub(true)   // topic picker switched off — topics run in order
     playIntroduction();
   };
   
@@ -1988,6 +1988,9 @@ export default function AIPresentation() {
     };
 
   /* --------------------------------------------- section nav handlers */
+  // Starts a topic from its first slide (was only reachable from the topic picker)
+  const startTopic = (index: number) => handleHubSelect(index);
+
   const handleHubSelect = (index: number) => {
     stop();
     signals.track('section_start', {
@@ -2024,12 +2027,24 @@ export default function AIPresentation() {
     playIntroduction();
   };
 
+  // After a topic's quiz: straight on to the next topic, or the summary after the last one
   const handleQuizContinue = () => {
     setCompletedQuizzes((prev) => new Set([...prev, activeSection]));
     setShowQuiz(false);
     setShowReview(false);
     stop();
-    setShowHub(true);
+    // setShowHub(true);   // topic picker switched off
+    const next = activeSection + 1;
+    if (next < sections.length) startTopic(next);
+    else finishLesson();
+  };
+
+  const finishLesson = () => {
+    signals.stepExit();
+    setShowHub(false);
+    setShowConclusion(true);
+    setIsNarrating(true);
+    playConclusion();
   };
 
   // Typed or spoken input: deck commands ("skip ahead", "next topic", "go to ...")
@@ -2242,10 +2257,10 @@ export default function AIPresentation() {
           jumpTo(next, 0, 'cmd_nextTopic', say('cmd_nextTopic'));
           return done(say('cmd_nextTopic'));
         }
+        // Last topic: wrap up with the summary (topics run in order, no picker)
         resetForJump();
-        setShowHub(true);
-        acknowledge('cmd_lastTopic', say('cmd_lastTopic'));
-        return done(say('cmd_lastTopic'));
+        acknowledge('cmd_wrapUp', say('cmd_wrapUp'), finishLesson);
+        return done(say('cmd_wrapUp'));
       }
 
       case 'prevSlide': {
@@ -2452,7 +2467,8 @@ export default function AIPresentation() {
         */
         
         const firstTopic = sectionsData.sections[0]?.title || 'the Blue Catfish invasion';
-        const builtIntro = `Hey! I'm Professor Marine. Let's talk about a fish that's taking over the Chesapeake Bay. Pick a topic to get started.`;
+        // const builtIntro = `Hey! I'm Professor Marine. Let's talk about a fish that's taking over the Chesapeake Bay. Pick a topic to get started.`;
+        const builtIntro = `Hey! I'm Professor Marine. Let's talk about a fish that's taking over the Chesapeake Bay. Let's start at the beginning.`;
         setIntroText(builtIntro);
 
         setLoadingPhase('audio');
@@ -2785,6 +2801,7 @@ export default function AIPresentation() {
         <div className="max-w-7xl w-full relative">
         
           <Notice text={notice} />
+          {/* Topic picker: nothing sets showHub any more (topics run in order), kept for later */}
           {showHub ? (
             <SectionHub
               sections={sections}
@@ -2922,6 +2939,7 @@ export default function AIPresentation() {
             <div className={`flex justify-center mt-8 transition-opacity duration-300 ${
               showQuiz || showReview || showSelfCheck || showRemediation ? 'opacity-0 pointer-events-none' : 'opacity-100'
             }`}>
+{/* Topic picker switched off — topics run in order.
               <button
                 onClick={() => {
                   resetForJump();   // also cancels a pending "pick up where we left off"
@@ -2931,6 +2949,7 @@ export default function AIPresentation() {
               >
                 ← Back to topics
               </button>
+              */}
               
               {devMode && (
                 <button

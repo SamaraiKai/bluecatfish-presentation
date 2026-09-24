@@ -48,6 +48,9 @@ export function useVoiceInput(onTranscript: (text: string) => void, onListenStar
   const bargeCtxRef = useRef<AudioContext | null>(null);
   const bargeRafRef = useRef<number | null>(null);
   const bargeStartRef = useRef<number | null>(null);
+  // Bumped on every stop, so a watcher still waiting for the mic when it was
+  // stopped knows to shut itself down instead of running on unowned
+  const bargeGenRef = useRef(0);
 
   // Latest callbacks, so the passive loop never closes over stale ones
   const onListenStartRef = useRef(onListenStart);
@@ -188,6 +191,7 @@ export function useVoiceInput(onTranscript: (text: string) => void, onListenStar
 
   /* --------------------------------------------------- passive barge-in */
   const stopBargeWatch = () => {
+    bargeGenRef.current++;
     if (bargeRafRef.current) cancelAnimationFrame(bargeRafRef.current);
     bargeRafRef.current = null;
     bargeCtxRef.current?.close().catch(() => {});
@@ -198,16 +202,23 @@ export function useVoiceInput(onTranscript: (text: string) => void, onListenStar
   };
 
   const startBargeWatch = async () => {
+    stopBargeWatch();   // never run two watchers
+    const gen = bargeGenRef.current;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: MIC_CONSTRAINTS,
       });
+      if (gen !== bargeGenRef.current) {   // stopped while waiting for the mic
+        stream.getTracks().forEach((t) => t.stop());
+        return;
+      }
       bargeStreamRef.current = stream;
  
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
       const ctx = new AudioCtx();
       bargeCtxRef.current = ctx;
       if (ctx.state === "suspended") await ctx.resume();
+      if (gen !== bargeGenRef.current) return;   // stopBargeWatch already closed ctx and stream
  
       const source = ctx.createMediaStreamSource(stream);
       const analyser = ctx.createAnalyser();
@@ -217,6 +228,7 @@ export function useVoiceInput(onTranscript: (text: string) => void, onListenStar
       const buffer = new Float32Array(analyser.fftSize);
  
       const tick = () => {
+        if (gen !== bargeGenRef.current) return;
         analyser.getFloatTimeDomainData(buffer);
  
         let sum = 0;

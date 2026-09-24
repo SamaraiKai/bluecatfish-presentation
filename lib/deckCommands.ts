@@ -127,7 +127,7 @@ export const COMMAND_ACK_TEXT = {
   cmd_goto: "Here's that part.",
   cmd_notFound: "Hmm, I couldn't find that anywhere in this presentation.",
   cmd_quizFirst: "Let's finish this quiz first.",
-  cmd_lastTopic: "That was the last topic. Here's the topic list.",
+  cmd_wrapUp: "That was the last topic. Let's wrap up.",
   cmd_atStart: 'This is the start of the lesson.',
 } as const;
 
