@@ -157,6 +157,10 @@ STRICT RULES YOU MUST FOLLOW:
    - At most one joke per bullet list and one or two per narration; the facts come first and must stay exactly right.
    - Keep it kind and classroom-safe for ages 10-14. No insults, no pop-culture references that will date.
    - Quiz questions, quiz options, and "explanation" stay plain and clear (no jokes there); "feedback", "answer", "recap" and "remediation" can be warm and lightly playful.
+15. "simple" — EVERY step also gets a "simple" string: the SAME step said as plainly as possible, for a learner who just said "simpler please". Use 1-2 short sentences (under 25 words total) of everyday words a 9 year old knows. No jokes, no sarcasm, no new facts, no numbers the step doesn't already have.
+   - "overview" / "example" / "numberSpotlight": plainly say what the information IS (e.g. "Blue catfish get very big. Some weigh more than 100 pounds.").
+   - "predictThen": ask the SAME question more plainly (the options and the correct answer stay the same).
+   - "checkYourself": say the SAME statement more plainly, so its true/false answer does not change. Do not start it with "True or false".
 
 Output ONLY a JSON object with key "section":
 
@@ -168,11 +172,11 @@ Output ONLY a JSON object with key "section":
     "recap": "one sentence takeaway",
     "remediation": "2-3 simple sentences",
     "steps": [
-      { "type": "overview", "bullets": ["...", "..."], "narration": "...", "stats": [{"value": "...", "label": "..."}] },
-      { "type": "example", "bullets": ["..."], "narration": "..." },
-      { "type": "numberSpotlight", "value": "...", "label": "...", "context": "...", "narration": "..." },
-      { "type": "predictThen", "question": "...", "options": ["...", "...", "...", "..."], "correctIndex": 2, "answer": "..." },
-      { "type": "checkYourself", "statement": "...", "isTrue": true, "feedback": "..." }
+      { "type": "overview", "bullets": ["...", "..."], "narration": "...", "simple": "...", "stats": [{"value": "...", "label": "..."}] },
+      { "type": "example", "bullets": ["..."], "narration": "...", "simple": "..." },
+      { "type": "numberSpotlight", "value": "...", "label": "...", "context": "...", "narration": "...", "simple": "..." },
+      { "type": "predictThen", "question": "...", "options": ["...", "...", "...", "..."], "correctIndex": 2, "answer": "...", "simple": "..." },
+      { "type": "checkYourself", "statement": "...", "isTrue": true, "feedback": "...", "simple": "..." }
     ],
     "quiz": [
       { "question": "...", "options": ["...", "...", "...", "..."], "correctAnswer": 0, "explanation": "..." }
@@ -218,6 +222,7 @@ Output ONLY a JSON object with key "section":
     steps[0]?.type === 'overview' &&
     new Set(steps.map((s: any) => s.type)).size === steps.length &&
     steps.every((s: any) => {
+      if (typeof s.simple !== 'string' || !s.simple.trim()) return false;   // every step needs its plain version
       if (s.type === 'numberSpotlight') return typeof s.value === 'string' && typeof s.label === 'string' && typeof s.context === 'string' && isNarration(s.narration);
       if (s.type === 'checkYourself') return typeof s.statement === 'string' && typeof s.isTrue === 'boolean' && typeof s.feedback === 'string';
       if (s.type === 'predictThen') return typeof s.question === 'string' && Array.isArray(s.options) && s.options.length === 4 && Number.isInteger(s.correctIndex) && s.correctIndex >= 0 && s.correctIndex < 4 && typeof s.answer === 'string';
@@ -356,7 +361,7 @@ async function addImageSteps(sections: any[]) {
         messages: [
           {
             role: "system",
-            content: `Write a short spoken line directing a learner's attention to an image on screen, then explaining what it shows and why it matters for this lesson section. 1-2 sentences total (20ish words). Start by pointing at the image naturally ("Take a look at the image on screen..." / "Notice in the picture..."). Use the lesson's voice: funny, goofy, a little sarcastic about the fish, kind to the learner, ages 10-14. Base it ONLY on the provided image description — never invent visual details. Output JSON: { "text": "..." }`,
+            content: `Write a short spoken line directing a learner's attention to an image on screen, then explaining what it shows and why it matters for this lesson section. 1-2 sentences total (20ish words). Start by pointing at the image naturally ("Take a look at the image on screen..." / "Notice in the picture..."). Use the lesson's voice: funny, goofy, a little sarcastic about the fish, kind to the learner, ages 10-14. Base it ONLY on the provided image description — never invent visual details. Also write "simple": one plain, short sentence (everyday words, no jokes) saying what the picture shows, for a learner who asked for it simpler. Output JSON: { "text": "...", "simple": "..." }`,
           },
           {
             role: "user",
@@ -372,7 +377,12 @@ async function addImageSteps(sections: any[]) {
       const parsed = JSON.parse(data.choices?.[0]?.message?.content ?? '{}');
       if (parsed.text) {
         // insert right after the overview so the image is introduced early
-        section.steps.splice(1, 0, { type: 'imageFocus', text: parsed.text, narration: parsed.text });
+        section.steps.splice(1, 0, {
+          type: 'imageFocus',
+          text: parsed.text,
+          narration: parsed.text,
+          simple: typeof parsed.simple === 'string' ? parsed.simple : undefined,
+        });
       }
     } catch (e) {
       console.warn(`Image step failed for "${section.title}":`, e);

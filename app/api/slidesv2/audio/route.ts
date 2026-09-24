@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { AUDIO_FOLDER } from "@/src/cacheVersion";
 import { COMMAND_ACK_TEXT } from "@/lib/deckCommands";
-import { TTS_VOICE, VOICE_INSTRUCTIONS } from "@/lib/voice";
+import { TTS_VOICE, VOICE_INSTRUCTIONS, SIMPLE_VOICE_INSTRUCTIONS } from "@/lib/voice";
 
 const supabase = createClient(
   process.env.SUPABASE_URL!,
@@ -64,6 +64,7 @@ type AudioJob = {
   key: string;      // the key used in audioUrls, e.g. "section0_overview"
   text: string;     // what gets spoken
   fileName: string; // full path within the bucket
+  instructions?: string; // TTS delivery; defaults to the lesson voice
 };
 
 function slugify(text: string): string {
@@ -103,7 +104,7 @@ async function listExistingFiles(): Promise<Set<string>> {
   return new Set((data ?? []).map((f) => f.name));
 }
 
-async function generateAndUpload(text: string, fileName: string): Promise<string> {
+async function generateAndUpload(text: string, fileName: string, instructions = VOICE_INSTRUCTIONS): Promise<string> {
   const ttsResponse = await fetch("https://api.openai.com/v1/audio/speech", {
     method: "POST",
     headers: {
@@ -113,7 +114,7 @@ async function generateAndUpload(text: string, fileName: string): Promise<string
     body: JSON.stringify({
       model: "gpt-4o-mini-tts",
       voice: TTS_VOICE,
-      instructions: VOICE_INSTRUCTIONS,
+      instructions,
       input: cleanForTTS(text),
     }),
   });
@@ -164,7 +165,7 @@ async function runJobs(
     const results = await Promise.all(
       batch.map(async (job) => {
         try {
-          return { key: job.key, url: await generateAndUpload(job.text, job.fileName) };
+          return { key: job.key, url: await generateAndUpload(job.text, job.fileName, job.instructions) };
         } catch (e) {
           console.error(`Failed to generate "${job.key}":`, e);
           return null;
@@ -304,6 +305,16 @@ function buildSectionJobs(sections: any[]): AudioJob[] {
     
     for (let s = 0; s < section.steps.length; s++) {
       const step = section.steps[s];
+
+      // "Simpler please": the same step in plain words, in a calmer voice
+      if (typeof step.simple === 'string' && step.simple.trim()) {
+        jobs.push({
+          key: `section${i}_step${s}_simple`,
+          text: step.type === 'checkYourself' ? `True or false: ${step.simple}` : step.simple,
+          fileName: `${FOLDER}/section${i + 1}_step${s}_simple.mp3`,
+          instructions: SIMPLE_VOICE_INSTRUCTIONS,
+        });
+      }
 
       if (step.type === 'numberSpotlight') {
         jobs.push({

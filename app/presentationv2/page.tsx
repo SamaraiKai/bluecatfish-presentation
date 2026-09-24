@@ -41,13 +41,15 @@ type MicroStep = {
 
 // On screen: short "bullets" (or "context" for a number). Spoken: "narration".
 // "text" is the older single field, kept so a cached lesson still plays.
-type Step =
+// "simple" is the same step in plain words, used for "simpler please".
+type Step = { simple?: string } & (
   | { type: 'overview'; bullets?: string[]; narration?: string; text?: string; stats?: { value: string; label: string }[] }
   | { type: 'example'; bullets?: string[]; narration?: string; text?: string }
   | { type: 'imageFocus'; text: string; narration?: string }
   | { type: 'numberSpotlight'; value: string; label: string; context: string; narration?: string }
   | { type: 'checkYourself'; statement: string; isTrue: boolean; feedback: string }
-  | { type: 'predictThen'; question: string; options: string[]; correctIndex: number; answer: string };
+  | { type: 'predictThen'; question: string; options: string[]; correctIndex: number; answer: string }
+);
 
 /* ============================================================================
  * CONSTANTS
@@ -1009,7 +1011,8 @@ function MiniSlideshowBlock({
   autoAdvanceFrom,
   audioUrls,
   play,
-  devMode
+  devMode,
+  plain,
 }: {
   currentSection: SectionWithBreakdown;
   activeSectionIndex: number;
@@ -1029,6 +1032,7 @@ function MiniSlideshowBlock({
   audioUrls: Record<string, string>;
   play: (url: string | undefined, key: string, text?: string, onComplete?: () => void) => void;
   devMode: boolean;
+  plain: boolean;   // "simpler please" is showing this step in plain words
 }) {
   const [guess, setGuess] = useState<number | null>(null);
   const [checkAnswer, setCheckAnswer] = useState<boolean | null>(null);
@@ -1066,8 +1070,19 @@ function MiniSlideshowBlock({
         const step = currentSection.steps[microStep];
         if (!step) return null; // step index out of range mid-transition — render nothing this frame
         const baseKey = `section${activeSectionIndex}_step${microStep}`;
+        const simple = plain && step.simple ? step.simple : null;
       
         if (step.type === 'imageFocus') return null;
+
+        // "Simpler please" on an info slide: just the plain version, nothing else to parse
+        if (simple && step.type !== 'predictThen' && step.type !== 'checkYourself') {
+          return (
+            <div className="rounded-2xl bg-white/80 border border-cyan-300 p-6 animate-[fadeIn_0.4s_ease-out]">
+              <div className="text-sm font-semibold text-cyan-700 mb-2">In plain words</div>
+              <p className="text-2xl leading-relaxed text-black">{simple}</p>
+            </div>
+          );
+        }
 
         /*
         if (step.type === 'keyTerms') {
@@ -1131,12 +1146,13 @@ function MiniSlideshowBlock({
         if (step.type === 'predictThen') {
           return (
             <div className="text-center py-4">
+              {simple && <div className="text-sm font-semibold text-cyan-700 mb-2">In plain words</div>}
               <HighlightedText
-                text={step.question}
+                text={simple ?? step.question}
                 currentTime={currentTime}
                 duration={duration}
                 isSpeaking={isSpeaking}
-                isActive={currentKey === `${baseKey}_question`}
+                isActive={currentKey === (simple ? `${baseKey}_simple` : `${baseKey}_question`)}
                 className="text-xl font-semibold text-black mb-6"
               />
               
@@ -1184,7 +1200,8 @@ function MiniSlideshowBlock({
           const isCorrect = checkAnswer === step.isTrue;
           return (
             <div className="text-center py-4">
-              <p className="text-xl font-semibold text-black mb-6">{step.statement}</p>
+              {simple && <div className="text-sm font-semibold text-cyan-700 mb-2">In plain words</div>}
+              <p className="text-xl font-semibold text-black mb-6">{simple ?? step.statement}</p>
               {checkAnswer === null ? (
                 <div className="flex gap-4 justify-center">
                   {[true, false].map((val) => (
@@ -1334,6 +1351,7 @@ function ClassicLayout(props: {
   audioUrls: Record<string, string>;
   play: (url: string | undefined, key: string, text?: string, onComplete?: () => void) => void;
   devMode: boolean;
+  plain: boolean;
   isImageFocus: boolean;
   animationUrl?: string;
   hideVisual: boolean;
@@ -1395,6 +1413,7 @@ function ClassicLayout(props: {
               audioUrls={props.audioUrls}
               play={props.play}
               devMode={props.devMode}
+              plain={props.plain}
             />
           </div>
         </div>
@@ -1424,6 +1443,7 @@ function SplitLayout(props: {
   audioUrls: Record<string, string>;
   play: (url: string | undefined, key: string, text?: string, onComplete?: () => void) => void;
   devMode: boolean;
+  plain: boolean;
   animationUrl?: string;
   hideVisual: boolean;
   isImageFocus: boolean;
@@ -1453,6 +1473,7 @@ function SplitLayout(props: {
             audioUrls={props.audioUrls}
             play={props.play}
             devMode={props.devMode}
+            plain={props.plain}
           />
         </div>
 
@@ -1686,6 +1707,7 @@ export default function AIPresentation() {
   const [showRemediation, setShowRemediation] = useState(false);
   const [voiceInterruptionsEnabled, setVoiceInterruptionsEnabled] = useState(false);
   const [variantSlide, setVariantSlide] = useState<VariantSlide | null>(null);
+  const [plainKey, setPlainKey] = useState<string | null>(null);   // `${section}_${step}` showing its plain version
   
   // Refs
   const keyTermsTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -2060,6 +2082,40 @@ export default function AIPresentation() {
     setShowRemediation(false);
     setShowConclusion(false);
     setVariantSlide(null);
+    setPlainKey(null);
+  };
+
+  // Speaks a step's plain version. Info slides then carry on with the lesson;
+  // question slides wait for the answer, just like the original question.
+  const playPlainVersion = (sectionIndex: number, stepIndex: number) => {
+    const step = sections[sectionIndex]?.steps[stepIndex];
+    if (!step?.simple) return;
+    const key = `section${sectionIndex}_step${stepIndex}_simple`;
+    const waitsForAnswer = step.type === 'predictThen' || step.type === 'checkYourself';
+    const then = waitsForAnswer ? undefined : () => autoAdvanceFrom(sectionIndex, stepIndex);
+    const spoken = step.type === 'checkYourself' ? `True or false: ${step.simple}` : step.simple;
+    const url = audioUrls[key];
+    if (url) {
+      play(url, key, spoken, then);
+      return;
+    }
+    ttsUrl(spoken).then((u) => (u ? play(u, key, spoken, then) : then?.()));
+  };
+
+  // "Simpler please": re-say THIS slide in plain words (a plainer question for
+  // question slides). Lessons made before plain versions existed fall back to
+  // the section's variant / remediation slide.
+  const simplifyStep = (sectionIndex: number, stepIndex: number, withAck: boolean) => {
+    const hasPlain = !!sections[sectionIndex]?.steps[stepIndex]?.simple;
+    const run = hasPlain
+      ? () => playPlainVersion(sectionIndex, stepIndex)
+      : () => showVariantOrRemediation(() => playMicroStepAudio(sectionIndex, stepIndex, null));
+    if (hasPlain) {
+      setMicroStep(stepIndex);
+      setPlainKey(`${sectionIndex}_${stepIndex}`);
+    }
+    if (withAck) acknowledge('cmd_simplify', COMMAND_ACK_TEXT.cmd_simplify, run);
+    else run();
   };
 
   // The short reply ("Skipping ahead."), then the action. Uses the pre-recorded
@@ -2218,11 +2274,9 @@ export default function AIPresentation() {
         if (!onSlide && !showSelfCheck) return false;
         signals.record(activeSection, { simplify_requests: 1 });
         signals.track('simplify_request', { section: activeSection, step: microStep });
-        const here = { section: activeSection, step: showSelfCheck ? lastStepOf(activeSection) : microStep };
+        const step = showSelfCheck ? lastStepOf(activeSection) : microStep;
         resetForJump();
-        acknowledge('cmd_simplify', say('cmd_simplify'), () =>
-          showVariantOrRemediation(() => playMicroStepAudio(here.section, here.step, null)),
-        );
+        simplifyStep(activeSection, step, true);
         return done(say('cmd_simplify'));
       }
 
@@ -2439,6 +2493,11 @@ export default function AIPresentation() {
     loadPresentation();
   }, []);
 
+  // The plain version belongs to one step; moving on shows the normal slide again
+  useEffect(() => {
+    setPlainKey((k) => (k === `${activeSection}_${microStep}` ? k : null));
+  }, [activeSection, microStep]);
+
   // Clear the key-terms timer when leaving a section
   useEffect(() => {
     return () => {
@@ -2520,9 +2579,7 @@ export default function AIPresentation() {
       setInConversation(false);
   
       if (decision === 'simplify') {
-        showVariantOrRemediation(() => {
-          if (pending) playMicroStepAudio(pending.section, pending.step, null);
-        });
+        if (pending) simplifyStep(pending.section, pending.step, false);   // the tutor already acknowledged
         return;
       }
   
@@ -2800,6 +2857,7 @@ export default function AIPresentation() {
               audioUrls={audioUrls}
               play={play}
               devMode={devMode}
+              plain={plainKey === `${activeSection}_${microStep}`}
               isImageFocus={isImageFocus}
               animationUrl={currentAnimation}
               hideVisual={!hasVisual}
@@ -2827,6 +2885,7 @@ export default function AIPresentation() {
               audioUrls={audioUrls}
               play={play}
               devMode={devMode}
+              plain={plainKey === `${activeSection}_${microStep}`}
               isImageFocus={isImageFocus}
               animationUrl={currentAnimation}
               hideVisual={!hasVisual}
