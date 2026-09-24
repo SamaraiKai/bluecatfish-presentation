@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { createPortal } from 'react-dom';
 import { useFacePresence } from "@/components/hooks/useFacePresence";
-import { useVoiceInput } from '@/components/hooks/useVoiceInput';
+import { useVoiceInput, type MicLevel } from '@/components/hooks/useVoiceInput';
 import { useSpeechQueue } from '@/components/hooks/useSpeechQueue';
 import { useHandRaise } from '@/components/hooks/useHandRaise';
 import { signals } from '@/lib/signals';
@@ -859,6 +859,50 @@ function Notice({ text }: { text: string | null }) {
 /* ============================================================================
  * SLIDE BLOCKS
  * ========================================================================== */
+/**
+ * Shows whether voice interruptions are listening, how loud the mic hears you,
+ * and the line you need to cross — so "it didn't interrupt" can be told apart
+ * from "it wasn't listening" or "I was too quiet".
+ */
+function MicMeter({
+  levelRef,
+  active,
+  status,
+}: {
+  levelRef: React.MutableRefObject<MicLevel>;
+  active: boolean;   // talking now would interrupt
+  status: 'idle' | 'listening' | 'processing';
+}) {
+  const [m, setM] = useState<MicLevel>({ level: 0, threshold: 0.02 });
+  useEffect(() => {
+    const id = setInterval(() => setM({ ...levelRef.current }), 100);
+    return () => clearInterval(id);
+  }, [levelRef]);
+
+  // Scale so the trigger line sits at 60% of the bar
+  const scale = m.threshold / 0.6;
+  const pct = Math.min(100, (m.level / scale) * 100);
+  const loud = m.level > m.threshold;
+  const label =
+    status === 'listening' ? '🔴 Listening to you…'
+    : status === 'processing' ? '💭 Got it, thinking…'
+    : active ? '🎙 Talk to interrupt'
+    : '🎙 Waiting for the professor';
+
+  return (
+    <div className="w-44 rounded-xl bg-slate-900/80 text-white text-xs px-3 py-2 shadow-lg">
+      <div className="mb-1.5 font-medium">{label}</div>
+      <div className="relative h-2 rounded-full bg-white/20 overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-[width] duration-100 ${loud && active ? 'bg-green-400' : 'bg-cyan-300'}`}
+          style={{ width: `${status === 'idle' ? pct : 0}%` }}
+        />
+        <div className="absolute top-0 h-full w-0.5 bg-white" style={{ left: '60%' }} title="Interrupt line" />
+      </div>
+    </div>
+  );
+}
+
 function PromptChips({
   onChip,
   disabled,
@@ -1763,7 +1807,7 @@ export default function AIPresentation() {
      (isSpeaking && started && !inIntro && !showQuiz && !showReview &&
       !showSelfCheck && !showRemediation && !showConclusion));
   
-  const { status: micStatus, toggleMic } = useVoiceInput(
+  const { status: micStatus, toggleMic, levelRef: micLevelRef } = useVoiceInput(
     (text) => handleSendMessage(text, { fromVoice: true }),
     () => {
       // Remember where the lesson was. Talking over the tutor's answer keeps the
@@ -1778,7 +1822,8 @@ export default function AIPresentation() {
       stop();
       stopSpeaking();
     },
-    bargeInActive
+    bargeInActive,
+    voiceInterruptionsEnabled && started,   // keep the mic open for the whole lesson
   );
   
 
@@ -2994,6 +3039,13 @@ export default function AIPresentation() {
           }}
           disabled={isLoading}
         />
+      )}
+
+      {/* Voice-interrupt meter: only when interruptions are switched on */}
+      {voiceInterruptionsEnabled && started && (
+        <div className="fixed left-6 bottom-60 z-50">
+          <MicMeter levelRef={micLevelRef} active={bargeInActive} status={micStatus} />
+        </div>
       )}
 
       {/* AI Chat Panel */}
