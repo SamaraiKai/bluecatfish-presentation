@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { AUDIO_FOLDER } from "@/src/cacheVersion";
+import { COMMAND_ACK_TEXT } from "@/lib/deckCommands";
 
 const supabase = createClient(
   process.env.SUPABASE_URL!,
@@ -240,6 +241,11 @@ function buildSharedJobs(): AudioJob[] {
     text: HAND_RAISE_TEXT, 
     fileName: `${FOLDER}/hand-raise-cue.mp3` 
   });
+
+  // Deck-command acknowledgements ("Skipping ahead.") — see lib/deckCommands.ts
+  for (const [key, text] of Object.entries(COMMAND_ACK_TEXT)) {
+    jobs.push({ key, text, fileName: `${FOLDER}/${key.replace('_', '-')}.mp3` });
+  }
   
   return jobs;
 }
@@ -268,6 +274,15 @@ function buildSectionJobs(sections: any[]): AudioJob[] {
  
   for (let i = 0; i < sections.length; i++) {
     const section = sections[i];
+
+    // "Go to <part>" landing in another topic names it: "Jumping to Why They're Invasive."
+    if (section.title) {
+      jobs.push({
+        key: `section${i}_goto`,
+        text: `Jumping to ${section.title}.`,
+        fileName: `${FOLDER}/section${i + 1}_goto-${slugify(section.title)}.mp3`,
+      });
+    }
 
     if (section.recap) {
       jobs.push({

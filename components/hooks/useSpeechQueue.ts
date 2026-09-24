@@ -23,13 +23,15 @@ export function useSpeechQueue() {
   const streamingRef = useRef(false);
 
   const beginStream = () => {
+    // Clips queued after a stop (the old stream kept arriving) must not play before the new answer
+    clipsRef.current = [];
     streamingRef.current = true;
     cancelledRef.current = false;
   };
 
   const endStream = () => {
     streamingRef.current = false;
-    drain();   // in case the last clip arrived after the queue drained
+    if (!cancelledRef.current) drain();   // in case the last clip arrived after the queue drained
   };
   
   const playBlob = (blob: Blob) =>
@@ -69,8 +71,8 @@ export function useSpeechQueue() {
   const enqueue = (text: string) => {
     const trimmed = text.trim();
     if (!trimmed) return;
+    if (cancelledRef.current) return;   // stopped: don't fetch speech nobody will hear
     clipsRef.current.push(fetchClip(trimmed));
-    if (!cancelledRef.current) drain();
     drain();
   };
 

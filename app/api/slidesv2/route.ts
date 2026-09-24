@@ -142,6 +142,8 @@ STRICT RULES YOU MUST FOLLOW:
 8. "recap" must be ONE sentence (12-20 words) summarizing this section's single most important takeaway, written to be read aloud as part of an end-of-lesson recap. Start it naturally so it flows in a list (e.g. "Blue Catfish were introduced in the 1970s for sport fishing." not "In this section we learned that...").
 9. "value" must be a STRING, even when it is purely numeric (write "19", not 19). Every stat's "value" and "label" must state a fact exactly as it appears in the source content. Do not combine numbers from one fact with the subject of another.
 10. "remediation" must be 2-3 short sentences that re-explain this section's single most important idea in the simplest possible way, for a learner who said they were lost. Use a different angle than the overview — a concrete everyday comparison works well. Do not introduce any new facts.
+11. AUDIENCE AND VOICE: the learner is 10-14 years old and every line is read aloud by a text-to-speech voice. Use short, everyday words and sentences under 20 words. Write numbers and units the way you'd say them ("about 100 pounds", "8 to 9 percent"), never symbols or abbreviations like "~", "%", "lbs", "e.g.", or parentheses.
+12. EVERY STEP MUST STAND ON ITS OWN: learners can jump straight to any step by voice ("go to the part about mercury"), so never open a step with "They", "This", "It", or "As we saw". Name the subject ("Blue catfish...") and the step's key idea in its first sentence, so it makes sense heard on its own and can be found by its topic.
 
 Output ONLY a JSON object with key "section":
 
@@ -176,9 +178,23 @@ Output ONLY a JSON object with key "section":
 
   const data = await response.json();
   const content = data.choices?.[0]?.message?.content;
-  if (!content) throw new Error("No content from AI (section)");
 
-  const parsed = JSON.parse(content);
+  // A cut-off or empty reply (reasoning used up the token budget, or a bad
+  // JSON string) used to throw and fail the whole lesson; retry it instead.
+  let parsed: any = null;
+  try {
+    parsed = content ? JSON.parse(content) : null;
+  } catch {
+    parsed = null;
+  }
+  if (!parsed) {
+    const why = data.error?.message ?? data.choices?.[0]?.finish_reason ?? 'empty reply';
+    if (attempt < 3) {
+      console.warn(`Section ${sectionNum} unreadable (${why}), retrying...`);
+      return generateSingleSection(ragContext, sectionTopic, sectionNum, attempt + 1);
+    }
+    throw new Error(`No usable content from AI for section ${sectionNum} (${why})`);
+  }
   const section = parsed.section ?? parsed;
   
   const steps = section.steps;

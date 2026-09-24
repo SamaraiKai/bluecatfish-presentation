@@ -8,6 +8,11 @@ import { useVoiceInput } from '@/components/hooks/useVoiceInput';
 import { useSpeechQueue } from '@/components/hooks/useSpeechQueue';
 import { useHandRaise } from '@/components/hooks/useHandRaise';
 import { signals } from '@/lib/signals';
+import { describeForTutor } from '@/lib/learnerState';
+import {
+  parseDeckCommand, findInPresentation, buildSlideDocs, COMMAND_ACK_TEXT,
+  type AckKey, type DeckCommand, type DeckTarget,
+} from '@/lib/deckCommands';
 
 /* ============================================================================
  * TYPES
@@ -15,6 +20,7 @@ import { signals } from '@/lib/signals';
 interface Message {
   role: 'user' | 'ai';
   text: string;
+  id?: string;   // lets a streaming reply update its own bubble even if others are added meanwhile
 }
 
 interface SectionWithBreakdown {
@@ -57,7 +63,7 @@ const PRESENTATION = {
 
 const STEP_LABELS: Record<Step['type'], string> = {
   overview: 'Overview',
-  example: 'Real World Example',
+  example: 'Think of It Like This',   // the prompt makes this step an analogy
   imageFocus: 'Look at This',
   numberSpotlight: 'By the Numbers',
   predictThen: 'Take a Guess',
@@ -189,7 +195,8 @@ const useAIChat = (currentSection: SectionWithBreakdown | undefined,
                    onSentence?: (sentence: string) => void,
                    beginStream?: () => void,
                    endStream?: () => void,
-                   onDecision?: (action: string) => void
+                   onDecision?: (action: string) => void,
+                   learnerBrief?: () => string
                   ) => {
   const [messages, setMessages] = useState<Message[]>([
     { role: 'ai', text: `Good day! I'm ${PRESENTATION.professor.name}, and I'll be your guide through today's lecture on the Blue Catfish invasion in the Chesapeake Bay. Feel free to ask me any questions as we go through the material. What would you like to explore first?` }
@@ -211,10 +218,10 @@ const useAIChat = (currentSection: SectionWithBreakdown | undefined,
     setIsLoading(true);
 
     // Placeholder bubble that fills in as tokens arrive
-    setMessages((prev) => {
-      const next: Message[] = [...prev, userMessage, { role: 'ai', text: '' }];
-      return next;
-    });
+    const replyId = `ai_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    const setReply = (replyText: string) =>
+      setMessages((prev) => prev.map((m) => (m.id === replyId ? { ...m, text: replyText } : m)));
+    setMessages((prev) => [...prev, userMessage, { role: 'ai', text: '', id: replyId }]);
     
     const missedContext = missedQuestions.length > 0
       ? ` The student just missed these quiz questions: ${missedQuestions.map(q => `"${q.question}" (they need to understand: ${q.explanation})`).join(' ')} If they ask for help or clarification, prioritize addressing these specific gaps.`
@@ -228,7 +235,7 @@ const useAIChat = (currentSection: SectionWithBreakdown | undefined,
           userText: text,
           topic: 'Blue Catfish invasion in the Chesapeake Bay',
           stream: true,
-          systemPrompt: `You are "${PRESENTATION.professor.name}", a university professor specializing in Marine Biology and Conservation. The student is currently viewing a slide titled "${currentSection?.title}" which covers: ${(currentSection?.steps?.[0] as { text?: string } | undefined)?.text ?? ''}${missedContext} Answer questions with awareness of what they're currently looking at, and relate your answers back to this section when relevant, like a professor referencing the current lecture slide.`,
+          systemPrompt: `You are "${PRESENTATION.professor.name}", a university professor specializing in Marine Biology and Conservation. The student is currently viewing a slide titled "${currentSection?.title}" which covers: ${(currentSection?.steps?.[0] as { text?: string } | undefined)?.text ?? ''}${missedContext}${learnerBrief?.() ?? ''} Answer questions with awareness of what they're currently looking at, and relate your answers back to this section when relevant, like a professor referencing the current lecture slide.`,
           conversation: history
         }),
       });
@@ -256,12 +263,7 @@ const useAIChat = (currentSection: SectionWithBreakdown | undefined,
         full += token;
         pending += token;
 
-        // Update the last bubble as text arrives
-        setMessages((prev) => {
-          const next = [...prev];
-          next[next.length - 1] = { role: 'ai', text: full };
-          return next;
-        });
+        setReply(full);
 
         // Cut off any complete sentences and speak them right away
         let match;
@@ -279,32 +281,23 @@ const useAIChat = (currentSection: SectionWithBreakdown | undefined,
       endStream?.();
       
       if (!full.trim()) {
-        setMessages((prev) => {
-          const next = [...prev];
-          next[next.length - 1] = {
-            role: 'ai',
-            text: "Sorry, I couldn't generate a response. Please try again.",
-          };
-          return next;
-        });
+        setReply("Sorry, I couldn't generate a response. Please try again.");
       }
     } catch (err) {
       endStream?.();
       console.error('RAG chat failed:', err);
-      setMessages((prev) => {
-        const next = [...prev];
-        next[next.length - 1] = {
-          role: 'ai',
-          text: "Sorry, I'm having trouble responding right now. Please try again.",
-        };
-        return next;
-      });
+      setReply("Sorry, I'm having trouble responding right now. Please try again.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  return { messages, isLoading, input, setInput, sendMessage };
+  // Deck commands answer locally; log them in the chat so the transcript stays complete
+  const appendExchange = (userText: string, aiText: string) => {
+    setMessages((prev) => [...prev, { role: 'user', text: userText }, { role: 'ai', text: aiText }]);
+  };
+
+  return { messages, isLoading, input, setInput, sendMessage, appendExchange };
 };
 
 /* ============================================================================
@@ -797,20 +790,22 @@ function PromptChips({
   onChip,
   disabled,
 }: {
-  onChip: (text: string, kind: 'repeat' | 'simplify' | 'advance') => void;
+  onChip: (text: string, command: DeckCommand) => void;
   disabled: boolean;
 }) {
-  const chips = [
-    { label: '🔁 Explain that again', text: 'Can you explain that again?', kind: 'repeat' as const },
-    { label: '💡 Simpler please', text: 'Can you explain that more simply?', kind: 'simplify' as const },
-    { label: '⏭ Skip ahead', text: 'Skip ahead to the next section', kind: 'advance' as const },
+  // Same commands the learner can say out loud (lib/deckCommands.ts)
+  const chips: { label: string; text: string; command: DeckCommand }[] = [
+    { label: '🔁 Explain that again', text: 'Explain that again', command: { kind: 'repeat' } },
+    { label: '💡 Simpler please', text: 'Simpler please', command: { kind: 'simplify' } },
+    { label: '⏭ Skip ahead', text: 'Skip ahead', command: { kind: 'nextSlide' } },
+    { label: '⏩ Next topic', text: 'Next topic', command: { kind: 'nextTopic' } },
   ];
   return (
     <div className="fixed bottom-6 left-6 z-50 flex flex-col gap-2">
       {chips.map((c) => (
         <button
           key={c.label}
-          onClick={() => onChip(c.text, c.kind)}
+          onClick={() => onChip(c.text, c.command)}
           disabled={disabled}
           className="px-4 py-2 rounded-full bg-blue-600/90 hover:bg-blue-500 disabled:bg-gray-600 disabled:opacity-40 text-white text-sm font-medium shadow-lg backdrop-blur-sm transition-colors text-left"
         >
@@ -1630,14 +1625,17 @@ export default function AIPresentation() {
 
   const { enqueue, stopSpeaking, isSpeaking: isChatSpeaking, beginStream, endStream } = useSpeechQueue();
   
-  const { messages, isLoading, input, setInput, sendMessage } = useAIChat(
+  const { messages, isLoading, input, setInput, sendMessage, appendExchange } = useAIChat(
     currentSection, missedQuestions, enqueue, beginStream, endStream,
     (action) => {
       pendingDecisionRef.current = action;
       signals.track(`${action}_request` as any, { section: activeSection, step: microStep });
-      if (action === 'repeat') signals.upsertState(activeSection, { repeats: 1, last_state: 'confused' });
-      if (action === 'simplify') signals.upsertState(activeSection, { confusion_marks: 1, last_state: 'confused' });
-    }
+      // the server's "repeat" cue is "I'm lost / confused", so it counts as confusion
+      if (action === 'repeat') signals.record(activeSection, { confusion_marks: 1 });
+      if (action === 'simplify') signals.record(activeSection, { simplify_requests: 1 });
+      if (action === 'advance') signals.record(activeSection, { skips: 1 });
+    },
+    () => describeForTutor(signals.getState(activeSection))
   );
 
   
@@ -1654,17 +1652,17 @@ export default function AIPresentation() {
       !showSelfCheck && !showRemediation && !showConclusion));
   
   const { status: micStatus, toggleMic } = useVoiceInput(
-    (text) => {
-      setShowChat(true);
-      handleSendMessage(text);
-    },
+    (text) => handleSendMessage(text, { fromVoice: true }),
     () => {
       if (isChatSpeaking) {
         interruptedRef.current = null;
       } else if (isSpeaking && !inIntro && !showQuiz && !showReview && !showConclusion) {
         interruptedRef.current = { section: activeSection, step: microStep };
       }
-      if (isSpeaking) signals.track('barge_in', { section: activeSection, step: microStep });
+      if (isSpeaking) {
+        signals.track('barge_in', { section: activeSection, step: microStep });
+        signals.record(activeSection, { barge_ins: 1 });
+      }
       stop();
       stopSpeaking();
     },
@@ -1888,10 +1886,11 @@ export default function AIPresentation() {
   /* --------------------------------------------- section nav handlers */
   const handleHubSelect = (index: number) => {
     stop();
-      signals.track('section_start', {                        // ← add
+    signals.track('section_start', {
       section: index,
       value: { title: sections[index]?.title },
     });
+    signals.record(index, { visits: 1 });
     setShowHub(false);
     setActiveSection(index);
     setMicroStep(0);
@@ -1929,19 +1928,254 @@ export default function AIPresentation() {
     setShowHub(true);
   };
 
-  const handleSendMessage = (text: string) => {
+  // Typed or spoken input: deck commands ("skip ahead", "next topic", "go to ...")
+  // are handled right here with no LLM call; everything else goes to the tutor.
+  const handleSendMessage = (text: string, opts: { fromVoice?: boolean } = {}) => {
     if (!text.trim()) return;
+    const command = parseDeckCommand(text);
+    if (command && runDeckCommand(command, text)) {
+      setInput('');
+      return;
+    }
+    if (opts.fromVoice) setShowChat(true);
+    sendToTutor(text);
+  };
+
+  const sendToTutor = (text: string) => {
     setInConversation(true);
     if (isSpeaking && !inIntro && !showQuiz && !showReview && !showConclusion) {
       interruptedRef.current = { section: activeSection, step: microStep };
     }
-    signals.track('tutor_question', {                       // ← add
+    signals.track('tutor_question', {
       section: activeSection,
       step: microStep,
       value: { text: text.slice(0, 200) },
     });
+    signals.record(activeSection, { questions: 1 });
     stop();
     sendMessage(text);
+  };
+
+  /* ------------------------------------------------------ deck commands */
+  type AckClip = AckKey | `section${number}_goto`;
+
+  // Clears everything a jump could collide with: pending resumes, overlays, chat speech.
+  const resetForJump = () => {
+    if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
+    if (keyTermsTimerRef.current) clearTimeout(keyTermsTimerRef.current);
+    interruptedRef.current = null;
+    pendingDecisionRef.current = null;
+    variantAfterRef.current = null;
+    signals.stepExit();   // bank the time spent on the slide being left
+    stop();
+    stopSpeaking();
+    setInConversation(false);
+    setInIntro(false);
+    setShowHub(false);
+    setShowQuiz(false);
+    setShowReview(false);
+    setShowSelfCheck(false);
+    setShowRemediation(false);
+    setShowConclusion(false);
+    setVariantSlide(null);
+  };
+
+  // The short reply ("Skipping ahead."), then the action. Uses the pre-recorded
+  // clip so there's no TTS wait; falls back to live TTS if the clip is missing.
+  const acknowledge = (key: AckClip, text: string, then: () => void = () => {}) => {
+    showNotice(text);
+    const url = audioUrls[key];
+    if (url) {
+      play(url, key, '', then);
+      return;
+    }
+    ttsUrl(text).then((u) => (u ? play(u, key, '', then) : then()));
+  };
+
+  const jumpTo = (section: number, step: number, ackKey: AckClip, ackText: string) => {
+    const entering = section !== activeSection || showHub || showConclusion || inIntro;
+    resetForJump();
+    if (entering) {
+      signals.track('section_start', { section, value: { title: sections[section]?.title, via: 'command' } });
+      signals.record(section, { visits: 1 });
+    }
+    setActiveSection(section);
+    setMicroStep(step);
+    setIsNarrating(true);
+    acknowledge(ackKey, ackText, () => playMicroStepAudio(section, step, null));
+  };
+
+  // End of a topic: the same wrap-up the narration reaches on its own
+  const finishSection = (ackKey: AckKey) => {
+    resetForJump();
+    signals.stepExit();
+    setShowSelfCheck(true);
+    acknowledge(ackKey, COMMAND_ACK_TEXT[ackKey], () => play(audioUrls['wrapup'], 'wrapup', ''));
+  };
+
+  const startSectionQuiz = () => {
+    if (sections[activeSection]?.quiz?.length === 1) setShowQuiz(true);
+    else handleQuizContinue();
+  };
+
+  const firstOpenTopic = () => {
+    const i = sections.findIndex((_, idx) => !completedQuizzes.has(idx));
+    return i === -1 ? 0 : i;
+  };
+
+  // Keyword search first (instant); meaning-based search on the server when that isn't sure.
+  const findTarget = async (query: string): Promise<DeckTarget | null> => {
+    const docs = buildSlideDocs(sections);
+    const local = findInPresentation(query, sections, docs);
+    if (local?.confident) return local;
+    try {
+      const r = await fetch('/api/deck/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, docs }),
+      });
+      const data = await r.json();
+      if (data.found) return { section: data.section, step: data.step };
+      if (!data.error) return null;           // searched properly, it isn't there
+    } catch { /* offline: trust the keyword guess below */ }
+    return local;
+  };
+
+  /** Runs a deck command. Returns false when it doesn't apply here, so the tutor answers instead. */
+  const runDeckCommand = (command: DeckCommand, said: string): boolean => {
+    if (!started || sections.length === 0) return false;
+
+    const onSlide = !inIntro && !showHub && !showQuiz && !showReview && !showSelfCheck &&
+      !showRemediation && !showConclusion && !variantSlide;
+    const inOverlay = showRemediation || !!variantSlide;
+    const lastStepOf = (i: number) => Math.max(0, (sections[i]?.steps.length ?? 1) - 1);
+
+    const done = (reply: string) => {
+      appendExchange(said, reply);
+      signals.track('deck_command', {
+        section: activeSection,
+        step: microStep,
+        value: { command: command.kind, said: said.slice(0, 120), ...(command.kind === 'goTo' ? { query: command.query } : {}) },
+      });
+      return true;
+    };
+    const say = (key: AckKey) => COMMAND_ACK_TEXT[key];
+
+    // Quizzes can't be skipped; repeat/simplify there are questions for the tutor
+    if (showQuiz || showReview) {
+      if (command.kind === 'repeat' || command.kind === 'simplify') return false;
+      acknowledge('cmd_quizFirst', say('cmd_quizFirst'));
+      return done(say('cmd_quizFirst'));
+    }
+
+    switch (command.kind) {
+      case 'nextSlide': {
+        if (showConclusion) return false;
+        if (inIntro || showHub) {
+          jumpTo(firstOpenTopic(), 0, 'cmd_nextSlide', say('cmd_nextSlide'));
+          return done(say('cmd_nextSlide'));
+        }
+        signals.record(activeSection, { skips: 1 });
+        if (inOverlay) {
+          const after = variantAfterRef.current;
+          resetForJump();
+          acknowledge('cmd_nextSlide', say('cmd_nextSlide'), () => after?.());
+          return done(say('cmd_nextSlide'));
+        }
+        if (showSelfCheck) {
+          resetForJump();
+          acknowledge('cmd_nextSlide', say('cmd_nextSlide'), startSectionQuiz);
+          return done(say('cmd_nextSlide'));
+        }
+        if (microStep < lastStepOf(activeSection)) jumpTo(activeSection, microStep + 1, 'cmd_nextSlide', say('cmd_nextSlide'));
+        else finishSection('cmd_nextSlide');
+        return done(say('cmd_nextSlide'));
+      }
+
+      case 'nextTopic': {
+        if (showConclusion) return false;
+        if (inIntro || showHub) {
+          jumpTo(firstOpenTopic(), 0, 'cmd_nextTopic', say('cmd_nextTopic'));
+          return done(say('cmd_nextTopic'));
+        }
+        signals.record(activeSection, { skips: 1 });
+        const next = activeSection + 1;
+        if (next < sections.length) {
+          jumpTo(next, 0, 'cmd_nextTopic', say('cmd_nextTopic'));
+          return done(say('cmd_nextTopic'));
+        }
+        resetForJump();
+        setShowHub(true);
+        acknowledge('cmd_lastTopic', say('cmd_lastTopic'));
+        return done(say('cmd_lastTopic'));
+      }
+
+      case 'prevSlide': {
+        if (!onSlide && !showSelfCheck && !inOverlay) return false;
+        if (showSelfCheck) jumpTo(activeSection, lastStepOf(activeSection), 'cmd_prevSlide', say('cmd_prevSlide'));
+        else if (inOverlay) jumpTo(activeSection, microStep, 'cmd_prevSlide', say('cmd_prevSlide'));
+        else if (microStep > 0) jumpTo(activeSection, microStep - 1, 'cmd_prevSlide', say('cmd_prevSlide'));
+        else if (activeSection > 0) jumpTo(activeSection - 1, lastStepOf(activeSection - 1), 'cmd_prevSlide', say('cmd_prevSlide'));
+        else {
+          jumpTo(0, 0, 'cmd_atStart', say('cmd_atStart'));
+          return done(say('cmd_atStart'));
+        }
+        return done(say('cmd_prevSlide'));
+      }
+
+      case 'repeat': {
+        if (!onSlide && !showSelfCheck) return false;
+        signals.record(activeSection, { repeats: 1 });
+        signals.track('repeat_request', { section: activeSection, step: microStep });
+        const step = showSelfCheck ? lastStepOf(activeSection) : microStep;
+        jumpTo(activeSection, step, 'cmd_repeat', say('cmd_repeat'));
+        return done(say('cmd_repeat'));
+      }
+
+      case 'simplify': {
+        if (!onSlide && !showSelfCheck) return false;
+        signals.record(activeSection, { simplify_requests: 1 });
+        signals.track('simplify_request', { section: activeSection, step: microStep });
+        const here = { section: activeSection, step: showSelfCheck ? lastStepOf(activeSection) : microStep };
+        resetForJump();
+        acknowledge('cmd_simplify', say('cmd_simplify'), () =>
+          showVariantOrRemediation(() => playMicroStepAudio(here.section, here.step, null)),
+        );
+        return done(say('cmd_simplify'));
+      }
+
+      case 'goTo': {
+        // Where to pick up again if the part isn't in the lesson
+        const resumeAt = interruptedRef.current ?? (onSlide ? { section: activeSection, step: microStep } : null);
+        interruptedRef.current = null;
+        if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
+        stop();
+        stopSpeaking();
+
+        findTarget(command.query).then((target) => {
+          if (target) {
+            const section = target.section < 0 ? activeSection : target.section;
+            const step = Math.min(Math.max(target.step, 0), lastStepOf(section));
+            const sameTopic = section === activeSection && !showHub && !showConclusion;
+            const key: AckClip = sameTopic ? 'cmd_goto' : `section${section}_goto`;
+            const text = sameTopic ? say('cmd_goto') : `Jumping to ${sections[section].title}.`;
+            signals.record(section, { jumps: 1 });
+            jumpTo(section, step, key, text);
+            done(text);
+          } else if (command.soft) {
+            // "tell me about X" where X isn't on a slide: a real question for the tutor
+            if (resumeAt) interruptedRef.current = resumeAt;
+            sendToTutor(said);
+          } else {
+            acknowledge('cmd_notFound', say('cmd_notFound'), () => {
+              if (resumeAt) playMicroStepAudio(resumeAt.section, resumeAt.step, null);
+            });
+            done(say('cmd_notFound'));
+          }
+        });
+        return true;
+      }
+    }
   };
 
   // Reviewed variant first (knowledge base); generated remediation as the fallback.
@@ -1949,10 +2183,13 @@ export default function AIPresentation() {
   const showVariantOrRemediation = async (after: () => void) => {
     const idx = activeSection;
     try {
-      const r = await fetch(`/api/tutor/variant?section=${idx}&state=confused`);
+      // Asked for help, so at least "confused"; "frustrated" gets the gentlest variant
+      const mood = signals.getState(idx).last_state;
+      const state = mood === 'frustrated' ? 'frustrated' : 'confused';
+      const r = await fetch(`/api/tutor/variant?section=${idx}&state=${state}`);
       const data = await r.json();
       if (data.ok && data.variant) {
-        signals.track('tutor_decision', { section: idx, value: { action: 'variant', variant: data.variant.variant } });
+        signals.track('tutor_decision', { section: idx, value: { action: 'variant', variant: data.variant.variant, state } });
         variantAfterRef.current = after;
         setVariantSlide(data.variant);
         const url = data.variant.audio_url ?? await ttsUrl(data.variant.narration);
@@ -1965,8 +2202,14 @@ export default function AIPresentation() {
     if (rem) {
       signals.track('tutor_decision', { section: idx, value: { action: 'remediation' } });
       setShowRemediation(true);
+      variantAfterRef.current = after;   // so "skip ahead" can move past it too
       const key = `section${idx}_remediation`;
-      play(audioUrls[key], key, rem, () => { setShowRemediation(false); after(); });
+      play(audioUrls[key], key, rem, () => {
+        setShowRemediation(false);
+        const next = variantAfterRef.current;
+        variantAfterRef.current = null;
+        next?.();
+      });
       return;
     }
     after();
@@ -1975,6 +2218,7 @@ export default function AIPresentation() {
   const handleSelfCheck = (rating: 'got' | 'kind' | 'lost') => {
     setShowSelfCheck(false);
     signals.track('self_check', { section: activeSection, value: { rating } });
+    signals.record(activeSection, { self_check: rating });
 
     const goToQuiz = () => {
       if (currentSection.quiz?.length === 1) setShowQuiz(true);
@@ -1982,7 +2226,6 @@ export default function AIPresentation() {
     };
 
     if (rating === 'lost') {
-      signals.upsertState(activeSection, { confusion_marks: 1, last_state: 'confused' });
       showVariantOrRemediation(goToQuiz);
     } else {
       stop();
@@ -2201,10 +2444,8 @@ export default function AIPresentation() {
       }
   
       if (decision === 'advance') {
-        if (showQuiz || showReview) return;     // never skip past a quiz
-        stop();
-        signals.stepExit();
-        setShowSelfCheck(true);
+        if (showQuiz || showReview || !pending) return;     // never skip past a quiz
+        autoAdvanceFrom(pending.section, pending.step);     // the tutor already said "moving ahead"
         return;
       }
   
@@ -2445,13 +2686,13 @@ export default function AIPresentation() {
                 setSectionScores((prev) => ({ ...prev, [activeSection]: score }));
                 setMissedQuestions(missed);
               
-                signals.track('quiz_submitted', {                       // ← add
+                signals.track('quiz_submitted', {
                   section: activeSection,
                   value: { passed, wrong: missed.length, score },
                 });
-                signals.upsertState(activeSection, {                    // ← add
+                signals.record(activeSection, {
                   quiz_misses: missed.length,
-                  last_state: passed ? 'engaged' : 'confused',
+                  quiz_passed: passed,
                 });
               
                 if (passed) {
@@ -2584,11 +2825,11 @@ export default function AIPresentation() {
       {started && !inIntro && !showHub && !showQuiz && !showReview &&
        !showSelfCheck && !showRemediation && !showConclusion && (
         <PromptChips
-          onChip={(text, kind) => {
-            if (kind === 'simplify') signals.track('confusion_click', { section: activeSection, step: microStep });
-            handleSendMessage(text);
+          onChip={(text, command) => {
+            if (command.kind === 'simplify') signals.track('confusion_click', { section: activeSection, step: microStep });
+            if (!runDeckCommand(command, text)) sendToTutor(text);
           }}
-          disabled={isLoading || isChatSpeaking}
+          disabled={isLoading}
         />
       )}
 

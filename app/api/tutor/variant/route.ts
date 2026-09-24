@@ -16,7 +16,8 @@ function getSupabase() {
 const STATE_VARIANT_PREFERENCE: Record<string, string[]> = {
   confused: ['analogy', 'remedial', 'visual'],
   frustrated: ['remedial', 'analogy', 'visual'],
-  bored: ['visual', 'analogy'],
+  bored: ['visual', 'deep-dive', 'analogy'],
+  engaged: ['deep-dive', 'visual'],
   neutral: ['visual', 'analogy', 'remedial'],
 };
 

@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { deriveMood, EMPTY_COUNTERS, type SectionCounters } from '@/lib/learnerState';
 
-// Learner-state rollup upsert — service role (server-only).
+// Learner-state rollup write — service role (server-only).
+// The browser owns its session's counters and sends the whole row with an
+// increasing `seq`; put_learner_state (migration 003) ignores stale writes.
 let client: ReturnType<typeof createClient> | null = null;
 function getSupabase() {
   if (!client) {
@@ -13,57 +16,71 @@ function getSupabase() {
   return client;
 }
 
-interface Body {
-  session_id?: string;
-  section?: number;
-  repeats?: number;
-  quiz_misses?: number;
-  confusion_marks?: number;
-  dwell_ms_total?: number;
-  last_state?: 'neutral' | 'confused' | 'frustrated' | 'bored' | 'engaged';
-  absolute?: boolean;
+const int = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? Math.floor(v) : 0);
+
+function readCounters(body: Record<string, unknown>): SectionCounters {
+  const c = { ...EMPTY_COUNTERS };
+  for (const key of Object.keys(EMPTY_COUNTERS) as (keyof SectionCounters)[]) {
+    if (key === 'quiz_passed') c.quiz_passed = typeof body.quiz_passed === 'boolean' ? body.quiz_passed : null;
+    else if (key === 'self_check') c.self_check = ['got', 'kind', 'lost'].includes(body.self_check as string) ? (body.self_check as SectionCounters['self_check']) : null;
+    else (c[key] as number) = int(body[key]);
+  }
+  return c;
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const body = (await request.json()) as Body;
-    if (!body.session_id || typeof body.section !== 'number') {
-      return NextResponse.json({ error: 'session_id and section required' }, { status: 400 });
+    const body = (await request.json()) as Record<string, unknown>;
+    const sessionId = body.session_id;
+    const section = body.section;
+    if (typeof sessionId !== 'string' || !sessionId || typeof section !== 'number' || !Number.isInteger(section) || section < 0 || section > 9) {
+      return NextResponse.json({ error: 'session_id and section (0-9) required' }, { status: 400 });
     }
-    const supabase = getSupabase();
 
-    interface StateRow {
-      repeats: number; quiz_misses: number; confusion_marks: number;
-      dwell_ms_total: number; last_state: string;
+    const c = readCounters(body);
+    // Derived on the server too, so a stale or tampered client can't store a mood that doesn't match its counters
+    const lastState = deriveMood(c);
+    const supabase = getSupabase() as any;
+
+    const { data: written, error } = await supabase.rpc('put_learner_state', {
+      p_session_id: sessionId,
+      p_section: section,
+      p_seq: int(body.seq),
+      p_visits: c.visits,
+      p_repeats: c.repeats,
+      p_simplify_requests: c.simplify_requests,
+      p_confusion_marks: c.confusion_marks,
+      p_skips: c.skips,
+      p_jumps: c.jumps,
+      p_questions: c.questions,
+      p_barge_ins: c.barge_ins,
+      p_quiz_misses: c.quiz_misses,
+      p_quiz_passed: c.quiz_passed,
+      p_self_check: c.self_check,
+      p_dwell_ms_total: c.dwell_ms_total,
+      p_last_state: lastState,
+    });
+
+    if (error) {
+      // Migration 003 not applied yet: keep writing the original columns
+      if (/put_learner_state|function|schema cache/i.test(error.message)) {
+        const { error: legacyError } = await supabase.from('learner_state').upsert({
+          session_id: sessionId,
+          section,
+          repeats: c.repeats + c.simplify_requests,
+          quiz_misses: c.quiz_misses,
+          confusion_marks: c.confusion_marks,
+          dwell_ms_total: c.dwell_ms_total,
+          last_state: lastState,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'session_id,section' });
+        if (legacyError) throw new Error(legacyError.message);
+        return NextResponse.json({ ok: true, last_state: lastState, legacy: true });
+      }
+      throw new Error(error.message);
     }
-    const { data } = await supabase
-      .from('learner_state')
-      .select('*')
-      .eq('session_id', body.session_id)
-      .eq('section', body.section)
-      .maybeSingle();
-    const existing = (data ?? null) as StateRow | null;
 
-    const delta = (v: number | undefined, current: number, isAbs: boolean) =>
-      isAbs ? (v ?? current ?? 0) : (current ?? 0) + (v ?? 0);
-
-    const row = {
-      session_id: body.session_id,
-      section: body.section,
-      repeats: delta(body.repeats, existing?.repeats ?? 0, body.repeats !== undefined && body.absolute === true),
-      quiz_misses: delta(body.quiz_misses, existing?.quiz_misses ?? 0, body.absolute === true),
-      confusion_marks: delta(body.confusion_marks, existing?.confusion_marks ?? 0, body.absolute === true),
-      dwell_ms_total: delta(body.dwell_ms_total, Number(existing?.dwell_ms_total ?? 0), false),
-      last_state: body.last_state ?? existing?.last_state ?? 'neutral',
-      updated_at: new Date().toISOString(),
-    };
-
-    const { error } = await (supabase as any)
-      .from('learner_state')
-      .upsert(row, { onConflict: 'session_id,section' });
-    if (error) throw new Error(error.message);
-
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, last_state: lastState, written: written !== false });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error('signals/state error:', message);

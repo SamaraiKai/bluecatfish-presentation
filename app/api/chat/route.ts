@@ -11,7 +11,10 @@ export const runtime = 'nodejs';
 export const maxDuration = 60;
 
 // Absolute path so the route works even if the dev server's PATH lacks homebrew.
-const OPENCLAW_BIN = '/opt/homebrew/bin/openclaw';
+const OPENCLAW_BIN = process.env.OPENCLAW_BIN || '/opt/homebrew/bin/openclaw';
+// Production (Vercel can't spawn the CLI): an HTTP bridge that wraps `openclaw agent`.
+const GATEWAY_URL = process.env.OPENCLAW_GATEWAY_URL;
+const GATEWAY_TOKEN = process.env.OPENCLAW_GATEWAY_TOKEN;
 const AGENT_ID = 'bluecatfish';
 const DEFAULT_SESSION = 'bluecatfish-web';
 
@@ -23,7 +26,34 @@ interface AgentJsonResult {
   };
 }
 
+function payloadText(json: AgentJsonResult): string {
+  const payloads = json.result?.payloads ?? [];
+  return payloads.map((p) => p.text).filter(Boolean).join('\n').trim();
+}
+
+// Same contract as the CLI, over HTTP: POST { message, agent, thinking, sessionId },
+// answer is { reply } or the `openclaw --json` shape.
+async function runViaGateway(message: string, sessionId: string): Promise<string> {
+  const url = GATEWAY_URL!.startsWith('http') ? GATEWAY_URL! : `https://${GATEWAY_URL}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(GATEWAY_TOKEN ? { Authorization: `Bearer ${GATEWAY_TOKEN}` } : {}),
+    },
+    body: JSON.stringify({ message, agent: AGENT_ID, thinking: 'off', sessionId }),
+    signal: AbortSignal.timeout(55000),
+  });
+  if (!res.ok) throw new Error(`OpenClaw gateway returned ${res.status}: ${(await res.text()).slice(0, 300)}`);
+  const json = (await res.json()) as AgentJsonResult & { reply?: string };
+  if (json.status && json.status !== 'ok') throw new Error(`agent status ${json.status}`);
+  const text = (json.reply ?? payloadText(json)).trim();
+  if (!text) throw new Error('Gateway returned no text');
+  return text;
+}
+
 async function runOpenClawAgent(message: string, sessionId: string): Promise<string> {
+  if (GATEWAY_URL) return runViaGateway(message, sessionId);
   return new Promise((resolve, reject) => {
     const args = [
       'agent',
@@ -53,8 +83,7 @@ async function runOpenClawAgent(message: string, sessionId: string): Promise<str
         if (json.status && json.status !== 'ok') {
           return reject(new Error(`agent status ${json.status}`));
         }
-        const payloads = json.result?.payloads ?? [];
-        const text = payloads.map((p) => p.text).filter(Boolean).join('\n').trim();
+        const text = payloadText(json);
         if (!text) {
           return reject(new Error('Agent returned no text payload'));
         }

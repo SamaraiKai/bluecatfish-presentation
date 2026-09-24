@@ -52,6 +52,10 @@ export function useVoiceInput(onTranscript: (text: string) => void, onListenStar
   // Latest callbacks, so the passive loop never closes over stale ones
   const onListenStartRef = useRef(onListenStart);
   onListenStartRef.current = onListenStart;
+  // Same for the transcript: a barge-in recording starts from an old render,
+  // and its callback would otherwise see the slide as it was back then
+  const onTranscriptRef = useRef(onTranscript);
+  onTranscriptRef.current = onTranscript;
 
   /* ---------------------------------------------------- recording cleanup */
   const cleanupAnalyser = () => {
@@ -157,7 +161,7 @@ export function useVoiceInput(onTranscript: (text: string) => void, onListenStar
           const text = (data.text ?? "").trim();
 
           // Whisper returns filler like "Thank you." or "." on near-silence
-          if (text.length > 2) onTranscript(text);
+          if (text.length > 2) onTranscriptRef.current(text);
           else console.warn("Discarded empty transcript:", data.error ?? "");
         } catch (e) {
           console.error("Transcription failed:", e);
@@ -169,7 +173,7 @@ export function useVoiceInput(onTranscript: (text: string) => void, onListenStar
       mr.start();
       mediaRecorderRef.current = mr;
       setStatus("listening");
-      onListenStart?.();  
+      onListenStartRef.current?.();
       await watchForSilence(stream);
     } catch (err) {
       console.error("Mic permission denied", err);
