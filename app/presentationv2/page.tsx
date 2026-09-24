@@ -65,6 +65,11 @@ const PRESENTATION = {
   }
 };
 
+// End-of-topic multiple-choice quiz. Switched off for now: each topic goes
+// from the "How did that go?" check straight to the next topic. Set to true to
+// bring the quiz (and the final score) back — nothing else was removed.
+const QUIZ_ENABLED = false;
+
 const STEP_LABELS: Record<Step['type'], string> = {
   overview: 'Overview',
   example: 'Think of It Like This',   // the prompt makes this step an analogy
@@ -809,9 +814,13 @@ function ConclusionScreen({
           sectionScores={sectionScores}
         />
       
-        <p className="text-2xl font-bold text-cyan-500 mt-8 mb-6">
-          Final Score: {totalScore} / {totalQuestions}
-        </p>
+        {QUIZ_ENABLED ? (
+          <p className="text-2xl font-bold text-cyan-500 mt-8 mb-6">
+            Final Score: {totalScore} / {totalQuestions}
+          </p>
+        ) : (
+          <div className="mt-8 mb-6" />
+        )}
       
         <div className="flex flex-col sm:flex-row gap-4 items-center">
           <button
@@ -2167,8 +2176,8 @@ export default function AIPresentation() {
   };
 
   const startSectionQuiz = () => {
-    if (sections[activeSection]?.quiz?.length === 1) setShowQuiz(true);
-    else handleQuizContinue();
+    if (QUIZ_ENABLED && sections[activeSection]?.quiz?.length === 1) setShowQuiz(true);
+    else handleQuizContinue();   // quiz off: on to the next topic
   };
 
   const firstOpenTopic = () => {
@@ -2373,8 +2382,8 @@ export default function AIPresentation() {
     signals.record(activeSection, { self_check: rating });
 
     const goToQuiz = () => {
-      if (currentSection.quiz?.length === 1) setShowQuiz(true);
-      else handleQuizContinue();
+      if (QUIZ_ENABLED && currentSection.quiz?.length === 1) setShowQuiz(true);
+      else handleQuizContinue();   // quiz off: on to the next topic
     };
 
     if (rating === 'lost') {
