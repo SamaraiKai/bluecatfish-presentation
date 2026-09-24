@@ -12,20 +12,108 @@ export type DeckCommand =
   // soft = "tell me about X": if X isn't on a slide, let the tutor answer instead
   | { kind: 'goTo'; query: string; soft: boolean };
 
-// Words a learner wraps around a command: "um, can you please skip ahead?"
-const LEAD = String.raw`^(?:(?:um+|uh+|ok(?:ay)?|so|hey|professor|marine|finley|please|can you|could you|can we|could we|let'?s|i want to|i wanna|i'd like to|just)[\s,]+)*`;
-const TAIL = String.raw`(?:[\s,]+(?:please|now|then|thanks|thank you))*[\s.!?]*$`;
+/* ============================================================================
+ * RECOGNISING COMMANDS
+ * Each command has "cues": phrases that can appear anywhere in what the
+ * learner says ("explain that simpler for me", "ugh this is so confusing").
+ * Misspellings and speech-to-text slips are corrected first ("simpelr").
+ * If, after removing the cue and filler words, the message still has real
+ * content words left, it's a question for the tutor, not a command
+ * ("why are blue catfish simpler to catch?").
+ * ========================================================================== */
 
-const cmd = (body: string) => new RegExp(`${LEAD}(?:${body})${TAIL}`, 'i');
+// Filler that can surround any command without changing its meaning
+const FILLER = new Set((
+  'um umm uh uhh er ok okay so hey hi professor marine finley please pls plz can could would will you ' +
+  'u we us let lets let\'s i im i\'m me my myself just maybe like really actually kinda sort of a an the ' +
+  'this that it its it\'s these those there here now then thanks thank bit little lot way ' +
+  'for to do does did be is are was were am it\'ll that\'s what\'s want wanna need gonna go going ' +
+  'again more much some very too so and or but on in with about at up out all one ' +
+  'explain say said tell talk put make give show try slide part page step thing stuff things ' +
+  'please sir miss teacher dude bro yeah yes no nah oh well hmm'
+).split(' '));
 
-const NEXT_TOPIC = cmd(String.raw`(?:go (?:on )?to |skip (?:ahead )?to |move (?:on )?to |jump (?:ahead )?to )?(?:the )?next (?:topic|section|chapter)|skip (?:this |the )?(?:topic|section|chapter)|new topic|change (?:the )?topic|different topic`);
-const NEXT_SLIDE = cmd(String.raw`skip(?: ahead| forward| it| this(?: slide| part)?)?|(?:go (?:on )?to |skip to |move (?:on )?to )?(?:the )?next(?: slide| part| one| page| step)?|move on|keep going|go on|continue|forward|next please`);
-const PREV_SLIDE = cmd(String.raw`go back(?: a slide| one)?|back(?: up)?|(?:go to )?(?:the )?previous(?: slide| part| one| page| step)?`);
-const REPEAT = cmd(String.raw`(?:explain|say|do) (?:that|it|this) again|again|repeat(?: that| it| this)?|one more time|say that one more time|what did you say|come again|pardon|i didn'?t (?:get|catch|hear) that`);
-const SIMPLIFY = cmd(String.raw`(?:explain (?:that|it|this) )?(?:more )?simpl(?:er|y)|make (?:it|that) simpler|easier|in (?:plain|simple|easier) (?:words|english)|dumb it down|eli5|explain (?:that|it|this) (?:more )?simply`);
+type CueKind = 'nextTopic' | 'prevSlide' | 'nextSlide' | 'repeat' | 'simplify';
+
+// Checked in this order; the first match wins. "simplify" is before "repeat"
+// so "explain that again but simpler" simplifies.
+const CUES: [CueKind, RegExp][] = [
+  ['nextTopic', /\b(?:next|new|another|different|other|following) (?:topic|section|chapter|subject|lesson)\b|\bskip (?:this |the |that )?(?:whole )?(?:topic|section|chapter|subject)\b|\bchange (?:the )?(?:topic|subject)\b|\bsomething else\b/],
+  ['prevSlide', /\bgo(?:ing)? back\b(?! to\b)|\bback ?up\b|\bprevious\b|\blast (?:slide|one|part|page|step)\b|\brewind\b|\bone back\b|\bslide before\b/],
+  ['simplify', /\bsimpl\w*|\beas(?:y|ier|iest)\b|\bplain(?:er)?\b|\bless (?:confusing|complicated|hard|difficult|technical|fancy)\b|\bconfus\w*|\bcomplicated\b|\bdon'?t (?:understand|get it|get that|get this|follow)\b|\bdo not (?:understand|get)\b|\bdidn'?t (?:understand|follow)\b|\b(?:too|so|really|very) (?:hard|difficult|complicated|confusing|fast|much)\b|\bi'?m lost\b|\blost me\b|\bdumb (?:it|that) down\b|\beli5\b|\blike i'?m (?:5|five|a kid|a baby|little)\b|\bbreak (?:it|that|this) down\b|\bbasic(?:ally)?\b|\bkid words\b|\bnormal words\b|\bwhat does (?:that|this|it) (?:even )?mean\b|\bhuh+\b/],
+  ['repeat', /\bagain\b|\brepeat\w*|\breplay\b|\bone more time\b|\bwhat did you (?:just )?say\b|\bdidn'?t (?:hear|catch|get) (?:that|it|you)\b|\bmissed (?:that|it)\b|\bcome again\b|\bpardon\b|\bsay (?:that|it) over\b|\bstart (?:the |this )?(?:slide )?over\b/],
+  ['nextSlide', /\bskip\w*|\bnext\b|\bmove (?:on|along|ahead|forward)\b|\bkeep going\b|\bgo on\b|\bgo ahead\b|\bcarry on\b|\bcontinue\b|\bforward\b|\bahead\b|\bhurry\b|\bfaster\b|\bboring\b|\bbored\b|\balready know\b|\bi know (?:this|that|it)\b|\bget on with\b/],
+];
+
+// Every word the cues are built from — used to fix misspellings before matching
+const VOCAB = [
+  'simpler', 'simple', 'simply', 'simplify', 'easier', 'easy', 'plain', 'confusing', 'confused',
+  'complicated', 'understand', 'difficult', 'explain', 'again', 'repeat', 'replay', 'previous',
+  'rewind', 'skip', 'next', 'continue', 'forward', 'ahead', 'topic', 'section', 'chapter',
+  'subject', 'different', 'another', 'boring', 'already', 'basically', 'pardon', 'missed',
+];
+
+// Damerau-Levenshtein distance (a swap of two letters counts as one edit)
+function editDistance(a: string, b: string): number {
+  const d: number[][] = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
+  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + cost);
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
+    }
+  }
+  return d[a.length][b.length];
+}
+
+// Text-speak and short forms too short for typo matching
+const ALIASES: Record<string, string> = {
+  nxt: 'next', nex: 'next', agn: 'again', rpt: 'repeat', ez: 'easy', ezy: 'easy', ezier: 'easier',
+  prev: 'previous', abt: 'about', smpl: 'simple', u: 'you', r: 'are', pls: 'please', plz: 'please',
+};
+
+function fixTypo(word: string): string {
+  if (ALIASES[word]) return ALIASES[word];
+  if (word.length < 4 || VOCAB.includes(word)) return word;
+  const allowed = word.length >= 7 ? 2 : 1;
+  let best = word;
+  let bestDist = allowed + 1;
+  for (const v of VOCAB) {
+    if (Math.abs(v.length - word.length) > allowed) continue;
+    const dist = editDistance(word, v);
+    if (dist < bestDist) { best = v; bestDist = dist; }
+  }
+  return best;
+}
+
+function normalize(raw: string): string {
+  return raw
+    .toLowerCase()
+    .replace(/[’‘]/g, "'")
+    .replace(/[^a-z0-9'?\s]/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(fixTypo)
+    .join(' ');
+}
+
+// Words left once cues and filler are removed. More than a couple means the
+// learner is asking about something specific, which the tutor should answer.
+function contentWords(text: string, cue: RegExp): string[] {
+  const global = new RegExp(cue.source, 'g');
+  return text
+    .replace(global, ' ')
+    .replace(/\?/g, ' ')
+    .split(/\s+/)
+    .filter((w) => w && !FILLER.has(w) && !/^\d+$/.test(w));
+}
+
 const GO_TO = new RegExp(
-  `${LEAD}(go to|goto|take me to|bring me to|jump to|skip to|show me|go back to|return to|find|where(?:'s| is)|let'?s (?:talk|learn) about|tell me about|teach me about)\\s+(?:the\\s+)?(?:(?:part|slide|section|topic|bit|page)s?\\s+(?:about|on|with|where|that|for)\\s+)?(.+?)${TAIL}`,
-  'i',
+  String.raw`^(?:(?:um+|uh+|ok(?:ay)?|so|hey|professor|please|can you|could you|can we|could we|let'?s|i want to|i wanna|i'?d like to|just)\s+)*` +
+  String.raw`(go to|goto|go back to|take me to|bring me to|jump to|skip to|show me|return to|find|where'?s|where is|let'?s (?:talk|learn) about|tell me about|teach me about|what about)\s+` +
+  String.raw`(?:the\s+)?(?:(?:part|slide|section|topic|bit|page)s?\s+(?:about|on|with|where|that|for)\s+)?(.+?)` +
+  String.raw`(?:\s+(?:please|now|then|thanks|thank you))*\s*\??$`,
 );
 
 // Short acknowledgements, pre-recorded by /api/slidesv2/audio under these keys
@@ -45,26 +133,31 @@ export const COMMAND_ACK_TEXT = {
 
 export type AckKey = keyof typeof COMMAND_ACK_TEXT;
 
-/** Returns a command when the whole utterance is a command, otherwise null. */
+/** Returns a command when the message is a deck command, otherwise null (it goes to the tutor). */
 export function parseDeckCommand(raw: string): DeckCommand | null {
-  const text = raw.trim().replace(/\s+/g, ' ');
-  if (!text || text.length > 120) return null;
+  const text = normalize(raw);
+  if (!text || text.split(' ').length > 16) return null;
 
-  // Order matters: "next topic" before "next", "go back" before "go to".
-  if (NEXT_TOPIC.test(text)) return { kind: 'nextTopic' };
-  if (PREV_SLIDE.test(text)) return { kind: 'prevSlide' };
-  if (NEXT_SLIDE.test(text)) return { kind: 'nextSlide' };
-  if (REPEAT.test(text)) return { kind: 'repeat' };
-  if (SIMPLIFY.test(text)) return { kind: 'simplify' };
-
+  // "go to <part>" first, unless the part is itself a slide/topic move ("go to the next topic")
   const m = text.match(GO_TO);
   if (m) {
-    const verb = m[1].toLowerCase();
-    const query = m[2].trim();
-    // a long "tell me about ..." is a question for the tutor, not a jump
-    if (query && query.split(' ').length <= 8) {
+    const verb = m[1];
+    const query = m[2].replace(/\?/g, '').trim();
+    const isMove =
+      /^(?:next|previous|last) (?:slide|part|one|page|step)$/.test(query) ||
+      /^(?:next|new|another|different) (?:topic|section|chapter)$/.test(query);   // "last topic" is a real place
+    if (query && !isMove && query.split(' ').length <= 8) {
       return { kind: 'goTo', query, soft: /about$/.test(verb) };
     }
+  }
+
+  // A bare "what?" means "huh, I didn't get that"
+  if (/^what\??$/.test(text)) return { kind: 'simplify' };
+
+  for (const [kind, cue] of CUES) {
+    if (!cue.test(text)) continue;
+    if (contentWords(text, cue).length > 2) return null;   // a real question, e.g. "why is it easier for them to spread?"
+    return { kind };
   }
   return null;
 }
