@@ -1571,7 +1571,14 @@ export default function AIPresentation() {
 
   const { enqueue, stopSpeaking, isSpeaking: isChatSpeaking, beginStream, endStream } = useSpeechQueue();
   
-  const { messages, isLoading, input, setInput, sendMessage } = useAIChat(currentSection, missedQuestions, enqueue, beginStream, endStream, onDecision);
+  const { messages, isLoading, input, setInput, sendMessage } = useAIChat(
+    currentSection, missedQuestions, enqueue, beginStream, endStream,
+    (action) => {
+      pendingDecisionRef.current = action;
+      signals.track(`${action}_request` as any, { section: activeSection, step: microStep });
+      if (action === 'repeat') signals.upsertState(activeSection, { repeats: 1, last_state: 'confused' });
+      if (action === 'simplify') signals.upsertState(activeSection, { confusion_marks: 1, last_state: 'confused' });
+    }
 
   const presentationStarted = !!selectedTemplate && !showConclusion;
   
