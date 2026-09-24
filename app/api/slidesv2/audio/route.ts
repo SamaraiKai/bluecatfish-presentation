@@ -47,7 +47,8 @@ const WRAP_UP_TEXT = "How did that section go?";
 
 const FAIL_TEXT = "It seems you didn't answer everything correctly. Let's head to review to cement what you know.";
 
-const QUIZ_SUCCESS_TEXT = "Nice work. Pick another topic whenever you're ready.";
+// const QUIZ_SUCCESS_TEXT = "Nice work. Pick another topic whenever you're ready.";   // (topic picker is off)
+const QUIZ_SUCCESS_TEXT = "Nice work! On to the next one.";
 
 const REVIEW_INTRO_ONE_TEXT = "That one wasn't quite right. Let's review it.";
 const REVIEW_INTRO_SOME_TEXT = "Let's go back over the ones you missed.";
@@ -190,7 +191,8 @@ function buildSharedJobs(): AudioJob[] {
   jobs.push({ key: "conclusion_intro", text: CONCLUSION_INTRO_TEXT, fileName: `${FOLDER}/conclusion-intro.mp3` });
   jobs.push({ key: "conclusion_outro", text: CONCLUSION_OUTRO_TEXT, fileName: `${FOLDER}/conclusion-outro.mp3` });
   
-  jobs.push({ key: "quizSuccess", text: QUIZ_SUCCESS_TEXT, fileName: `${FOLDER}/quiz-success.mp3` });
+  // new file names: the wording changed when topics started running in order
+  jobs.push({ key: "quizSuccess", text: QUIZ_SUCCESS_TEXT, fileName: `${FOLDER}/quiz-success-inorder.mp3` });
   
   IMBETWEEN_PHRASES.forEach((text, t) =>
     jobs.push({ key: `imbetween${t}`, text, fileName: `${FOLDER}/imbetween-${t}.mp3` })
@@ -265,7 +267,7 @@ function buildFramingJobs(
     jobs.push({
       key: "intro",
       text: intro,
-      fileName: `${FOLDER}/intro-${firstTopicSlug}.mp3`,
+      fileName: `${FOLDER}/intro-inorder-${firstTopicSlug}.mp3`,
     });
   }
   return jobs;
