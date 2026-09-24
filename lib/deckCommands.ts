@@ -30,7 +30,10 @@ const FILLER = new Set((
   'for to do does did be is are was were am it\'ll that\'s what\'s want wanna need gonna go going ' +
   'again more much some very too so and or but on in with about at up out all one ' +
   'explain say said tell talk put make give show try slide part page step thing stuff things ' +
-  'please sir miss teacher dude bro yeah yes no nah oh well hmm'
+  'please sir miss teacher dude bro yeah yes no nah oh well hmm ' +
+  // feelings wrapped around a command: "skip the slide, I don't care anymore"
+  'don\'t dont care anymore any whatever honestly seriously literally ugh man bruh omg lol ' +
+  'already bored tired sick done enough over'
 ).split(' '));
 
 type CueKind = 'nextTopic' | 'prevSlide' | 'nextSlide' | 'repeat' | 'simplify';
@@ -42,7 +45,7 @@ const CUES: [CueKind, RegExp][] = [
   ['prevSlide', /\bgo(?:ing)? back\b(?! to\b)|\bback ?up\b|\bprevious\b|\blast (?:slide|one|part|page|step)\b|\brewind\b|\bone back\b|\bslide before\b/],
   ['simplify', /\bsimpl\w*|\beas(?:y|ier|iest)\b|\bplain(?:er)?\b|\bless (?:confusing|complicated|hard|difficult|technical|fancy)\b|\bconfus\w*|\bcomplicated\b|\bdon'?t (?:understand|get it|get that|get this|follow)\b|\bdo not (?:understand|get)\b|\bdidn'?t (?:understand|follow)\b|\b(?:too|so|really|very) (?:hard|difficult|complicated|confusing|fast|much)\b|\bi'?m lost\b|\blost me\b|\bdumb (?:it|that) down\b|\beli5\b|\blike i'?m (?:5|five|a kid|a baby|little)\b|\bbreak (?:it|that|this) down\b|\bbasic(?:ally)?\b|\bkid words\b|\bnormal words\b|\bwhat does (?:that|this|it) (?:even )?mean\b|\bhuh+\b/],
   ['repeat', /\bagain\b|\brepeat\w*|\breplay\b|\bone more time\b|\bwhat did you (?:just )?say\b|\bdidn'?t (?:hear|catch|get) (?:that|it|you)\b|\bmissed (?:that|it)\b|\bcome again\b|\bpardon\b|\bsay (?:that|it) over\b|\bstart (?:the |this )?(?:slide )?over\b/],
-  ['nextSlide', /\bskip\w*|\bnext\b|\bmove (?:on|along|ahead|forward)\b|\bkeep going\b|\bgo on\b|\bgo ahead\b|\bcarry on\b|\bcontinue\b|\bforward\b|\bahead\b|\bhurry\b|\bfaster\b|\bboring\b|\bbored\b|\balready know\b|\bi know (?:this|that|it)\b|\bget on with\b/],
+  ['nextSlide', /\bskip\w*|\bnext\b|\bmove (?:on|along|ahead|forward)\b|\bkeep going\b|\bgo on\b|\bgo ahead\b|\bcarry on\b|\bcontinue\b|\bforward\b|\bahead\b|\bhurry\b|\bfaster\b|\bboring\b|\bbored\b|\balready know\b|\bi know (?:this|that|it)\b|\bget on with\b|\b(?:don'?t|do not) care\b|\bwho cares\b|\bnot interested\b|\bidc\b|\bwhatever\b|\b(?:i'?m )?(?:so )?(?:done|over it|tired of this|sick of this)\b/],
 ];
 
 // Every word the cues are built from — used to fix misspellings before matching
