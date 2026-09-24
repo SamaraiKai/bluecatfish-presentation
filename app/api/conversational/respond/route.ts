@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { classifyIntent } from '@/lib/tutorIntent';
 
 const supabase = createClient(
   process.env.SUPABASE_URL!,
@@ -59,6 +60,9 @@ export async function POST(request: NextRequest) {
       `Use the Socratic method. Speak in 2-3 natural sentences only — no formatting, no bullets, pure spoken language. ` +
       `If student goes off-topic, redirect warmly: "Let's come back to ${topic || 'our topic'} — right where we left off..."` +
       `Style: ${style || 'warm, authoritative, and genuinely enthusiastic about the subject'}.`;
+
+    // Deterministic intent → deck-control decision (read by the client from X-Tutor-Decision)
+    const intent = classifyIntent(userText);
 
     const intentLine = intent.action !== 'none'
       ? `\nThe student's message signals: ${intent.action}. Acknowledge their state first (e.g. "No problem, let's look at that again" / "Let me put that more simply" / "Of course, moving ahead"), then respond.`
@@ -126,9 +130,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const decisionAction = response.headers.get('X-Tutor-Decision');
-    if (decisionAction && decisionAction !== 'none' && onDecision) onDecision(decisionAction);
-    
     // Non-streaming path — unchanged, so existing callers keep working
     if (!stream) {
       const data = await response.json();
@@ -138,7 +139,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'OpenAI returned an empty reply.' }, { status: 500 });
       }
 
-    return NextResponse.json({ reply, decision }, { headers: { 'X-Tutor-Decision': intent.action } });
+    return NextResponse.json({ reply, decision: { action: intent.action } }, { headers: { 'X-Tutor-Decision': intent.action } });
   }
 
   // Streaming path — unwrap OpenAI's SSE format into plain text chunks
@@ -192,6 +193,7 @@ export async function POST(request: NextRequest) {
       headers: {
         'Content-Type': 'text/plain; charset=utf-8',
         'Cache-Control': 'no-cache',
+        'X-Tutor-Decision': intent.action,
       },
     });
   } catch (error) {

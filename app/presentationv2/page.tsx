@@ -38,7 +38,6 @@ type Step =
   | { type: 'example'; text: string }
   | { type: 'imageFocus'; text: string }
   | { type: 'numberSpotlight'; value: string; label: string; context: string }
-  | { type: ''; question: string; answer: string  }
   | { type: 'checkYourself'; statement: string; isTrue: boolean; feedback: string }
   | { type: 'predictThen'; question: string; options: string[]; correctIndex: number; answer: string };
 
@@ -189,7 +188,8 @@ const useAIChat = (currentSection: SectionWithBreakdown | undefined,
                    missedQuestions: { question: string; options: string[]; correctAnswer: number; explanation: string }[], 
                    onSentence?: (sentence: string) => void,
                    beginStream?: () => void,
-                   endStream?: () => void
+                   endStream?: () => void,
+                   onDecision?: (action: string) => void
                   ) => {
   const [messages, setMessages] = useState<Message[]>([
     { role: 'ai', text: `Good day! I'm ${PRESENTATION.professor.name}, and I'll be your guide through today's lecture on the Blue Catfish invasion in the Chesapeake Bay. Feel free to ask me any questions as we go through the material. What would you like to explore first?` }
@@ -212,7 +212,7 @@ const useAIChat = (currentSection: SectionWithBreakdown | undefined,
 
     // Placeholder bubble that fills in as tokens arrive
     setMessages((prev) => {
-      const next = [...prev, userMessage, { role: 'ai', text: '' }]
+      const next: Message[] = [...prev, userMessage, { role: 'ai', text: '' }];
       return next;
     });
     
@@ -228,7 +228,7 @@ const useAIChat = (currentSection: SectionWithBreakdown | undefined,
           userText: text,
           topic: 'Blue Catfish invasion in the Chesapeake Bay',
           stream: true,
-          systemPrompt: `You are "${PRESENTATION.professor.name}", a university professor specializing in Marine Biology and Conservation. The student is currently viewing a slide titled "${currentSection?.title}" which covers: ${currentSection?.steps?.[0]?.text ?? ''}${missedContext} Answer questions with awareness of what they're currently looking at, and relate your answers back to this section when relevant, like a professor referencing the current lecture slide.`,
+          systemPrompt: `You are "${PRESENTATION.professor.name}", a university professor specializing in Marine Biology and Conservation. The student is currently viewing a slide titled "${currentSection?.title}" which covers: ${(currentSection?.steps?.[0] as { text?: string } | undefined)?.text ?? ''}${missedContext} Answer questions with awareness of what they're currently looking at, and relate your answers back to this section when relevant, like a professor referencing the current lecture slide.`,
           conversation: history
         }),
       });
@@ -236,6 +236,10 @@ const useAIChat = (currentSection: SectionWithBreakdown | undefined,
       if (!response.ok || !response.body) {
         throw new Error(`Chat request failed (${response.status})`);
       }
+
+      // Tutor decision rides the response header — available before the body streams
+      const decisionAction = response.headers.get('X-Tutor-Decision');
+      if (decisionAction && decisionAction !== 'none' && onDecision) onDecision(decisionAction);
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
@@ -414,6 +418,54 @@ function SelfCheckSlide({ onPick }: { onPick: (r: 'got' | 'kind' | 'lost') => vo
       </div>
     </div>
   );
+}
+
+/* ============================================================================
+ * VARIANT SLIDE OVERLAY — reviewed alternate explanation (knowledge base)
+ * Shown when the learner signals difficulty; narrated, then returns to the lesson.
+ * ========================================================================== */
+type VariantSlide = { title: string; body: string; narration: string; audio_url: string | null; variant?: string };
+
+function VariantSlideOverlay({
+  variant,
+  onDone,
+}: {
+  variant: VariantSlide | null;
+  onDone: () => void;
+}) {
+  if (!variant) return null;
+  return (
+    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-6">
+      <div className="max-w-2xl w-full bg-gradient-to-br from-blue-900 to-slate-900 rounded-3xl border border-cyan-500/40 shadow-2xl p-10">
+        <div className="text-cyan-400 text-xs font-bold tracking-widest uppercase mb-3">
+          Professor Marine · a different way to see it
+        </div>
+        <h2 className="text-3xl font-bold text-white mb-5">{variant.title}</h2>
+        <p className="text-xl leading-relaxed text-blue-100 mb-8">{variant.body}</p>
+        <button
+          onClick={onDone}
+          className="px-6 py-3 bg-cyan-500 hover:bg-cyan-400 text-slate-900 rounded-xl font-semibold transition-colors"
+        >
+          Got it — back to the lesson →
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// Turns text into a playable clip — for variants that have no pre-rendered audio
+async function ttsUrl(text: string): Promise<string | null> {
+  try {
+    const res = await fetch('/api/tts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    });
+    if (!res.ok) return null;
+    return URL.createObjectURL(await res.blob());
+  } catch {
+    return null;
+  }
 }
 
 function RemediationSlide({
@@ -1236,7 +1288,7 @@ function ClassicLayout(props: {
             activeSection={props.activeSection}
             totalSections={props.totalSections}
             animationUrl={props.animationUrl}
-            showImage={props.showImage}las
+            showImage={props.showImage}
           />
         </div>
         <div
@@ -1297,6 +1349,8 @@ function SplitLayout(props: {
   devMode: boolean;
   animationUrl?: string;
   hideVisual: boolean;
+  isImageFocus: boolean;
+  showImage: boolean;
 }) {
   return (
     <div className="bg-white/5 backdrop-blur-md rounded-3xl border border-white-500/30 shadow-2xl overflow-hidden">
@@ -1332,6 +1386,7 @@ function SplitLayout(props: {
             activeSection={props.activeSection}
             totalSections={props.totalSections}
             animationUrl={props.animationUrl}
+            showImage={props.showImage}
           />
         </div>
       </div>
@@ -1348,7 +1403,7 @@ function QuizSlide({
   onReview,
   onSubmitResult,
 }: {
-  quiz: { question: string; options: string[]; correctAnswer: number }[];
+  quiz: { question: string; options: string[]; correctAnswer: number; explanation: string }[];
   onContinue: () => void;
   onReview: () => void;
   onSubmitResult: ( passed: boolean, missed: { index: number; question: string; options: string[]; correctAnswer: number; userAnswer: number | null; explanation: string }[]) => void;
@@ -1552,6 +1607,8 @@ export default function AIPresentation() {
   const [showHub, setShowHub] = useState(false);
   const [showSelfCheck, setShowSelfCheck] = useState(false);
   const [showRemediation, setShowRemediation] = useState(false);
+  const [voiceInterruptionsEnabled, setVoiceInterruptionsEnabled] = useState(false);
+  const [variantSlide, setVariantSlide] = useState<VariantSlide | null>(null);
   
   // Refs
   const keyTermsTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -1560,6 +1617,8 @@ export default function AIPresentation() {
   const firstRunRef = useRef(true);
   const resumeTimerRef = useRef<NodeJS.Timeout | null>(null);
   const interruptedRef = useRef<{ section: number; step: number } | null>(null);
+  const pendingDecisionRef = useRef<string | null>(null);        // tutor decision waiting for chat to finish
+  const variantAfterRef = useRef<(() => void) | null>(null);     // what runs when the variant overlay closes
   const [notice, setNotice] = useState<string | null>(null);
   const noticeTimerRef = useRef<NodeJS.Timeout | null>(null);
   const prevPresentRef = useRef(true);
@@ -1579,8 +1638,8 @@ export default function AIPresentation() {
       if (action === 'repeat') signals.upsertState(activeSection, { repeats: 1, last_state: 'confused' });
       if (action === 'simplify') signals.upsertState(activeSection, { confusion_marks: 1, last_state: 'confused' });
     }
+  );
 
-  const presentationStarted = !!selectedTemplate && !showConclusion;
   
  const micReadyRef = useRef(false);
 
@@ -1859,7 +1918,7 @@ export default function AIPresentation() {
     setSelectedTemplate(template);
     setActiveSection(0);
     setShowConclusion(false);
-    playIntroduction(template);
+    playIntroduction();
   };
 
   const handleQuizContinue = () => {
@@ -1885,21 +1944,46 @@ export default function AIPresentation() {
     sendMessage(text);
   };
 
+  // Reviewed variant first (knowledge base); generated remediation as the fallback.
+  // `after` is what happens once the learner is done with it.
+  const showVariantOrRemediation = async (after: () => void) => {
+    const idx = activeSection;
+    try {
+      const r = await fetch(`/api/tutor/variant?section=${idx}&state=confused`);
+      const data = await r.json();
+      if (data.ok && data.variant) {
+        signals.track('tutor_decision', { section: idx, value: { action: 'variant', variant: data.variant.variant } });
+        variantAfterRef.current = after;
+        setVariantSlide(data.variant);
+        const url = data.variant.audio_url ?? await ttsUrl(data.variant.narration);
+        if (url) play(url, `variant_${idx}`, data.variant.narration);
+        return;
+      }
+    } catch { /* fall through to remediation */ }
+
+    const rem = sections[idx]?.remediation;
+    if (rem) {
+      signals.track('tutor_decision', { section: idx, value: { action: 'remediation' } });
+      setShowRemediation(true);
+      const key = `section${idx}_remediation`;
+      play(audioUrls[key], key, rem, () => { setShowRemediation(false); after(); });
+      return;
+    }
+    after();
+  };
+
   const handleSelfCheck = (rating: 'got' | 'kind' | 'lost') => {
     setShowSelfCheck(false);
-  
+    signals.track('self_check', { section: activeSection, value: { rating } });
+
     const goToQuiz = () => {
       if (currentSection.quiz?.length === 1) setShowQuiz(true);
       else handleQuizContinue();
     };
-  
-    if (rating === 'lost' && currentSection.remediation) {
-      setShowRemediation(true);
-      const key = `section${activeSection}_remediation`;
-      play(audioUrls[key], key, currentSection.remediation, () => {
-        setShowRemediation(false);
-        goToQuiz();
-      });
+
+    if (rating === 'lost') {
+      signals.upsertState(activeSection, { confusion_marks: 1, last_state: 'confused' });
+      showVariantOrRemediation(goToQuiz);
     } else {
       stop();
       goToQuiz();
@@ -2276,16 +2360,6 @@ export default function AIPresentation() {
                 </button>
               </div>
   
-              {started && !inIntro && !showHub && !showQuiz && !showReview &&
-               !showSelfCheck && !showRemediation && !showConclusion && (
-                <PromptChips
-                  onChip={(text, kind) => {
-                    if (kind === 'simplify') signals.track('confusion_click', { section: activeSection, step: microStep });
-                    handleSendMessage(text);
-                  }}
-                  disabled={isLoading || isChatSpeaking}
-                />
-              )}
               
               <button
                 onClick={() => setShowChat(!showChat)}
@@ -2308,6 +2382,7 @@ export default function AIPresentation() {
                 }`}
               >
                 🎙 Interrupt {voiceInterruptionsEnabled ? 'on' : 'off'}
+              </button>
             </div>
           )}
           <button
@@ -2438,6 +2513,7 @@ export default function AIPresentation() {
               isImageFocus={isImageFocus}
               animationUrl={currentAnimation}
               hideVisual={!hasVisual}
+              showImage={currentStepType === 'imageFocus'}
             />
           )}
           
@@ -2501,6 +2577,20 @@ export default function AIPresentation() {
         </div>
       )}
       </main>
+
+      {/* Prompt Chips — quick repeat / simplify / skip buttons.
+          Top level on purpose: the header's backdrop-blur would trap a fixed element,
+          and inside the devMode block kids would never see them. */}
+      {started && !inIntro && !showHub && !showQuiz && !showReview &&
+       !showSelfCheck && !showRemediation && !showConclusion && (
+        <PromptChips
+          onChip={(text, kind) => {
+            if (kind === 'simplify') signals.track('confusion_click', { section: activeSection, step: microStep });
+            handleSendMessage(text);
+          }}
+          disabled={isLoading || isChatSpeaking}
+        />
+      )}
 
       {/* AI Chat Panel */}
       {showChat && (
