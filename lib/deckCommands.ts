@@ -130,10 +130,11 @@ export function buildSlideDocs(sections: SearchableSection[]): SlideDoc[] {
   sections.forEach((sec, i) => {
     sec.steps.forEach((step, s) => {
       const parts: string[] = [];
-      for (const key of ['text', 'context', 'value', 'label', 'question', 'answer', 'statement', 'feedback']) {
+      for (const key of ['text', 'narration', 'context', 'value', 'label', 'question', 'answer', 'statement', 'feedback']) {
         const v = step[key];
         if (typeof v === 'string') parts.push(v);
       }
+      if (Array.isArray(step.bullets)) parts.push(...(step.bullets as unknown[]).filter((b): b is string => typeof b === 'string'));
       if (Array.isArray(step.options)) parts.push(...(step.options as unknown[]).filter((o): o is string => typeof o === 'string'));
       if (Array.isArray(step.stats)) {
         for (const st of step.stats as { value?: string; label?: string }[]) parts.push(`${st.value ?? ''} ${st.label ?? ''}`);

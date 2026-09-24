@@ -1,10 +1,11 @@
 import { NextRequest } from 'next/server';
+import { TTS_VOICE, VOICE_INSTRUCTIONS } from '@/lib/voice';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const text = (body.text as string)?.trim();
-    const voice = (body.voice as string) || 'alloy';
+    const voice = (body.voice as string) || TTS_VOICE;
 
     if (!text) {
       return new Response(JSON.stringify({ error: 'Missing text' }), {
@@ -31,6 +32,7 @@ export async function POST(request: NextRequest) {
         model: 'gpt-4o-mini-tts',
         input: text,
         voice,
+        instructions: VOICE_INSTRUCTIONS,
         response_format: 'mp3',
       }),
     });

@@ -39,11 +39,13 @@ type MicroStep = {
   audioKey: string | null;
 };
 
+// On screen: short "bullets" (or "context" for a number). Spoken: "narration".
+// "text" is the older single field, kept so a cached lesson still plays.
 type Step =
-  | { type: 'overview'; text: string; stats?: { value: string; label: string }[] }
-  | { type: 'example'; text: string }
-  | { type: 'imageFocus'; text: string }
-  | { type: 'numberSpotlight'; value: string; label: string; context: string }
+  | { type: 'overview'; bullets?: string[]; narration?: string; text?: string; stats?: { value: string; label: string }[] }
+  | { type: 'example'; bullets?: string[]; narration?: string; text?: string }
+  | { type: 'imageFocus'; text: string; narration?: string }
+  | { type: 'numberSpotlight'; value: string; label: string; context: string; narration?: string }
   | { type: 'checkYourself'; statement: string; isTrue: boolean; feedback: string }
   | { type: 'predictThen'; question: string; options: string[]; correctIndex: number; answer: string };
 
@@ -81,12 +83,13 @@ function getMicroSteps(section: SectionWithBreakdown, sectionIndex: number): Mic
   }));
 }
 
+// What the professor says for a step (not what the slide shows)
 function getMicroStepText(section: SectionWithBreakdown, stepIndex: number): string {
     const step = section.steps[stepIndex];
-    if (step.type === 'numberSpotlight') return step.context;
+    if (step.type === 'numberSpotlight') return step.narration ?? step.context;
     if (step.type === 'predictThen') return '';
     if (step.type === 'checkYourself') return '';
-    return step.text;
+    return step.narration ?? step.text ?? '';
   }
 
 /* ============================================================================
@@ -235,7 +238,7 @@ const useAIChat = (currentSection: SectionWithBreakdown | undefined,
           userText: text,
           topic: 'Blue Catfish invasion in the Chesapeake Bay',
           stream: true,
-          systemPrompt: `You are "${PRESENTATION.professor.name}", a university professor specializing in Marine Biology and Conservation. The student is currently viewing a slide titled "${currentSection?.title}" which covers: ${(currentSection?.steps?.[0] as { text?: string } | undefined)?.text ?? ''}${missedContext}${learnerBrief?.() ?? ''} Answer questions with awareness of what they're currently looking at, and relate your answers back to this section when relevant, like a professor referencing the current lecture slide.`,
+          systemPrompt: `You are "${PRESENTATION.professor.name}", a university professor specializing in Marine Biology and Conservation. The student is currently viewing a slide titled "${currentSection?.title}" which covers: ${(() => { const s = currentSection?.steps?.[0] as { narration?: string; text?: string } | undefined; return s?.narration ?? s?.text ?? ''; })()}${missedContext}${learnerBrief?.() ?? ''} Answer questions with awareness of what they're currently looking at, and relate your answers back to this section when relevant, like a professor referencing the current lecture slide. Talk in the same voice as the slides: funny, a bit goofy, lightly sarcastic about the fish and the problem (never about the student), with the facts kept exactly right.`,
           conversation: history
         }),
       });
@@ -344,6 +347,65 @@ function HighlightedText({
         </span>
       ))}
     </p>
+  );
+}
+
+/**
+ * Key points that appear one at a time as the narration reaches them, so the
+ * slide shows the gist while the professor explains around it (instead of the
+ * slide being the script). Once the narration is over, or if there's no audio,
+ * every bullet shows.
+ */
+function BulletReveal({
+  bullets,
+  isActive,   // this step's narration is the clip playing now
+  hasAudio,
+  currentTime,
+  duration,
+  className,
+}: {
+  bullets: string[];
+  isActive: boolean;
+  hasAudio: boolean;
+  currentTime: number;
+  duration: number;
+  className?: string;
+}) {
+  const n = bullets.length;
+  const [revealed, setRevealed] = useState(hasAudio ? 1 : n);
+  const wasActive = useRef(false);
+
+  useEffect(() => {
+    if (!hasAudio) { setRevealed(n); return; }
+    if (isActive) {
+      wasActive.current = true;
+      if (duration > 0) {
+        // start each bullet a little before its share of the narration
+        const due = Math.min(n, Math.floor((currentTime / duration) * n + 0.35) + 1);
+        setRevealed((r) => Math.max(r, due));
+      }
+    } else if (wasActive.current) {
+      setRevealed(n);   // narration finished (or moved on to the fun facts)
+    }
+  }, [isActive, hasAudio, currentTime, duration, n]);
+
+  return (
+    <ul className={`space-y-3 ${className ?? ''}`}>
+      {bullets.slice(0, revealed).map((b, i) => {
+        const current = isActive && i === revealed - 1;
+        return (
+          <li
+            key={i}
+            className={`flex gap-3 items-start animate-[fadeInUp_0.45s_ease-out] transition-colors ${
+              current ? 'text-blue-900' : ''
+            }`}
+          >
+            <span className={`mt-2.5 h-2.5 w-2.5 shrink-0 rounded-full ${current ? 'bg-cyan-500' : 'bg-blue-700/70'}`} />
+            <span className={current ? 'font-semibold' : undefined}>{b}</span>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 
@@ -1049,14 +1111,19 @@ function MiniSlideshowBlock({
                 <AnimatedStatValue value={step.value} start={scaled}/>
               </div>
               <div className="text-lg font-semibold text-blue-900 mb-4">{step.label}</div>
-              <HighlightedText
-                text={step.context}
-                currentTime={currentTime}
-                duration={duration}
-                isSpeaking={isSpeaking}
-                isActive={currentKey === baseKey}
-                className="text-lg text-black leading-relaxed max-w-xl mx-auto"
-              />
+              {step.narration ? (
+                // on-screen reaction line; the narration explains the number out loud
+                <p className="text-xl text-black leading-relaxed max-w-xl mx-auto italic">{step.context}</p>
+              ) : (
+                <HighlightedText
+                  text={step.context}
+                  currentTime={currentTime}
+                  duration={duration}
+                  isSpeaking={isSpeaking}
+                  isActive={currentKey === baseKey}
+                  className="text-lg text-black leading-relaxed max-w-xl mx-auto"
+                />
+              )}
             </div>
           );
         }
@@ -1150,14 +1217,26 @@ function MiniSlideshowBlock({
     
         return (
             <div className={isExample ? 'bg-amber-900/40 rounded-xl p-5 border border-amber-500/40' : undefined}>
-              <HighlightedText
-                text={step.text}
-                currentTime={currentTime}
-                duration={duration}
-                isSpeaking={isSpeaking}
-                isActive={currentKey === baseKey}
-                className={`text-xl leading-relaxed mb-4 ${isExample ? 'text-amber-100' : 'text-black'}`}
-              />
+              {step.bullets?.length ? (
+                <BulletReveal
+                  key={baseKey}
+                  bullets={step.bullets}
+                  isActive={currentKey === baseKey}
+                  hasAudio={!!audioUrls[baseKey]}
+                  currentTime={currentTime}
+                  duration={duration}
+                  className={`text-2xl leading-snug mb-5 ${isExample ? 'text-amber-100' : 'text-black'}`}
+                />
+              ) : (
+                <HighlightedText
+                  text={step.text ?? ''}
+                  currentTime={currentTime}
+                  duration={duration}
+                  isSpeaking={isSpeaking}
+                  isActive={currentKey === baseKey}
+                  className={`text-xl leading-relaxed mb-4 ${isExample ? 'text-amber-100' : 'text-black'}`}
+                />
+              )}
               {step.type === 'overview' && step.stats?.length? (
                 <div className={`grid gap-4 ${step.stats.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
               {step.stats.map((stat, idx) => {
@@ -1726,7 +1805,7 @@ export default function AIPresentation() {
             return; }
           play(audioUrls[factKeys[idx]], factKeys[idx], '', chain(idx + 1));
         };
-        play(audioUrls[baseKey], baseKey, step.text, chain(0));
+        play(audioUrls[baseKey], baseKey, getMicroStepText(section, stepIndex), chain(0));
         return;
       }
 
@@ -1747,15 +1826,15 @@ export default function AIPresentation() {
       if (step.type === 'numberSpotlight') {
         const valueKey = `${baseKey}_value`;
         play(audioUrls[valueKey], valueKey, '', () => {
-          play(audioUrls[baseKey], baseKey, step.context, () => {
+          play(audioUrls[baseKey], baseKey, getMicroStepText(section, stepIndex), () => {
             autoAdvanceFrom(sectionIndex, stepIndex);
           });
         });
         return;
       }
       
-      // Simple / example / anything else with plain text
-      if (step.text) {
+      // Overview without stats / example / image: the narration clip
+      if (getMicroStepText(section, stepIndex)) {
         play(audioUrls[baseKey], baseKey, getMicroStepText(section, stepIndex), () => {
           autoAdvanceFrom(sectionIndex, stepIndex);
         });

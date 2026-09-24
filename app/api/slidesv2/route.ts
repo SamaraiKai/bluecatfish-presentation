@@ -106,6 +106,11 @@ async function getMatchingImages(query: string, count: number): Promise<{ url: s
   return (data ?? []).map((row: any) => ({ url: row.url, description: row.description ?? '' }));
 }
 
+const isNarration = (v: unknown) => typeof v === 'string' && v.trim().split(/\s+/).length >= 15;
+const isBulletList = (v: unknown) =>
+  Array.isArray(v) && v.length >= 1 && v.length <= 3 &&
+  v.every((b) => typeof b === 'string' && b.trim().length > 0 && b.trim().split(/\s+/).length <= 12);
+
 async function generateSingleSection(
   ragContext: string,
   sectionTopic: string,
@@ -133,8 +138,8 @@ SOURCE CONTENT:
 
 STRICT RULES YOU MUST FOLLOW:
 1. "steps" is an ordered array of teaching steps for this section. YOU decide how many steps and which types, based on what this specific content actually needs. Use between 2 and 5 steps.
-2. The FIRST step must always be type "overview" — it introduces the section. Its "text" is 2 short sentences. It may optionally include "stats": 1-2 short quantitative facts as {value, label} pairs. Prefer surprising magnitudes over plain dates. Omit "stats" entirely if the source content has no meaningful numbers for this topic — do not invent them or pad with trivia.
-3. Available step types after the overview: "example" (an analogy to something unrelated and familiar, 1-2 sentences), "numberSpotlight" (a single STRIKING quantity that makes a learner react — a surprising scale, magnitude, or proportion. Provide "value" as the short number/quantity, "label" as a 3-6 word caption, and "context" as 1-2 sentences explaining why this number matters. "100+ million fish" or "8-9% of body weight daily" are good; plain dates ("2011", "September 2019"), small counts, or routine figures are NOT — they're facts, not attention-grabbers), "predictThen" (invites the learner to guess a surprising number or fact BEFORE it's revealed. Provide "question" (1 sentence), "options" (exactly 4 short guesses — one correct, three plausible but wrong, spread far enough apart that the right one isn't obvious), "correctIndex" (0-3, and vary its position rather than always using the same slot), and "answer" (the short factual answer, read aloud after they guess). Only use this for a number or specific fact someone could reasonably guess at.), "checkYourself" (a single quick true/false comprehension check — provide "statement", "isTrue" (boolean), and "feedback" (1 sentence explaining why)).
+2. The FIRST step must always be type "overview" — it introduces the section. Give it "bullets" and "narration" (see rule 13). It may optionally include "stats": 1-2 short quantitative facts as {value, label} pairs. Prefer surprising magnitudes over plain dates. Omit "stats" entirely if the source content has no meaningful numbers for this topic — do not invent them or pad with trivia.
+3. Available step types after the overview: "example" (an analogy to something unrelated and familiar; give it "bullets" (1-2) and "narration" that tells the analogy out loud), "numberSpotlight" (a single STRIKING quantity that makes a learner react — a surprising scale, magnitude, or proportion. Provide "value" as the short number/quantity, "label" as a 3-6 word caption, "context" as ONE short on-screen line (under 12 words) that reacts to the number, and "narration" (see rule 13) explaining why this number matters. "100+ million fish" or "8-9% of body weight daily" are good; plain dates ("2011", "September 2019"), small counts, or routine figures are NOT — they're facts, not attention-grabbers), "predictThen" (invites the learner to guess a surprising number or fact BEFORE it's revealed. Provide "question" (1 sentence), "options" (exactly 4 short guesses — one correct, three plausible but wrong, spread far enough apart that the right one isn't obvious), "correctIndex" (0-3, and vary its position rather than always using the same slot), and "answer" (the short factual answer, read aloud after they guess). Only use this for a number or specific fact someone could reasonably guess at.), "checkYourself" (a single quick true/false comprehension check — provide "statement", "isTrue" (boolean), and "feedback" (1 sentence explaining why)).
 4. Include a step type ONLY if it genuinely helps for THIS content. Skip "example" if no honest analogy fits. Only use "numberSpotlight" if this section contains a genuinely surprising number — omit the step entirely if it doesn't; never settle for a date or a routine figure just to include one. Only use "predictThen" for facts a learner could plausibly guess at. Do not include the same type twice.
 5. Every step's content must be grounded strictly in the SOURCE CONTENT — never invent facts to fill out a step.
 6. Every section SHOULD include at least one interactive step ("predictThen" or "checkYourself") unless the content genuinely doesn't support one.
@@ -143,7 +148,15 @@ STRICT RULES YOU MUST FOLLOW:
 9. "value" must be a STRING, even when it is purely numeric (write "19", not 19). Every stat's "value" and "label" must state a fact exactly as it appears in the source content. Do not combine numbers from one fact with the subject of another.
 10. "remediation" must be 2-3 short sentences that re-explain this section's single most important idea in the simplest possible way, for a learner who said they were lost. Use a different angle than the overview — a concrete everyday comparison works well. Do not introduce any new facts.
 11. AUDIENCE AND VOICE: the learner is 10-14 years old and every line is read aloud by a text-to-speech voice. Use short, everyday words and sentences under 20 words. Write numbers and units the way you'd say them ("about 100 pounds", "8 to 9 percent"), never symbols or abbreviations like "~", "%", "lbs", "e.g.", or parentheses.
-12. EVERY STEP MUST STAND ON ITS OWN: learners can jump straight to any step by voice ("go to the part about mercury"), so never open a step with "They", "This", "It", or "As we saw". Name the subject ("Blue catfish...") and the step's key idea in its first sentence, so it makes sense heard on its own and can be found by its topic.
+12. EVERY STEP MUST STAND ON ITS OWN: learners can jump straight to any step by voice ("go to the part about mercury"), so never open a narration with "They", "This", "It", or "As we saw". Name the subject ("Blue catfish...") and the step's key idea in its first sentence, so it makes sense heard on its own and can be found by its topic.
+13. SCREEN TEXT vs. SPOKEN TEXT — the learner SEES "bullets" and HEARS "narration". They must not be the same words; the professor must never sound like they are reading the slide.
+   - "bullets": 2-3 key points (1-2 for "example"), each UNDER 8 words. Fragments, not sentences. No filler ("It is important to note", "In fact", "This means that"). No two bullets say the same thing. Each bullet is one fact from the SOURCE CONTENT, and a bullet may have a quick joke in it.
+   - "narration": 3-5 spoken sentences (about 45-80 words) that EXPLAIN and BRANCH OUT from the bullets: the why or how behind them, a vivid example, or one extra detail from the SOURCE CONTENT that the bullets leave out. Cover the bullets' points in order so they can appear on screen as they are mentioned, but in fresh words; never read a bullet out word for word. Every added detail must still come from the SOURCE CONTENT.
+14. TONE — funny, goofy, a little sarcastic, like a favorite science teacher who thinks this fish is ridiculous. Examples of the voice: "Blue catfish: basically a vacuum cleaner with fins." / "Nothing in the Bay eats them. Rude." / "Spoiler: the crabs are not thrilled." Rules for the humor:
+   - Aim the sarcasm at the fish, the situation, or the problem, NEVER at the learner, a group of people, or anyone's answer.
+   - At most one joke per bullet list and one or two per narration; the facts come first and must stay exactly right.
+   - Keep it kind and classroom-safe for ages 10-14. No insults, no pop-culture references that will date.
+   - Quiz questions, quiz options, and "explanation" stay plain and clear (no jokes there); "feedback", "answer", "recap" and "remediation" can be warm and lightly playful.
 
 Output ONLY a JSON object with key "section":
 
@@ -155,9 +168,9 @@ Output ONLY a JSON object with key "section":
     "recap": "one sentence takeaway",
     "remediation": "2-3 simple sentences",
     "steps": [
-      { "type": "overview", "text": "...", "stats": [{"value": "...", "label": "..."}] },
-      { "type": "example", "text": "..." },
-      { "type": "numberSpotlight", "value": "...", "label": "...", "context": "..." },
+      { "type": "overview", "bullets": ["...", "..."], "narration": "...", "stats": [{"value": "...", "label": "..."}] },
+      { "type": "example", "bullets": ["..."], "narration": "..." },
+      { "type": "numberSpotlight", "value": "...", "label": "...", "context": "...", "narration": "..." },
       { "type": "predictThen", "question": "...", "options": ["...", "...", "...", "..."], "correctIndex": 2, "answer": "..." },
       { "type": "checkYourself", "statement": "...", "isTrue": true, "feedback": "..." }
     ],
@@ -172,7 +185,8 @@ Output ONLY a JSON object with key "section":
           content: `Generate section ${sectionNum} about: ${sectionTopic}`,
         },
       ],
-      max_completion_tokens: 3500,
+      // bullets + narration roughly doubles the output, so give it more room
+      max_completion_tokens: 5000,
     }),
   });
 
@@ -204,10 +218,11 @@ Output ONLY a JSON object with key "section":
     steps[0]?.type === 'overview' &&
     new Set(steps.map((s: any) => s.type)).size === steps.length &&
     steps.every((s: any) => {
-      if (s.type === 'numberSpotlight') return typeof s.value === 'string' && typeof s.label === 'string' && typeof s.context === 'string';
+      if (s.type === 'numberSpotlight') return typeof s.value === 'string' && typeof s.label === 'string' && typeof s.context === 'string' && isNarration(s.narration);
       if (s.type === 'checkYourself') return typeof s.statement === 'string' && typeof s.isTrue === 'boolean' && typeof s.feedback === 'string';
       if (s.type === 'predictThen') return typeof s.question === 'string' && Array.isArray(s.options) && s.options.length === 4 && Number.isInteger(s.correctIndex) && s.correctIndex >= 0 && s.correctIndex < 4 && typeof s.answer === 'string';
-      return typeof s.text === 'string' && s.text.trim().length > 0;
+      // overview / example: short bullets on screen, a longer narration spoken
+      return isBulletList(s.bullets) && isNarration(s.narration);
     });
 
   const validQuiz = section.quiz?.length === 1 &&
@@ -230,7 +245,8 @@ async function assignUniqueImages(sections: any[], sectionTopics: string[]) {
   const CANDIDATE_COUNT = 20; 
  
   for (let i = 0; i < sections.length; i++) {
-    const query = sections[i].steps?.[0]?.text || sectionTopics[i];
+    const first = sections[i].steps?.[0];
+    const query = first?.narration || first?.text || sectionTopics[i];
     const candidates = await getMatchingImages(query, CANDIDATE_COUNT);
  
     const unused = candidates.filter((c) => !usedUrls.has(c.url));
@@ -340,7 +356,7 @@ async function addImageSteps(sections: any[]) {
         messages: [
           {
             role: "system",
-            content: `Write a short spoken line directing a learner's attention to an image on screen, then explaining what it shows and why it matters for this lesson section. 1-2 sentences total (20ish words). Start by pointing at the image naturally ("Take a look at the image on screen..." / "Notice in the picture..."). Base it ONLY on the provided image description — never invent visual details. Output JSON: { "text": "..." }`,
+            content: `Write a short spoken line directing a learner's attention to an image on screen, then explaining what it shows and why it matters for this lesson section. 1-2 sentences total (20ish words). Start by pointing at the image naturally ("Take a look at the image on screen..." / "Notice in the picture..."). Use the lesson's voice: funny, goofy, a little sarcastic about the fish, kind to the learner, ages 10-14. Base it ONLY on the provided image description — never invent visual details. Output JSON: { "text": "..." }`,
           },
           {
             role: "user",
@@ -356,7 +372,7 @@ async function addImageSteps(sections: any[]) {
       const parsed = JSON.parse(data.choices?.[0]?.message?.content ?? '{}');
       if (parsed.text) {
         // insert right after the overview so the image is introduced early
-        section.steps.splice(1, 0, { type: 'imageFocus', text: parsed.text });
+        section.steps.splice(1, 0, { type: 'imageFocus', text: parsed.text, narration: parsed.text });
       }
     } catch (e) {
       console.warn(`Image step failed for "${section.title}":`, e);
