@@ -138,7 +138,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'OpenAI returned an empty reply.' }, { status: 500 });
       }
 
-    return NextResponse.json({ reply });
+    return NextResponse.json({ reply, decision }, { headers: { 'X-Tutor-Decision': intent.action } });
   }
 
   // Streaming path — unwrap OpenAI's SSE format into plain text chunks
