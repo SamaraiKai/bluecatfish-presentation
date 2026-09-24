@@ -45,6 +45,8 @@ type MicroStep = {
 type Step = { simple?: string } & (
   | { type: 'overview'; bullets?: string[]; narration?: string; text?: string; stats?: { value: string; label: string }[] }
   | { type: 'example'; bullets?: string[]; narration?: string; text?: string }
+  | { type: 'detail'; heading?: string; bullets: string[]; narration: string; text?: string }
+  | { type: 'compare'; leftTitle: string; left: string[]; rightTitle: string; right: string[]; narration: string; text?: string }
   | { type: 'imageFocus'; text: string; narration?: string }
   | { type: 'numberSpotlight'; value: string; label: string; context: string; narration?: string }
   | { type: 'checkYourself'; statement: string; isTrue: boolean; feedback: string }
@@ -72,11 +74,13 @@ const QUIZ_ENABLED = false;
 
 const STEP_LABELS: Record<Step['type'], string> = {
   overview: 'Overview',
+  detail: 'Going Deeper',
+  compare: 'Side by Side',
   example: 'Think of It Like This',   // the prompt makes this step an analogy
   imageFocus: 'Look at This',
   numberSpotlight: 'By the Numbers',
   predictThen: 'Take a Guess',
-  checkYourself: 'Quick Check',
+  checkYourself: 'Quick Check',   // true/false steps: switched off in slide generation for now
 };
 
 /* ============================================================================
@@ -1283,10 +1287,37 @@ function MiniSlideshowBlock({
           );
         }
           
+        if (step.type === 'compare') {
+          const cols: [string, string[], string][] = [
+            [step.leftTitle, step.left, 'border-blue-400 bg-blue-50/70 text-blue-900'],
+            [step.rightTitle, step.right, 'border-green-500 bg-green-50/70 text-green-900'],
+          ];
+          return (
+            <div className="grid grid-cols-2 gap-4 animate-[fadeInUp_0.5s_ease-out]">
+              {cols.map(([title, items, cls], c) => (
+                <div key={c} className={`rounded-2xl border-2 p-4 ${cls}`}>
+                  <div className="text-xl font-bold mb-3">{title}</div>
+                  <ul className="space-y-2 text-lg text-black">
+                    {items.map((it, k) => (
+                      <li key={k} className="flex gap-2 items-start">
+                        <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-current opacity-60" />
+                        <span>{it}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          );
+        }
+
         const isExample = step.type === 'example';
     
         return (
             <div className={isExample ? 'bg-amber-900/40 rounded-xl p-5 border border-amber-500/40' : undefined}>
+              {step.type === 'detail' && step.heading && (
+                <div className="text-lg font-semibold text-cyan-800 mb-3">{step.heading}</div>
+              )}
               {step.bullets?.length ? (
                 <BulletReveal
                   key={baseKey}

@@ -73,43 +73,55 @@ def render(req: RenderRequest):
 
     return FileResponse(videos[0], media_type="video/mp4", filename=f"{job_id}.mp4")
 
-MANIM_SYSTEM_PROMPT = """You write Manim Community Edition code for short educational animations.
+MANIM_SYSTEM_PROMPT = """You write Manim Community Edition code for short educational animations about blue catfish in the Chesapeake Bay, for 10-14 year olds.
 
 SETUP
 - Class must be named exactly "GeneratedScene", extending Scene.
 - Begin with:
   from manim import *
-  from catfish_shapes import fish, proportion_circles, labeled_bars, timeline, big_number, flow_chain, eats, growth_curve
+  from catfish_shapes import *
 - End with self.wait(1).
 
+USE A READY-MADE ANIMATION — this is the most important rule.
+catfish_shapes has tested helpers that play a whole animation in ONE call. Your construct()
+should almost always be exactly one animate_* call with the step's own words and numbers,
+passing duration=<the target duration>, followed by self.wait(1). Pick the one that fits:
 
-CHOOSE THE RIGHT HELPER — this is the most important decision you make.
-- Two percentages or quantities that form a whole → proportion_circles(big_pct, small_pct, big_label, small_label)
-- Several quantities to compare → labeled_bars([(label, value), ...])
-- One figure with nothing to compare it to → big_number(value, label)
-- A value along a range or over time → timeline(start_label, end_label), then animate the dot moving
-- Growth or increase over time → growth_curve(start_label, end_label), then Create the line
-- A cause-and-effect sequence → flow_chain([step1, step2, step3])
-- A predator and what it consumes → eats(predator_label, [prey1, prey2])
-- Anything else → big_number, or do not animate at all
+- One striking number to count up to (plain number)     → animate_count_up(self, end_value, label, prefix="", suffix="", duration=D)
+- One figure that isn't a plain number ("8-9%", "1/4")   → animate_big_number(self, value, label, duration=D)
+- A share of a whole (percent)                            → animate_percent(self, pct, label, duration=D, style="bar" or "pie")
+- "X out of Y" (a ratio of things)                        → animate_out_of(self, total, highlighted, label, duration=D)
+- Several quantities to compare                           → animate_bars(self, [(label, value), ...], title="", duration=D)
+- A value before vs after (change over time)              → animate_before_after(self, before_label, before_value, after_label, after_value, title="", duration=D)
+- Something rising or falling, no exact numbers           → animate_trend(self, "up" or "down", label, duration=D)
+- Few fish becoming many (population growth)              → animate_population_boom(self, before_count, after_count, before_label, after_label, duration=D)
+- Spreading from place to place (rivers, regions)         → animate_spread(self, [place1, place2, ...], duration=D)
+- Sizes of creatures side by side                         → animate_size_compare(self, [(label, relative_size, "fish"|"small_fish"|"crab"|"kid"), ...], duration=D)
+- One thing outweighs another (dominates, outnumbers)     → animate_heavier(self, heavy_label, light_label, duration=D)
+- What the catfish eats (list of prey)                    → animate_eats(self, predator_label, [prey, ...], duration=D)
+- What the catfish affects all around it (food web)       → animate_food_web(self, center_label, [others, ...], duration=D)
+- Cause and effect in a row                               → animate_chain(self, [cause, effect, effect, ...], duration=D)
+- A loop / cycle / feedback                               → animate_cycle(self, [stage1, stage2, stage3, ...], duration=D)
+- Dated events in order                                   → animate_timeline(self, [(when, what), ...], duration=D)
+- Two things side by side (this vs that)                  → animate_compare(self, left_title, [points], right_title, [points], duration=D)
+- A list of actions or ways to help                       → animate_checklist(self, [item, ...], title="", duration=D)
+- Catch it and eat it (the solution)                      → animate_catch_and_cook(self, catch_label, cook_label, duration=D)
+- A key idea or definition with no numbers                → animate_fact(self, title, text, duration=D)   (warning=True for a danger/"don't")
 
-If no helper fits the step, use big_number. Never construct your own diagram from raw shapes.
+Only if truly none of these fit, build a simple scene from the shape helpers (fish, small_fish, crab, kid,
+school_of_fish, water_scene, river, fishing_hook, plate_with_fish, warning_sign, fact_card, labeled_bars,
+percent_bar, pie_share, dot_grid, compare_columns, cycle_diagram, radial_web, checklist, balance_scale,
+trend_arrow, flow_chain, eats, big_number, timeline, growth_curve, proportion_circles) and animate a change.
+Never draw your own fish, crab or chart from raw shapes.
 
-
-ANIMATE A CHANGE
-The viewer must see something happen: a dot travels, a bar grows, a line is drawn, elements appear in sequence. Do not simply fade in a finished picture.
-
-
-ACCURACY
-- Every number must appear verbatim in the source content. Never round, approximate, or invent a figure.
-- Never remove or alter labels that a helper generates.
-
+WORDS ON SCREEN
+- Labels are short: 1-5 words each. Keep lists to 2-5 items.
+- Numbers must appear exactly as in the source content. Never round, approximate, or invent a figure.
+- Values passed to animate_count_up / animate_bars / animate_before_after / animate_percent must be plain numbers.
 
 CONSTRAINTS
-- No MathTex, Tex, Axes, NumberLine, SVGMobject, or ImageMobject.
+- No MathTex, Tex, Axes, NumberLine, DecimalNumber, Integer, SVGMobject, or ImageMobject (no LaTeX is installed).
 - One idea only. If the description mentions several, animate the first.
-- Keep everything within x −6 to 6, y −3.5 to 3.5.
-- Finish slightly under the target duration rather than over.
 
 Output ONLY the Python code. No markdown fences, no explanation."""
 
@@ -175,6 +187,10 @@ def plan_animations(section: dict):
             lines.append(f"{idx}: numberSpotlight — {s.get('value')} {s.get('label')}")
         elif t == "processFlow":
             lines.append(f"{idx}: processFlow — {s.get('intro')}")
+        elif t == "compare":
+            lines.append(f"{idx}: compare — {s.get('leftTitle')}: {', '.join(s.get('left') or [])} vs {s.get('rightTitle')}: {', '.join(s.get('right') or [])}")
+        elif t == "detail":
+            lines.append(f"{idx}: detail ({s.get('heading') or ''}) — {s.get('narration') or ''}")
         else:
             lines.append(f"{idx}: {t} — {s.get('narration') or s.get('text') or s.get('question') or s.get('statement') or ''}")
 
@@ -186,14 +202,15 @@ def plan_animations(section: dict):
             {"role": "system", "content": """You decide which teaching steps would benefit from a simple animated diagram.
 
 Choose a step if it involves ANY of: a number, quantity, proportion or percentage; a comparison between two or more things; a sequence of causes or stages; growth, decline, or change over time; movement or spread across space; a relationship between parts.
-Steps of type "numberSpotlight" and "processFlow" should almost always be chosen — they are inherently visual.
+Steps of type "numberSpotlight", "compare" and "processFlow" should almost always be chosen — they are inherently visual.
 
 Skip a step only if it is purely a definition, a question with no quantity, or a statement with no visual structure at all.
 Never choose a step marked "imageFocus".
 
-Choose 1-2 steps per section.
+Choose 2-3 steps per section (sections now have 4-7 steps), spread across the section rather than bunched together.
 
-For each chosen step write a "description": a SIMPLE animation using only basic shapes, text, arrows and lines, describable in under 15 seconds. Diagram, not picture. Be specific about what appears and what moves.
+For each chosen step write a "description": a SIMPLE animation, describable in under 15 seconds. Diagram, not picture. Be specific about what appears and what moves, and name the exact labels and numbers from the step.
+Ready-made animations exist for: counting up to a number, a percent bar or pie slice, "X out of Y" dots, bar charts, before vs after, a rising/falling arrow, a few fish becoming many, spreading along a river, creature size comparison, a tipping balance scale, a catfish and what it eats, a food web, a cause-and-effect chain, a cycle, a timeline of dated events, two columns side by side, a checklist of ways to help, catching and cooking a fish, and a fact card or warning sign. Describe the animation in those terms when one fits.
 
 The description must specify exactly what shapes appear, what text labels them, and what single change occurs. If you cannot describe it that concretely in one sentence, do not choose that step.
 
