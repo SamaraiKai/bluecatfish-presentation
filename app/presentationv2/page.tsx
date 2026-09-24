@@ -2591,7 +2591,21 @@ export default function AIPresentation() {
           </div>
         </div>
       )}
-    
+
+      {/* Variant slide overlay */}
+      {variantSlide && (
+        <VariantSlideOverlay
+          variant={variantSlide}
+          onDone={() => {
+            setVariantSlide(null);
+            stop();
+            const next = variantAfterRef.current;
+            variantAfterRef.current = null;
+            next?.();
+          }}
+        />
+      )}
+          
       {/* Source Attribution */}
       <footer className="text-center py-4 text-blue-700 text-sm">
         <Link href="/sources" className="underline hover:text-cyan-600">
