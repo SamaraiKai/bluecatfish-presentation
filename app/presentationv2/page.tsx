@@ -73,6 +73,19 @@ const PRESENTATION = {
 // bring the quiz (and the final score) back — nothing else was removed.
 const QUIZ_ENABLED = false;
 
+// Overview "fun fact" boxes + their "One fun fact is..." clips broke the flow.
+// Now the numbers are just more bullets (also for lessons saved before this).
+const STATS_AS_BULLETS = true;
+
+/** The overview's bullets, with any stats folded in as ordinary bullets. */
+function bulletsOf(step: Step): string[] | undefined {
+  const bullets = (step as { bullets?: string[] }).bullets;
+  const stats = step.type === 'overview' ? step.stats : undefined;
+  // (very old text-only lessons have no bullets: leave them showing their text)
+  if (!STATS_AS_BULLETS || !stats?.length || !bullets?.length) return bullets;
+  return [...(bullets ?? []), ...stats.map((s) => `${s.value} ${s.label}`)];
+}
+
 const STEP_LABELS: Record<Step['type'], string> = {
   overview: 'Overview',
   detail: 'Going Deeper',
@@ -1377,10 +1390,10 @@ function MiniSlideshowBlock({
               {step.type === 'detail' && step.heading && (
                 <div className="text-lg font-semibold text-cyan-800 mb-3">{step.heading}</div>
               )}
-              {step.bullets?.length ? (
+              {bulletsOf(step)?.length ? (
                 <BulletReveal
                   key={baseKey}
-                  bullets={step.bullets}
+                  bullets={bulletsOf(step)!}
                   isActive={currentKey === baseKey}
                   hasAudio={!!audioUrls[baseKey]}
                   currentTime={currentTime}
@@ -1397,7 +1410,7 @@ function MiniSlideshowBlock({
                   className={`text-xl leading-relaxed mb-4 ${isExample ? 'text-amber-100' : 'text-black'}`}
                 />
               )}
-              {step.type === 'overview' && step.stats?.length? (
+              {!STATS_AS_BULLETS && step.type === 'overview' && step.stats?.length? (
                 <div className={`grid gap-4 ${step.stats.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
               {step.stats.map((stat, idx) => {
                 const isActive = currentKey === `${baseKey}_fact${idx}`;
@@ -1968,8 +1981,8 @@ export default function AIPresentation() {
       const step = section.steps[stepIndex];
       if (!step) return;
       const baseKey = `section${sectionIndex}_step${stepIndex}`;
-      // Overview with fun facts — content, then each fact clip in sequence
-      if (step.type === 'overview' && step.stats?.length) {
+      // Overview with fun facts — content, then each fact clip in sequence (off: facts are bullets now)
+      if (!STATS_AS_BULLETS && step.type === 'overview' && step.stats?.length) {
         const factKeys = step.stats.map((_, f) => `${baseKey}_fact${f}`);
         const chain = (idx: number): (() => void) => () => {
           if (idx >= factKeys.length) { 

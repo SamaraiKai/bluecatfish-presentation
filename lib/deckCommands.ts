@@ -136,6 +136,13 @@ export const COMMAND_ACK_TEXT = {
 
 export type AckKey = keyof typeof COMMAND_ACK_TEXT;
 
+// Starts like a real question — "why...", "how...", "do they...", "is it..." —
+// but not a request to the professor ("can you skip ahead?", "could we go back")
+function looksLikeQuestion(text: string): boolean {
+  return /^(?:why|what|how|when|where|who|whose|which)\b/.test(text) ||
+    /^(?:do|does|did|is|are|was|were|will|would|can|could|should|has|have)\s+(?!you\b|u\b|we\b|i\b|ya\b)/.test(text);
+}
+
 /** Returns a command when the message is a deck command, otherwise null (it goes to the tutor). */
 export function parseDeckCommand(raw: string): DeckCommand | null {
   const text = normalize(raw);
@@ -159,7 +166,12 @@ export function parseDeckCommand(raw: string): DeckCommand | null {
 
   for (const [kind, cue] of CUES) {
     if (!cue.test(text)) continue;
-    if (contentWords(text, cue).length > 2) return null;   // a real question, e.g. "why is it easier for them to spread?"
+    // Extra words don't stop a command ("ok so um skip this slide my dude").
+    // Only a message shaped like a question about something goes to the tutor
+    // ("why is it easier for them to spread?", "do they care for their babies").
+    const rest = text.replace(new RegExp(cue.source, 'g'), ' ').replace(/\s+/g, ' ').trim();
+    if ((looksLikeQuestion(text) || /\b(?:why|how come|how do|how does|what do|what does|what is|what are)\b/.test(rest)) &&
+        contentWords(text, cue).length > 2) return null;
     return { kind };
   }
   return null;
