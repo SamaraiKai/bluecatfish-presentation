@@ -164,7 +164,11 @@ const GUESS_ENABLED = false;
 const COMPARE_ENABLED = false;
 // "Your turn": one open question per topic that the learner answers out loud
 // (or types); the tutor responds to what they actually said.
-const ASK_ALOUD_ENABLED = true;
+const ASK_ALOUD_ENABLED = false;   // switched off for now
+// Separate "fun fact" stat boxes on the overview (each read out as "One fun
+// fact is..."): off — numbers go in the normal bullet list instead.
+const STATS_ENABLED = false;
+
 const DISABLED_STEP_TYPES = [
   ...(ASK_ALOUD_ENABLED ? [] : ['askAloud']),
   ...(TRUE_FALSE_ENABLED ? [] : ['checkYourself']),
@@ -234,7 +238,7 @@ SOURCE CONTENT:
 ${scopeText(scope, sectionNum)}
 STRICT RULES YOU MUST FOLLOW:
 1. "steps" is an ordered array of teaching steps for this section. Use between ${MIN_STEPS} and ${MAX_STEPS} steps. This lesson should feel full and informative: cover what the SOURCE CONTENT says about this topic in real depth (causes, numbers, examples, consequences, what people are doing about it), one idea per step, in an order that builds up. Use the whole SOURCE CONTENT, not just the first facts in it.
-2. The FIRST step must always be type "overview" — it introduces the section. Give it "bullets" and "narration" (see rule 13). It may optionally include "stats": 1-2 short quantitative facts as {value, label} pairs. Prefer surprising magnitudes over plain dates. Omit "stats" entirely if the source content has no meaningful numbers for this topic — do not invent them or pad with trivia.
+2. The FIRST step must always be type "overview" — it introduces the section. Give it "bullets" and "narration" (see rule 13). ${STATS_ENABLED ? `It may optionally include "stats": 1-2 short quantitative facts as {value, label} pairs. Prefer surprising magnitudes over plain dates. Omit "stats" entirely if the source content has no meaningful numbers for this topic — do not invent them or pad with trivia.` : `If the topic has a striking number, put it straight into one of the bullets (e.g. "Can top 100 pounds"); do not add a separate "stats" field.`}
 3. Available step types after the overview: "detail" (one more idea about this topic, going deeper: a cause, a consequence, how something works, a real example from the source. Give it a short "heading" (2-5 words, may be playful), "bullets" and "narration". "detail" may be used up to ${MAX_DETAIL} times per section, each on a DIFFERENT idea — this is the main way to add depth)${COMPARE_ENABLED ? `, "compare" (two things side by side, e.g. blue catfish vs native catfish, before vs after, the problem vs the solution. Give "leftTitle" and "rightTitle" (1-3 words each), "left" and "right" (2-3 short points each, under 6 words, lined up so point 1 on the left pairs with point 1 on the right), and "narration" walking through the differences. Only use it when the SOURCE CONTENT really supports both sides)` : ''}, "example" (an analogy to something unrelated and familiar; give it "bullets" (1-2) and "narration" that tells the analogy out loud), "numberSpotlight" (a single STRIKING quantity that makes a learner react — a surprising scale, magnitude, or proportion. Provide "value" as the short number/quantity, "label" as a 3-6 word caption, "context" as ONE short on-screen line (under 12 words) that reacts to the number, and "narration" (see rule 13) explaining why this number matters. "100+ million fish" or "8-9% of body weight daily" are good; plain dates ("2011", "September 2019"), small counts, or routine figures are NOT — they're facts, not attention-grabbers)${GUESS_ENABLED ? `, "predictThen" (invites the learner to guess a surprising number or fact BEFORE it's revealed. Provide "question" (1 sentence), "options" (exactly 4 short guesses — one correct, three plausible but wrong, spread far enough apart that the right one isn't obvious), "correctIndex" (0-3, and vary its position rather than always using the same slot), and "answer" (the short factual answer, read aloud after they guess). Only use this for a number or specific fact someone could reasonably guess at.)` : ''}${TRUE_FALSE_ENABLED ? `, "checkYourself" (a single quick true/false comprehension check — provide "statement", "isTrue" (boolean), and "feedback" (1 sentence explaining why))` : ''}.
 4. Include a step type ONLY if it genuinely helps for THIS content. Skip "example" if no honest analogy fits. Only use "numberSpotlight" if this section contains a genuinely surprising number — omit the step entirely if it doesn't; never settle for a date or a routine figure just to include one.${GUESS_ENABLED ? ` Only use "predictThen" for facts a learner could plausibly guess at.` : ''} Do not include the same type twice, except "detail" (up to ${MAX_DETAIL}).
 5. Every step's content must be grounded strictly in the SOURCE CONTENT — never invent facts to fill out a step.
@@ -269,7 +273,7 @@ Output ONLY a JSON object with key "section":
     "recap": "one sentence takeaway",
     "remediation": "2-3 simple sentences",
     "steps": [
-      { "type": "overview", "bullets": ["...", "..."], "narration": "...", "simple": "...", "stats": [{"value": "...", "label": "..."}] },
+      { "type": "overview", "bullets": ["...", "..."], "narration": "...", "simple": "..."${STATS_ENABLED ? `, "stats": [{"value": "...", "label": "..."}]` : ''} },
       { "type": "detail", "heading": "...", "bullets": ["...", "..."], "narration": "...", "simple": "..." },
 ${COMPARE_ENABLED ? `      { "type": "compare", "leftTitle": "...", "left": ["...", "..."], "rightTitle": "...", "right": ["...", "..."], "narration": "...", "simple": "..." },
 ` : ''}      { "type": "example", "bullets": ["..."], "narration": "...", "simple": "..." },
@@ -350,6 +354,15 @@ ${COMPARE_ENABLED ? `      { "type": "compare", "leftTitle": "...", "left": ["..
   // Last line of defence for switched-off step types (the model can ignore the prompt)
   if (Array.isArray(section.steps)) {
     section.steps = section.steps.filter((st: any) => !DISABLED_STEP_TYPES.includes(st?.type));
+    // stats off: any the model still wrote become ordinary bullets
+    if (!STATS_ENABLED) {
+      for (const st of section.steps) {
+        if (Array.isArray(st?.stats) && st.stats.length) {
+          st.bullets = [...(st.bullets ?? []), ...st.stats.map((x: any) => `${x.value} ${x.label}`)].slice(0, 4);
+        }
+        if (st) delete st.stats;
+      }
+    }
   }
 
   section.image = "";

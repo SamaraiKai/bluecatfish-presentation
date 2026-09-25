@@ -58,6 +58,9 @@ const presence_away = "Take your time. I'll wait."
 const presence_back = "Alright, picking up where we left off."
 
 const HAND_RAISE_TEXT = "Do you have a question?";
+
+// Overview "One fun fact is..." clips: off, the numbers are ordinary bullets now
+const FACT_CLIPS_ENABLED = false;
 /* ============================================================================
  * HELPERS
  * ========================================================================== */
@@ -387,7 +390,8 @@ function buildSectionJobs(sections: any[]): AudioJob[] {
         });
       } 
 
-      if (step.type === 'overview' && step.stats?.length) {
+      // "One fun fact is..." clips — off: numbers are ordinary bullets now (STATS_AS_BULLETS in the page)
+      if (FACT_CLIPS_ENABLED && step.type === 'overview' && step.stats?.length) {
         step.stats.forEach((stat: any, f: number) => {
           const lead = f === 0 ? 'One fun fact is' : 'Another fact is';
           jobs.push({

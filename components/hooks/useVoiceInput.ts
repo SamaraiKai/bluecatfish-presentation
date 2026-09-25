@@ -4,7 +4,7 @@ import fixWebmDuration from 'fix-webm-duration';
 type Status = "idle" | "listening" | "processing";
 
 const SILENCE_THRESHOLD = 0.010; // RMS below this counts as silence
-const SILENCE_DURATION = 2000;   // ms of silence before auto-stop
+const SILENCE_DURATION = 1000;   // ms of silence before auto-stop (was 2000 — felt slow)
 
 // Barge-in detection. Real speech dips between syllables, so the watcher
 // counts speech with short gaps allowed, against a threshold that adapts to
