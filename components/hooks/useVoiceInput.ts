@@ -74,6 +74,9 @@ export function useVoiceInput(
   const rafRef = useRef<number | null>(null);
   const silenceStartRef = useRef<number | null>(null);
   const hasSpokenRef = useRef(false);
+  // listen({ noSpeechMs, onNoSpeech }): give up if nobody starts talking in time
+  const noSpeechRef = useRef<{ ms: number; onNoSpeech?: () => void } | null>(null);
+  const discardRef = useRef(false);   // stop without transcribing (cancelled / nobody spoke)
 
   // passive barge-in watcher (separate stream from recording)
   const bargeStreamRef = useRef<MediaStream | null>(null);
@@ -140,6 +143,12 @@ export function useVoiceInput(
       if (rms > SILENCE_THRESHOLD) {
         hasSpokenRef.current = true;
         silenceStartRef.current = null;
+      } else if (!hasSpokenRef.current && noSpeechRef.current &&
+                 Date.now() - recordingStartRef.current > noSpeechRef.current.ms) {
+        // asked a question, nobody answered: stop without sending silence to speech-to-text
+        discardRef.current = true;
+        stopListening();
+        return;
       } else if (hasSpokenRef.current) {
         // only start the clock once they've actually said something
         if (silenceStartRef.current === null) {
@@ -158,7 +167,9 @@ export function useVoiceInput(
   };
 
   /* ------------------------------------------------------ start recording */
-  const startListening = async () => {
+  const startListening = async (opts?: { noSpeechMs?: number; onNoSpeech?: () => void }) => {
+    noSpeechRef.current = opts?.noSpeechMs ? { ms: opts.noSpeechMs, onNoSpeech: opts.onNoSpeech } : null;
+    discardRef.current = false;
     try {
       recordingStartRef.current = Date.now();
       stopBargeWatch();
@@ -178,6 +189,16 @@ export function useVoiceInput(
         cleanupAnalyser();
         const recordingDuration = Date.now() - recordingStartRef.current;
         stream.getTracks().forEach((t) => t.stop());
+
+        if (discardRef.current) {
+          discardRef.current = false;
+          const noSpeech = noSpeechRef.current;
+          noSpeechRef.current = null;
+          setStatus("idle");
+          if (noSpeech && !hasSpokenRef.current) noSpeech.onNoSpeech?.();
+          return;
+        }
+        noSpeechRef.current = null;
         
         try {
           const actualType = mr.mimeType || mimeType || "audio/webm";
@@ -217,12 +238,31 @@ export function useVoiceInput(
     } catch (err) {
       console.error("Mic permission denied", err);
       setStatus("idle");
+      // no mic: treat a waiting question as unanswered rather than hanging
+      const noSpeech = noSpeechRef.current;
+      noSpeechRef.current = null;
+      noSpeech?.onNoSpeech?.();
     }
   };
 
   const toggleMic = () => {
     if (status === "listening") stopListening();
     else startListening();
+  };
+
+  /** Start recording an answer; onNoSpeech runs if nobody talks within noSpeechMs. */
+  const listen = (opts?: { noSpeechMs?: number; onNoSpeech?: () => void }) => {
+    if (mediaRecorderRef.current?.state === "recording") return;
+    startListening(opts);
+  };
+
+  /** Stop recording and throw it away (the learner moved on). */
+  const cancelListening = () => {
+    noSpeechRef.current = null;
+    if (mediaRecorderRef.current?.state === "recording") {
+      discardRef.current = true;
+      stopListening();
+    }
   };
 
   /* --------------------------------------------------- passive barge-in */
@@ -328,5 +368,5 @@ export function useVoiceInput(
     };
   }, []);
  
-  return { status, toggleMic, levelRef };
+  return { status, toggleMic, listen, cancelListening, levelRef };
 }

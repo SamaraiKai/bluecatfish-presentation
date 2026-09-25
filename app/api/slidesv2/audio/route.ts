@@ -347,6 +347,18 @@ function buildSectionJobs(sections: any[]): AudioJob[] {
           fileName: `${FOLDER}/section${i + 1}_step${s}_reveal.mp3`,
         });
         */
+      } else if (step.type === 'askAloud') {
+        // "Your turn": the question, and the professor's answer (played if nobody answers)
+        jobs.push({
+          key: `section${i}_step${s}_question`,
+          text: step.question,
+          fileName: `${FOLDER}/section${i + 1}_step${s}_question.mp3`,
+        });
+        jobs.push({
+          key: `section${i}_step${s}_answer`,
+          text: step.answer,
+          fileName: `${FOLDER}/section${i + 1}_step${s}_answer.mp3`,
+        });
       } else if (step.type === 'checkYourself') {
         jobs.push({
           key: `section${i}_step${s}_statement`,

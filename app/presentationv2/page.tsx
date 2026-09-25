@@ -51,6 +51,7 @@ type Step = { simple?: string } & (
   | { type: 'numberSpotlight'; value: string; label: string; context: string; narration?: string }
   | { type: 'checkYourself'; statement: string; isTrue: boolean; feedback: string }
   | { type: 'predictThen'; question: string; options: string[]; correctIndex: number; answer: string }
+  | { type: 'askAloud'; question: string; lookFor: string[]; answer: string; text?: string }
 );
 
 /* ============================================================================
@@ -79,7 +80,8 @@ const STEP_LABELS: Record<Step['type'], string> = {
   example: 'Think of It Like This',   // the prompt makes this step an analogy
   imageFocus: 'Look at This',
   numberSpotlight: 'By the Numbers',
-  predictThen: 'Take a Guess',
+  predictThen: 'Take a Guess',   // 4-option guess: switched off in slide generation for now
+  askAloud: 'Your Turn',
   checkYourself: 'Quick Check',   // true/false steps: switched off in slide generation for now
 };
 
@@ -99,6 +101,7 @@ function getMicroStepText(section: SectionWithBreakdown, stepIndex: number): str
     const step = section.steps[stepIndex];
     if (step.type === 'numberSpotlight') return step.narration ?? step.context;
     if (step.type === 'predictThen') return '';
+    if (step.type === 'askAloud') return '';
     if (step.type === 'checkYourself') return '';
     return step.narration ?? step.text ?? '';
   }
@@ -218,7 +221,12 @@ const useAIChat = (currentSection: SectionWithBreakdown | undefined,
   const [isLoading, setIsLoading] = useState(false);
   const [input, setInput] = useState('');
 
-  const sendMessage = async (text: string) => {
+  // opts: a custom system prompt (e.g. feedback on a spoken answer), skip the
+  // knowledge-base lookup, and ignore the deck-control decision header
+  const sendMessage = async (
+    text: string,
+    opts: { systemPrompt?: string; useKnowledgeBase?: boolean; ignoreDecision?: boolean } = {},
+  ) => {
     if (!text.trim()) return;
     
     const userMessage: Message = { role: 'user', text };
@@ -249,7 +257,8 @@ const useAIChat = (currentSection: SectionWithBreakdown | undefined,
           userText: text,
           topic: 'Blue Catfish invasion in the Chesapeake Bay',
           stream: true,
-          systemPrompt: `You are "${PRESENTATION.professor.name}", a university professor specializing in Marine Biology and Conservation. The student is currently viewing a slide titled "${currentSection?.title}" which covers: ${(() => { const s = currentSection?.steps?.[0] as { narration?: string; text?: string } | undefined; return s?.narration ?? s?.text ?? ''; })()}${missedContext}${learnerBrief?.() ?? ''} Answer questions with awareness of what they're currently looking at, and relate your answers back to this section when relevant, like a professor referencing the current lecture slide. Talk in the same voice as the slides: funny, a bit goofy, lightly sarcastic about the fish and the problem (never about the student), with the facts kept exactly right.`,
+          useKnowledgeBase: opts.useKnowledgeBase ?? true,
+          systemPrompt: opts.systemPrompt ?? `You are "${PRESENTATION.professor.name}", a university professor specializing in Marine Biology and Conservation. The student is currently viewing a slide titled "${currentSection?.title}" which covers: ${(() => { const s = currentSection?.steps?.[0] as { narration?: string; text?: string } | undefined; return s?.narration ?? s?.text ?? ''; })()}${missedContext}${learnerBrief?.() ?? ''} Answer questions with awareness of what they're currently looking at, and relate your answers back to this section when relevant, like a professor referencing the current lecture slide. Talk in the same voice as the slides: funny, a bit goofy, lightly sarcastic about the fish and the problem (never about the student), with the facts kept exactly right.`,
           conversation: history
         }),
       });
@@ -260,7 +269,7 @@ const useAIChat = (currentSection: SectionWithBreakdown | undefined,
 
       // Tutor decision rides the response header — available before the body streams
       const decisionAction = response.headers.get('X-Tutor-Decision');
-      if (decisionAction && decisionAction !== 'none' && onDecision) onDecision(decisionAction);
+      if (decisionAction && decisionAction !== 'none' && onDecision && !opts.ignoreDecision) onDecision(decisionAction);
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
@@ -490,6 +499,16 @@ function SelfCheckSlide({ onPick }: { onPick: (r: 'got' | 'kind' | 'lost') => vo
  * VARIANT SLIDE OVERLAY — reviewed alternate explanation (knowledge base)
  * Shown when the learner signals difficulty; narrated, then returns to the lesson.
  * ========================================================================== */
+// State of a "Your turn" question, passed down to the slide
+type AskUI = {
+  micStatus: 'idle' | 'listening' | 'processing';
+  waiting: boolean;          // the question is open for an answer
+  said: string | null;       // what the learner answered
+  revealed: boolean;         // the professor's answer is showing
+  onReveal: () => void;      // "Tell me the answer"
+  onType: () => void;        // "Type it instead"
+};
+
 type VariantSlide = { title: string; body: string; narration: string; audio_url: string | null; variant?: string };
 
 function VariantSlideOverlay({
@@ -1070,6 +1089,7 @@ function MiniSlideshowBlock({
   play,
   devMode,
   plain,
+  ask,
 }: {
   currentSection: SectionWithBreakdown;
   activeSectionIndex: number;
@@ -1090,6 +1110,7 @@ function MiniSlideshowBlock({
   play: (url: string | undefined, key: string, text?: string, onComplete?: () => void) => void;
   devMode: boolean;
   plain: boolean;   // "simpler please" is showing this step in plain words
+  ask: AskUI;
 }) {
   const [guess, setGuess] = useState<number | null>(null);
   const [checkAnswer, setCheckAnswer] = useState<boolean | null>(null);
@@ -1287,6 +1308,44 @@ function MiniSlideshowBlock({
           );
         }
           
+        if (step.type === 'askAloud') {
+          const q = simple ?? step.question;
+          return (
+            <div className="text-center py-2 animate-[fadeInUp_0.5s_ease-out]">
+              <div className="text-sm font-semibold uppercase tracking-wider text-cyan-700 mb-2">
+                {simple ? 'In plain words' : 'Your turn'}
+              </div>
+              <p className="text-2xl font-semibold text-black mb-5 leading-snug">{q}</p>
+
+              {ask.said && (
+                <p className="text-lg text-slate-700 mb-3 italic">You said: “{ask.said}”</p>
+              )}
+
+              {ask.revealed ? (
+                <p className="text-lg text-black leading-relaxed max-w-xl mx-auto animate-[fadeIn_0.4s_ease-out]">{step.answer}</p>
+              ) : ask.waiting && !ask.said ? (
+                <>
+                  <div className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-white text-base font-medium mb-4 ${
+                    ask.micStatus === 'listening' ? 'bg-red-600 animate-pulse' : ask.micStatus === 'processing' ? 'bg-slate-600' : 'bg-blue-600'
+                  }`}>
+                    {ask.micStatus === 'listening' ? '🎤 Listening — say your answer!'
+                      : ask.micStatus === 'processing' ? '💭 Got it…'
+                      : '🎤 Say your answer out loud'}
+                  </div>
+                  <div className="flex gap-3 justify-center">
+                    <button onClick={ask.onType} className="px-4 py-2 rounded-full bg-white/80 hover:bg-white text-blue-800 text-sm font-medium border border-blue-300">
+                      ⌨️ Type it instead
+                    </button>
+                    <button onClick={ask.onReveal} className="px-4 py-2 rounded-full bg-white/80 hover:bg-white text-blue-800 text-sm font-medium border border-blue-300">
+                      🙋 Tell me the answer
+                    </button>
+                  </div>
+                </>
+              ) : null}
+            </div>
+          );
+        }
+
         if (step.type === 'compare') {
           const cols: [string, string[], string][] = [
             [step.leftTitle, step.left, 'border-blue-400 bg-blue-50/70 text-blue-900'],
@@ -1436,6 +1495,7 @@ function ClassicLayout(props: {
   play: (url: string | undefined, key: string, text?: string, onComplete?: () => void) => void;
   devMode: boolean;
   plain: boolean;
+  ask: AskUI;
   isImageFocus: boolean;
   animationUrl?: string;
   hideVisual: boolean;
@@ -1498,6 +1558,7 @@ function ClassicLayout(props: {
               play={props.play}
               devMode={props.devMode}
               plain={props.plain}
+              ask={props.ask}
             />
           </div>
         </div>
@@ -1528,6 +1589,7 @@ function SplitLayout(props: {
   play: (url: string | undefined, key: string, text?: string, onComplete?: () => void) => void;
   devMode: boolean;
   plain: boolean;
+  ask: AskUI;
   animationUrl?: string;
   hideVisual: boolean;
   isImageFocus: boolean;
@@ -1558,6 +1620,7 @@ function SplitLayout(props: {
             play={props.play}
             devMode={props.devMode}
             plain={props.plain}
+            ask={props.ask}
           />
         </div>
 
@@ -1792,6 +1855,10 @@ export default function AIPresentation() {
   const [voiceInterruptionsEnabled, setVoiceInterruptionsEnabled] = useState(false);
   const [variantSlide, setVariantSlide] = useState<VariantSlide | null>(null);
   const [plainKey, setPlainKey] = useState<string | null>(null);   // `${section}_${step}` showing its plain version
+  // "Your turn" question: what the learner said, and whether the answer is showing
+  const [askState, setAskState] = useState<{ key: string; said: string | null; revealed: boolean } | null>(null);
+  const answerWaitRef = useRef<{ section: number; step: number } | null>(null);   // question open, waiting for an answer
+  const afterAnswerRef = useRef<(() => void) | null>(null);                        // runs once the tutor finishes reacting
   
   // Refs
   const keyTermsTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -1838,7 +1905,7 @@ export default function AIPresentation() {
      (isSpeaking && started && !inIntro && !showQuiz && !showReview &&
       !showSelfCheck && !showRemediation && !showConclusion));
   
-  const { status: micStatus, toggleMic, levelRef: micLevelRef } = useVoiceInput(
+  const { status: micStatus, toggleMic, listen, cancelListening, levelRef: micLevelRef } = useVoiceInput(
     (text) => handleSendMessage(text, { fromVoice: true }),
     () => {
       // Remember where the lesson was. Talking over the tutor's answer keeps the
@@ -1915,6 +1982,13 @@ export default function AIPresentation() {
       }
 
       // Key terms — shared intro, then ordinal + per-term audio for each term
+
+      if (step.type === 'askAloud') {
+        // ask, then open the mic for the answer
+        const qKey = `${baseKey}_question`;
+        play(audioUrls[qKey], qKey, step.question, () => startAnswerListening(sectionIndex, stepIndex));
+        return;
+      }
 
       if (step.type === 'predictThen') {
         const qKey = `${baseKey}_question`;
@@ -2136,6 +2210,20 @@ export default function AIPresentation() {
   // are handled right here with no LLM call; everything else goes to the tutor.
   const handleSendMessage = (text: string, opts: { fromVoice?: boolean } = {}) => {
     if (!text.trim()) return;
+    const waiting = answerWaitRef.current;
+    if (waiting) {
+      // A "Your turn" question is open: "I don't know" shows the answer, a command
+      // still works ("skip", "simpler"), anything else is their answer
+      if (/(?:don'?t|do not) know|no idea|not sure|\bidk\b|give up|tell me|\bpass\b/i.test(text)) {
+        setInput('');
+        revealAnswer(waiting.section, waiting.step);
+        return;
+      }
+      const cmd = parseDeckCommand(text);
+      if (!(cmd && runDeckCommand(cmd, text))) answerQuestion(text);
+      setInput('');
+      return;
+    }
     const command = parseDeckCommand(text);
     if (command && runDeckCommand(command, text)) {
       setInput('');
@@ -2160,6 +2248,62 @@ export default function AIPresentation() {
     sendMessage(text);
   };
 
+  /* ------------------------------------------------- "Your turn" questions */
+  const startAnswerListening = (section: number, step: number) => {
+    answerWaitRef.current = { section, step };
+    setAskState({ key: `${section}_${step}`, said: null, revealed: false });
+    // nobody talks for 9s (or there's no mic) → the professor gives the answer
+    listen({
+      noSpeechMs: 9000,
+      onNoSpeech: () => {
+        const w = answerWaitRef.current;
+        if (w && w.section === section && w.step === step) revealAnswer(section, step);
+      },
+    });
+  };
+
+  // The professor's own answer (nobody answered, or "tell me"), then on to the next slide
+  const revealAnswer = (section: number, step: number) => {
+    answerWaitRef.current = null;
+    cancelListening();
+    const st = sections[section]?.steps[step];
+    if (!st || st.type !== 'askAloud') return;
+    const key = `${section}_${step}`;
+    setAskState((a) => ({ key, said: a?.key === key ? a.said : null, revealed: true }));
+    signals.track('tutor_decision', { section, step, value: { action: 'reveal_answer' } });
+    const clip = `section${section}_step${step}_answer`;
+    const then = () => autoAdvanceFrom(section, step);
+    const url = audioUrls[clip];
+    if (url) play(url, clip, st.answer, then);
+    else ttsUrl(st.answer).then((u) => (u ? play(u, clip, st.answer, then) : then()));
+  };
+
+  // The learner answered: the tutor reacts to what THEY said, then the lesson moves on
+  const answerQuestion = (text: string) => {
+    const w = answerWaitRef.current;
+    answerWaitRef.current = null;
+    if (!w) return;
+    const st = sections[w.section]?.steps[w.step];
+    if (!st || st.type !== 'askAloud') return;
+    setAskState({ key: `${w.section}_${w.step}`, said: text, revealed: false });
+    signals.track('tutor_question', { section: w.section, step: w.step, value: { text: text.slice(0, 200), kind: 'spoken_answer' } });
+    signals.record(w.section, { questions: 1 });
+    setShowChat(true);
+    setInConversation(true);
+    afterAnswerRef.current = () => autoAdvanceFrom(w.section, w.step);
+    sendMessage(text, {
+      useKnowledgeBase: false,
+      ignoreDecision: true,
+      systemPrompt:
+        `You are "${PRESENTATION.professor.name}", a funny, kind science teacher talking with a 10-14 year old. ` +
+        `You just asked them: "${st.question}". A good answer includes: ${st.lookFor.join('; ')}. ` +
+        `Your own answer would be: "${st.answer}". Their reply is the user message. ` +
+        `Respond in 2-3 short spoken sentences. First react to THEIR idea specifically and credit whatever is right — be genuinely encouraging. ` +
+        `Then fill in anything important they missed, using your own answer. If they were way off or joking, be playful and kind, then give the answer. ` +
+        `Never say "wrong" or "incorrect". Lightly sarcastic about the fish, never about them. No lists or formatting, just speech.`,
+    });
+  };
+
   /* ------------------------------------------------------ deck commands */
   type AckClip = AckKey | `section${number}_goto`;
 
@@ -2170,6 +2314,10 @@ export default function AIPresentation() {
     interruptedRef.current = null;
     pendingDecisionRef.current = null;
     variantAfterRef.current = null;
+    answerWaitRef.current = null;
+    afterAnswerRef.current = null;
+    cancelListening();
+    setAskState(null);
     signals.stepExit();   // bank the time spent on the slide being left
     stop();
     stopSpeaking();
@@ -2192,7 +2340,9 @@ export default function AIPresentation() {
     if (!step?.simple) return;
     const key = `section${sectionIndex}_step${stepIndex}_simple`;
     const waitsForAnswer = step.type === 'predictThen' || step.type === 'checkYourself';
-    const then = waitsForAnswer ? undefined : () => autoAdvanceFrom(sectionIndex, stepIndex);
+    const then = step.type === 'askAloud'
+      ? () => startAnswerListening(sectionIndex, stepIndex)   // ask it plainly, then listen again
+      : waitsForAnswer ? undefined : () => autoAdvanceFrom(sectionIndex, stepIndex);
     const spoken = step.type === 'checkYourself' ? `True or false: ${step.simple}` : step.simple;
     const url = audioUrls[key];
     if (url) {
@@ -2597,6 +2747,7 @@ export default function AIPresentation() {
   // The plain version belongs to one step; moving on shows the normal slide again
   useEffect(() => {
     setPlainKey((k) => (k === `${activeSection}_${microStep}` ? k : null));
+    setAskState((a) => (a?.key === `${activeSection}_${microStep}` ? a : null));
   }, [activeSection, microStep]);
 
   // Clear the key-terms timer when leaving a section
@@ -2662,17 +2813,28 @@ export default function AIPresentation() {
 
   useEffect(() => {
     if (isChatSpeaking) return;                 // still answering
+    if (isLoading) return;                      // reply still on its way (speech may not have started yet)
     if (micStatus !== 'idle') return;           // still listening/processing
     if (cameraEnabled && !present) return;      // user away from camera
-    if (!interruptedRef.current && !pendingDecisionRef.current) return;  // nothing to do
+    if (!interruptedRef.current && !pendingDecisionRef.current && !afterAnswerRef.current) return;  // nothing to do
   
     if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
   
     // a decision (chip tap / "simpler please") acts fast;
     // a plain question leaves 7s of room for a follow-up
-    const delay = pendingDecisionRef.current ? 1500 : 7000;
+    const delay = pendingDecisionRef.current || afterAnswerRef.current ? 1500 : 7000;
   
     resumeTimerRef.current = setTimeout(() => {
+      // the tutor finished reacting to a "Your turn" answer: on to the next slide
+      const afterAnswer = afterAnswerRef.current;
+      if (afterAnswer) {
+        afterAnswerRef.current = null;
+        interruptedRef.current = null;
+        setInConversation(false);
+        afterAnswer();
+        return;
+      }
+
       const pending = interruptedRef.current;
       const decision = pendingDecisionRef.current;
       interruptedRef.current = null;
@@ -2700,7 +2862,7 @@ export default function AIPresentation() {
     return () => {
       if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
     };
-  }, [isChatSpeaking, micStatus, cameraEnabled, present]);
+  }, [isChatSpeaking, isLoading, micStatus, cameraEnabled, present]);
   
   /* -------------------------------------------------------- early returns */
   // Loading / error states before rendering the presentation
@@ -2753,6 +2915,15 @@ export default function AIPresentation() {
 
   /* ------------------------------------------------------ derived values */
   const microSteps = getMicroSteps(currentSection, activeSection);
+  const askKey = `${activeSection}_${microStep}`;
+  const askUI: AskUI = {
+    micStatus,
+    waiting: askState?.key === askKey && !askState.revealed,
+    said: askState?.key === askKey ? askState.said : null,
+    revealed: askState?.key === askKey && askState.revealed,
+    onReveal: () => revealAnswer(activeSection, microStep),
+    onType: () => { cancelListening(); setShowChat(true); },
+  };
   const isImageFocus = currentSection?.steps?.[microStep]?.type === 'imageFocus';
   const currentAnimation = animations[`${activeSection}_${microStep}`];
   const currentStepType = currentSection?.steps?.[microStep]?.type;
@@ -2960,6 +3131,7 @@ export default function AIPresentation() {
               play={play}
               devMode={devMode}
               plain={plainKey === `${activeSection}_${microStep}`}
+              ask={askUI}
               isImageFocus={isImageFocus}
               animationUrl={currentAnimation}
               hideVisual={!hasVisual}
@@ -2988,6 +3160,7 @@ export default function AIPresentation() {
               play={play}
               devMode={devMode}
               plain={plainKey === `${activeSection}_${microStep}`}
+              ask={askUI}
               isImageFocus={isImageFocus}
               animationUrl={currentAnimation}
               hideVisual={!hasVisual}

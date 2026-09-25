@@ -2,13 +2,16 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { getValue, setValue } from "@/src/redisClient";
 import { SECTIONS_CACHE_KEY } from "@/src/cacheVersion";
+import { findCrossSectionRepeats } from "@/lib/lessonOverlap";
 
 const supabase = createClient(
   process.env.SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY! // server-only, bypasses RLS
 );
 
-async function planSections(): Promise<{ title: string; query: string }[]> {
+type PlannedSection = { title: string; query: string; covers: string[] };
+
+async function planSections(): Promise<PlannedSection[]> {
   // Pull a broad, cheap survey of what's actually in the knowledge base
   const surveyQueries = [
     "blue catfish biology appearance behavior",
@@ -42,8 +45,11 @@ Order them as a guided path: start with the basics (what this animal is), move t
 For each section provide:
 - "title": a short, engaging heading a young person would want to click (under 5 words)
 - "query": a search phrase packed with the specific nouns and concepts that would retrieve this section's material from the source documents. This is used for semantic search, so favor concrete terms over natural phrasing.
+- "covers": 3-5 specific points this section teaches (short phrases naming the fact or idea, e.g. "grow over 100 pounds", "introduced to Virginia rivers in the 1970s").
 
-Output JSON: { "sections": [ { "title": "...", "query": "..." } ] }`,
+NO REPEATS: every fact, number and example belongs to exactly ONE section. Split the material so no point appears in two sections' "covers". Only the first section explains what a blue catfish is; later sections build on it without re-introducing the fish.
+
+Output JSON: { "sections": [ { "title": "...", "query": "...", "covers": ["...", "..."] } ] }`,
         },
         {
           role: "user",
@@ -70,7 +76,11 @@ Output JSON: { "sections": [ { "title": "...", "query": "..." } ] }`,
   if (!Array.isArray(planned) || planned.length < 4 || planned.length > 7) {
     throw new Error("Section planning returned an invalid structure");
   }
-  return planned;
+  return planned.map((p: any) => ({
+    title: String(p.title ?? ''),
+    query: String(p.query ?? p.title ?? ''),
+    covers: Array.isArray(p.covers) ? p.covers.map(String).slice(0, 6) : [],
+  }));
 }
 
 async function embed(text: string): Promise<number[]> {
@@ -86,14 +96,52 @@ async function embed(text: string): Promise<number[]> {
   return data.data[0].embedding;
 }
 
-async function getRagContext(topic: string, matchCount = 13): Promise<string> {
+async function getRagChunks(topic: string, matchCount = 13): Promise<string[]> {
   const queryEmbedding = await embed(topic);
   const { data, error } = await supabase.rpc("match_documents3", {
     query_embedding: queryEmbedding,
     match_count: matchCount,
   });
   if (error) throw new Error(`RAG lookup failed: ${error.message}`);
-  return (data ?? []).map((row: any) => row.content).join("\n\n");
+  return (data ?? []).map((row: any) => String(row.content ?? '')).filter(Boolean);
+}
+
+async function getRagContext(topic: string, matchCount = 13): Promise<string> {
+  return (await getRagChunks(topic, matchCount)).join("\n\n");
+}
+
+const CHUNKS_PER_SECTION = 20;
+const MIN_CHUNKS_PER_SECTION = 8;
+
+/**
+ * Each section searches the knowledge base on its own, and the searches
+ * overlap — the same passage used to land in 3-4 sections, so each one taught
+ * it again. Give every passage to the ONE section it matched best (earliest
+ * rank); a section left with too few passages borrows its top shared ones back.
+ */
+async function getSectionContexts(plan: PlannedSection[]): Promise<string[]> {
+  const results = await Promise.all(plan.map((p) => getRagChunks(p.query, CHUNKS_PER_SECTION + 10)));
+
+  const owner = new Map<string, { section: number; rank: number }>();
+  results.forEach((chunks, section) => {
+    chunks.forEach((chunk, rank) => {
+      const key = chunk.trim();
+      const cur = owner.get(key);
+      if (!cur || rank < cur.rank) owner.set(key, { section, rank });
+    });
+  });
+
+  return results.map((chunks, section) => {
+    const own = chunks.filter((c) => owner.get(c.trim())?.section === section);
+    let picked = own.slice(0, CHUNKS_PER_SECTION);
+    if (picked.length < MIN_CHUNKS_PER_SECTION) {
+      const borrowed = chunks.filter((c) => !picked.includes(c)).slice(0, MIN_CHUNKS_PER_SECTION - picked.length);
+      picked = [...picked, ...borrowed];
+    }
+    const shared = chunks.length - own.length;
+    console.log(`Section ${section + 1}: ${picked.length} source passages (${shared} given to other sections)`);
+    return picked.join("\n\n");
+  });
 }
 
 async function getMatchingImages(query: string, count: number): Promise<{ url: string; description: string }[]> {
@@ -114,7 +162,11 @@ const TRUE_FALSE_ENABLED = false;
 // (compare): also switched off for now, the same way.
 const GUESS_ENABLED = false;
 const COMPARE_ENABLED = false;
+// "Your turn": one open question per topic that the learner answers out loud
+// (or types); the tutor responds to what they actually said.
+const ASK_ALOUD_ENABLED = true;
 const DISABLED_STEP_TYPES = [
+  ...(ASK_ALOUD_ENABLED ? [] : ['askAloud']),
   ...(TRUE_FALSE_ENABLED ? [] : ['checkYourself']),
   ...(GUESS_ENABLED ? [] : ['predictThen']),
   ...(COMPARE_ENABLED ? [] : ['compare']),
@@ -135,11 +187,31 @@ const isBulletList = (v: unknown) =>
   Array.isArray(v) && v.length >= 1 && v.length <= 3 &&
   v.every((b) => typeof b === 'string' && b.trim().length > 0 && b.trim().split(/\s+/).length <= 12);
 
+type SectionScope = { covers: string[]; others: { title: string; covers: string[] }[] };
+
+function scopeText(scope: SectionScope | undefined, sectionNum: number): string {
+  if (!scope) return '';
+  const mine = scope.covers.length ? scope.covers.map((c) => `- ${c}`).join('\n') : '- (the section title)';
+  const others = scope.others
+    .map((o) => `- "${o.title}": ${o.covers.join('; ') || 'its title topic'}`)
+    .join('\n');
+  return `
+THIS SECTION'S SCOPE — teach these points, in depth:
+${mine}
+
+OTHER SECTIONS OF THE SAME LESSON — the learner hears these separately. Do NOT teach, explain or repeat their facts, numbers or examples, even if they appear in the SOURCE CONTENT. If one is needed for context, mention it in a few words at most ("as you'll hear later", "remember those no-predator days?") and move on:
+${others}
+${sectionNum > 1 ? `
+This is section ${sectionNum}: do not re-introduce what a blue catfish is — earlier sections already did.` : ''}
+`;
+}
+
 async function generateSingleSection(
   ragContext: string,
   sectionTopic: string,
   sectionNum: number,
-  attempt = 1
+  attempt = 1,
+  scope?: SectionScope,
 ): Promise<any> {
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -159,14 +231,15 @@ Base every fact strictly on the SOURCE CONTENT below — do not invent facts.
 
 SOURCE CONTENT:
 """${ragContext}"""
-
+${scopeText(scope, sectionNum)}
 STRICT RULES YOU MUST FOLLOW:
 1. "steps" is an ordered array of teaching steps for this section. Use between ${MIN_STEPS} and ${MAX_STEPS} steps. This lesson should feel full and informative: cover what the SOURCE CONTENT says about this topic in real depth (causes, numbers, examples, consequences, what people are doing about it), one idea per step, in an order that builds up. Use the whole SOURCE CONTENT, not just the first facts in it.
 2. The FIRST step must always be type "overview" — it introduces the section. Give it "bullets" and "narration" (see rule 13). It may optionally include "stats": 1-2 short quantitative facts as {value, label} pairs. Prefer surprising magnitudes over plain dates. Omit "stats" entirely if the source content has no meaningful numbers for this topic — do not invent them or pad with trivia.
 3. Available step types after the overview: "detail" (one more idea about this topic, going deeper: a cause, a consequence, how something works, a real example from the source. Give it a short "heading" (2-5 words, may be playful), "bullets" and "narration". "detail" may be used up to ${MAX_DETAIL} times per section, each on a DIFFERENT idea — this is the main way to add depth)${COMPARE_ENABLED ? `, "compare" (two things side by side, e.g. blue catfish vs native catfish, before vs after, the problem vs the solution. Give "leftTitle" and "rightTitle" (1-3 words each), "left" and "right" (2-3 short points each, under 6 words, lined up so point 1 on the left pairs with point 1 on the right), and "narration" walking through the differences. Only use it when the SOURCE CONTENT really supports both sides)` : ''}, "example" (an analogy to something unrelated and familiar; give it "bullets" (1-2) and "narration" that tells the analogy out loud), "numberSpotlight" (a single STRIKING quantity that makes a learner react — a surprising scale, magnitude, or proportion. Provide "value" as the short number/quantity, "label" as a 3-6 word caption, "context" as ONE short on-screen line (under 12 words) that reacts to the number, and "narration" (see rule 13) explaining why this number matters. "100+ million fish" or "8-9% of body weight daily" are good; plain dates ("2011", "September 2019"), small counts, or routine figures are NOT — they're facts, not attention-grabbers)${GUESS_ENABLED ? `, "predictThen" (invites the learner to guess a surprising number or fact BEFORE it's revealed. Provide "question" (1 sentence), "options" (exactly 4 short guesses — one correct, three plausible but wrong, spread far enough apart that the right one isn't obvious), "correctIndex" (0-3, and vary its position rather than always using the same slot), and "answer" (the short factual answer, read aloud after they guess). Only use this for a number or specific fact someone could reasonably guess at.)` : ''}${TRUE_FALSE_ENABLED ? `, "checkYourself" (a single quick true/false comprehension check — provide "statement", "isTrue" (boolean), and "feedback" (1 sentence explaining why))` : ''}.
 4. Include a step type ONLY if it genuinely helps for THIS content. Skip "example" if no honest analogy fits. Only use "numberSpotlight" if this section contains a genuinely surprising number — omit the step entirely if it doesn't; never settle for a date or a routine figure just to include one.${GUESS_ENABLED ? ` Only use "predictThen" for facts a learner could plausibly guess at.` : ''} Do not include the same type twice, except "detail" (up to ${MAX_DETAIL}).
 5. Every step's content must be grounded strictly in the SOURCE CONTENT — never invent facts to fill out a step.
-6. ${TRUE_FALSE_ENABLED ? `Every section SHOULD include at least one interactive step ("predictThen" or "checkYourself") unless the content genuinely doesn't support one.` : GUESS_ENABLED ? `Include one "predictThen" step when the section has a number or fact worth guessing; otherwise skip it. Do NOT write true/false ("checkYourself") steps.` : `Only use the step types listed in rule 3. Do NOT write question steps ("predictThen", "checkYourself") or "compare" steps; teach with "overview", "detail", "example" and "numberSpotlight".`}
+${ASK_ALOUD_ENABLED ? `5b. "askAloud" — EXACTLY ONE per section, placed after the teaching steps (second to last or last): an open question the learner answers OUT LOUD, that makes them think with what this section just taught — predict what happens, explain why, or apply it to something ("What do you think happens to the crabs when there are millions more catfish?"). Not a number to recall, not yes/no, not a quiz. Provide "question" (1 sentence, under 20 words, in the lesson voice), "lookFor" (1-3 short key ideas a good answer would include, from the SOURCE CONTENT), "answer" (2-3 spoken sentences: the professor's own answer, in the lesson voice, from the SOURCE CONTENT) and "simple" (the same question asked more plainly).
+` : ''}6. ${TRUE_FALSE_ENABLED ? `Every section SHOULD include at least one interactive step ("predictThen" or "checkYourself") unless the content genuinely doesn't support one.` : GUESS_ENABLED ? `Include one "predictThen" step when the section has a number or fact worth guessing; otherwise skip it. Do NOT write true/false ("checkYourself") steps.` : `Only use the step types listed in rule 3. Do NOT write "predictThen", "checkYourself" or "compare" steps; teach with "overview", "detail", "example" and "numberSpotlight"${ASK_ALOUD_ENABLED ? `, plus the one "askAloud" question` : ''}.`}
 7. "quiz" must contain EXACTLY 1 multiple-choice question testing THIS section's specific content. It must have exactly 4 "options", a "correctAnswer" index (0-3), and an "explanation" (1 short sentence stating the specific fact that makes the answer correct). CRITICAL — write the options so the correct answer is not identifiable by format alone: - All 4 options must be similar in length (within a few words of each other). The correct answer must NOT be the longest or most detailed option — that is the single most common giveaway. - All 4 options must be similar in specificity. Do not pair one precise, qualified answer against three vague ones. - Wrong options must be plausible to someone who didn't pay attention — draw them from real-sounding facts about Blue Catfish, not obviously absurd choices. - Vary which index is correct across sections; do not default to the same position. The question must be answerable ONLY by someone who paid attention to THIS section. Do not ask about general Blue Catfish knowledge that other sections also cover — anchor it to a specific fact, number, or claim unique to this section's content.
 8. "recap" must be ONE sentence (12-20 words) summarizing this section's single most important takeaway, written to be read aloud as part of an end-of-lesson recap. Start it naturally so it flows in a list (e.g. "Blue Catfish were introduced in the 1970s for sport fishing." not "In this section we learned that...").
 9. "value" must be a STRING, even when it is purely numeric (write "19", not 19). Every stat's "value" and "label" must state a fact exactly as it appears in the source content. Do not combine numbers from one fact with the subject of another.
@@ -200,7 +273,8 @@ Output ONLY a JSON object with key "section":
       { "type": "detail", "heading": "...", "bullets": ["...", "..."], "narration": "...", "simple": "..." },
 ${COMPARE_ENABLED ? `      { "type": "compare", "leftTitle": "...", "left": ["...", "..."], "rightTitle": "...", "right": ["...", "..."], "narration": "...", "simple": "..." },
 ` : ''}      { "type": "example", "bullets": ["..."], "narration": "...", "simple": "..." },
-      { "type": "numberSpotlight", "value": "...", "label": "...", "context": "...", "narration": "...", "simple": "..." }${GUESS_ENABLED ? `,
+      { "type": "numberSpotlight", "value": "...", "label": "...", "context": "...", "narration": "...", "simple": "..." }${ASK_ALOUD_ENABLED ? `,
+      { "type": "askAloud", "question": "...", "lookFor": ["...", "..."], "answer": "...", "simple": "..." }` : ''}${GUESS_ENABLED ? `,
       { "type": "predictThen", "question": "...", "options": ["...", "...", "...", "..."], "correctIndex": 2, "answer": "...", "simple": "..." }` : ''}${TRUE_FALSE_ENABLED ? `,
       { "type": "checkYourself", "statement": "...", "isTrue": true, "feedback": "...", "simple": "..." }` : ''}
     ],
@@ -235,7 +309,7 @@ ${COMPARE_ENABLED ? `      { "type": "compare", "leftTitle": "...", "left": ["..
     const why = data.error?.message ?? data.choices?.[0]?.finish_reason ?? 'empty reply';
     if (attempt < 3) {
       console.warn(`Section ${sectionNum} unreadable (${why}), retrying...`);
-      return generateSingleSection(ragContext, sectionTopic, sectionNum, attempt + 1);
+      return generateSingleSection(ragContext, sectionTopic, sectionNum, attempt + 1, scope);
     }
     throw new Error(`No usable content from AI for section ${sectionNum} (${why})`);
   }
@@ -250,9 +324,11 @@ ${COMPARE_ENABLED ? `      { "type": "compare", "leftTitle": "...", "left": ["..
     new Set(steps.filter((s: any) => s.type !== 'detail').map((s: any) => s.type)).size === steps.filter((s: any) => s.type !== 'detail').length &&
     steps.filter((s: any) => s.type === 'detail').length <= MAX_DETAIL &&
     steps.every((s: any) => !DISABLED_STEP_TYPES.includes(s.type)) &&
+    (!ASK_ALOUD_ENABLED || steps.filter((s: any) => s.type === 'askAloud').length === 1) &&
     steps.every((s: any) => {
       if (typeof s.simple !== 'string' || !s.simple.trim()) return false;   // every step needs its plain version
       if (s.type === 'numberSpotlight') return typeof s.value === 'string' && typeof s.label === 'string' && typeof s.context === 'string' && isNarration(s.narration);
+      if (s.type === 'askAloud') return typeof s.question === 'string' && s.question.trim().length > 0 && isShortList(s.lookFor) && typeof s.answer === 'string' && s.answer.trim().length > 0;
       if (s.type === 'compare') return typeof s.leftTitle === 'string' && typeof s.rightTitle === 'string' && isShortList(s.left) && isShortList(s.right) && isNarration(s.narration);
       if (s.type === 'checkYourself') return typeof s.statement === 'string' && typeof s.isTrue === 'boolean' && typeof s.feedback === 'string';
       if (s.type === 'predictThen') return typeof s.question === 'string' && Array.isArray(s.options) && s.options.length === 4 && Number.isInteger(s.correctIndex) && s.correctIndex >= 0 && s.correctIndex < 4 && typeof s.answer === 'string';
@@ -268,7 +344,7 @@ ${COMPARE_ENABLED ? `      { "type": "compare", "leftTitle": "...", "left": ["..
   
    if ((!validSteps || !validQuiz || !validRecap || !validRemediation) && attempt < 3) {
     console.warn(`Section ${sectionNum} malformed (steps/quiz), retrying...`);
-    return generateSingleSection(ragContext, sectionTopic, sectionNum, attempt + 1);
+    return generateSingleSection(ragContext, sectionTopic, sectionNum, attempt + 1, scope);
   }
     
   // Last line of defence for switched-off step types (the model can ignore the prompt)
@@ -438,18 +514,22 @@ export async function POST(req: Request) {
     const plan = await planSections();
     console.log('PLANNED SECTIONS:', plan);
   
-    const ragContexts = await Promise.all(
-      // more source material per topic, so longer topics have real facts to draw on
-      plan.map((p) => getRagContext(p.query, 20))
-    );
+    // More source per topic (20 passages), but each passage goes to one topic only
+    const ragContexts = await getSectionContexts(plan);
 
     const sections = await Promise.all(
       plan.map((p, i) =>
-        generateSingleSection(ragContexts[i], p.title, i + 1)
+        generateSingleSection(ragContexts[i], p.title, i + 1, 1, {
+          covers: p.covers,
+          others: plan.filter((_, j) => j !== i).map((o) => ({ title: o.title, covers: o.covers })),
+        })
       )
     );
 
     dedupeStats(sections);
+    // Anything that still repeats across topics shows up on /lessonReview; log it here too
+    const repeats = findCrossSectionRepeats(sections);
+    if (repeats.length) console.warn(`Cross-section repeats (${repeats.length}):`, repeats.slice(0, 10));
     await assignUniqueImages(sections, plan.map((p) => p.query));
     await addImageSteps(sections);
 
