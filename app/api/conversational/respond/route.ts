@@ -41,6 +41,9 @@ export async function POST(request: NextRequest) {
     const topic = body.topic as string | undefined;
     const style = body.style as string | undefined;
     const stream = body.stream === true;
+    // "Your turn" feedback already carries the model answer: skip the lookup (faster, and
+    // its "use the knowledge base word for word" instruction would fight the feedback prompt)
+    const useKnowledgeBase = body.useKnowledgeBase !== false;
 
     if (!userText) {
       return NextResponse.json({ error: 'Missing user text.' }, { status: 400 });
@@ -70,7 +73,7 @@ export async function POST(request: NextRequest) {
     
     // A failed knowledge-base lookup shouldn't kill the answer — reply without it
     let docs: any[] | null = null;
-    try {
+    if (useKnowledgeBase) try {
       const queryEmbedding = await getEmbedding(userText);
       const { data, error } = await supabase.rpc('match_documents3', {
         query_embedding: queryEmbedding,
@@ -89,7 +92,7 @@ export async function POST(request: NextRequest) {
     const messages = [
       {
         role: 'system',
-        content: effectiveSystemPrompt + intentLine + ` 
+        content: !useKnowledgeBase ? effectiveSystemPrompt : effectiveSystemPrompt + intentLine + ` 
 
       You MUST follow the knowledge base below.
       If the knowledge base contains an answer, you MUST use it exactly and do not modify it.

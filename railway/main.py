@@ -187,6 +187,8 @@ def plan_animations(section: dict):
             lines.append(f"{idx}: numberSpotlight — {s.get('value')} {s.get('label')}")
         elif t == "processFlow":
             lines.append(f"{idx}: processFlow — {s.get('intro')}")
+        elif t == "askAloud":
+            lines.append(f"{idx}: askAloud (a spoken question to the learner, skip)")
         elif t == "compare":
             lines.append(f"{idx}: compare — {s.get('leftTitle')}: {', '.join(s.get('left') or [])} vs {s.get('rightTitle')}: {', '.join(s.get('right') or [])}")
         elif t == "detail":
