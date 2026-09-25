@@ -110,11 +110,23 @@ async function getMatchingImages(query: string, count: number): Promise<{ url: s
 // Set to true to bring them back — the prompt text, validation, audio and
 // slide rendering for them are all still in place.
 const TRUE_FALSE_ENABLED = false;
+// "Take a guess" 4-option slides (predictThen) and "Side by side" slides
+// (compare): also switched off for now, the same way.
+const GUESS_ENABLED = false;
+const COMPARE_ENABLED = false;
+const DISABLED_STEP_TYPES = [
+  ...(TRUE_FALSE_ENABLED ? [] : ['checkYourself']),
+  ...(GUESS_ENABLED ? [] : ['predictThen']),
+  ...(COMPARE_ENABLED ? [] : ['compare']),
+];
 
 // Longer lessons: more slides per topic (each one idea, short bullets, longer
 // narration) rather than longer individual slides.
 const MIN_STEPS = 4;
 const MAX_STEPS = 7;
+// "detail" is the main way to add depth; with the guess/compare slides off it
+// also has to make room for up to MAX_STEPS
+const MAX_DETAIL = 4;
 
 const isNarration = (v: unknown) => typeof v === 'string' && v.trim().split(/\s+/).length >= 15;
 const isShortList = (v: unknown) =>
@@ -151,10 +163,10 @@ SOURCE CONTENT:
 STRICT RULES YOU MUST FOLLOW:
 1. "steps" is an ordered array of teaching steps for this section. Use between ${MIN_STEPS} and ${MAX_STEPS} steps. This lesson should feel full and informative: cover what the SOURCE CONTENT says about this topic in real depth (causes, numbers, examples, consequences, what people are doing about it), one idea per step, in an order that builds up. Use the whole SOURCE CONTENT, not just the first facts in it.
 2. The FIRST step must always be type "overview" — it introduces the section. Give it "bullets" and "narration" (see rule 13). It may optionally include "stats": 1-2 short quantitative facts as {value, label} pairs. Prefer surprising magnitudes over plain dates. Omit "stats" entirely if the source content has no meaningful numbers for this topic — do not invent them or pad with trivia.
-3. Available step types after the overview: "detail" (one more idea about this topic, going deeper: a cause, a consequence, how something works, a real example from the source. Give it a short "heading" (2-5 words, may be playful), "bullets" and "narration". "detail" may be used up to 3 times per section, each on a DIFFERENT idea — this is the main way to add depth), "compare" (two things side by side, e.g. blue catfish vs native catfish, before vs after, the problem vs the solution. Give "leftTitle" and "rightTitle" (1-3 words each), "left" and "right" (2-3 short points each, under 6 words, lined up so point 1 on the left pairs with point 1 on the right), and "narration" walking through the differences. Only use it when the SOURCE CONTENT really supports both sides), "example" (an analogy to something unrelated and familiar; give it "bullets" (1-2) and "narration" that tells the analogy out loud), "numberSpotlight" (a single STRIKING quantity that makes a learner react — a surprising scale, magnitude, or proportion. Provide "value" as the short number/quantity, "label" as a 3-6 word caption, "context" as ONE short on-screen line (under 12 words) that reacts to the number, and "narration" (see rule 13) explaining why this number matters. "100+ million fish" or "8-9% of body weight daily" are good; plain dates ("2011", "September 2019"), small counts, or routine figures are NOT — they're facts, not attention-grabbers), "predictThen" (invites the learner to guess a surprising number or fact BEFORE it's revealed. Provide "question" (1 sentence), "options" (exactly 4 short guesses — one correct, three plausible but wrong, spread far enough apart that the right one isn't obvious), "correctIndex" (0-3, and vary its position rather than always using the same slot), and "answer" (the short factual answer, read aloud after they guess). Only use this for a number or specific fact someone could reasonably guess at.)${TRUE_FALSE_ENABLED ? `, "checkYourself" (a single quick true/false comprehension check — provide "statement", "isTrue" (boolean), and "feedback" (1 sentence explaining why))` : ''}.
-4. Include a step type ONLY if it genuinely helps for THIS content. Skip "example" if no honest analogy fits. Only use "numberSpotlight" if this section contains a genuinely surprising number — omit the step entirely if it doesn't; never settle for a date or a routine figure just to include one. Only use "predictThen" for facts a learner could plausibly guess at. Do not include the same type twice, except "detail" (up to 3).
+3. Available step types after the overview: "detail" (one more idea about this topic, going deeper: a cause, a consequence, how something works, a real example from the source. Give it a short "heading" (2-5 words, may be playful), "bullets" and "narration". "detail" may be used up to ${MAX_DETAIL} times per section, each on a DIFFERENT idea — this is the main way to add depth)${COMPARE_ENABLED ? `, "compare" (two things side by side, e.g. blue catfish vs native catfish, before vs after, the problem vs the solution. Give "leftTitle" and "rightTitle" (1-3 words each), "left" and "right" (2-3 short points each, under 6 words, lined up so point 1 on the left pairs with point 1 on the right), and "narration" walking through the differences. Only use it when the SOURCE CONTENT really supports both sides)` : ''}, "example" (an analogy to something unrelated and familiar; give it "bullets" (1-2) and "narration" that tells the analogy out loud), "numberSpotlight" (a single STRIKING quantity that makes a learner react — a surprising scale, magnitude, or proportion. Provide "value" as the short number/quantity, "label" as a 3-6 word caption, "context" as ONE short on-screen line (under 12 words) that reacts to the number, and "narration" (see rule 13) explaining why this number matters. "100+ million fish" or "8-9% of body weight daily" are good; plain dates ("2011", "September 2019"), small counts, or routine figures are NOT — they're facts, not attention-grabbers)${GUESS_ENABLED ? `, "predictThen" (invites the learner to guess a surprising number or fact BEFORE it's revealed. Provide "question" (1 sentence), "options" (exactly 4 short guesses — one correct, three plausible but wrong, spread far enough apart that the right one isn't obvious), "correctIndex" (0-3, and vary its position rather than always using the same slot), and "answer" (the short factual answer, read aloud after they guess). Only use this for a number or specific fact someone could reasonably guess at.)` : ''}${TRUE_FALSE_ENABLED ? `, "checkYourself" (a single quick true/false comprehension check — provide "statement", "isTrue" (boolean), and "feedback" (1 sentence explaining why))` : ''}.
+4. Include a step type ONLY if it genuinely helps for THIS content. Skip "example" if no honest analogy fits. Only use "numberSpotlight" if this section contains a genuinely surprising number — omit the step entirely if it doesn't; never settle for a date or a routine figure just to include one.${GUESS_ENABLED ? ` Only use "predictThen" for facts a learner could plausibly guess at.` : ''} Do not include the same type twice, except "detail" (up to ${MAX_DETAIL}).
 5. Every step's content must be grounded strictly in the SOURCE CONTENT — never invent facts to fill out a step.
-6. ${TRUE_FALSE_ENABLED ? `Every section SHOULD include at least one interactive step ("predictThen" or "checkYourself") unless the content genuinely doesn't support one.` : `Include one "predictThen" step when the section has a number or fact worth guessing; otherwise skip it. Do NOT write true/false ("checkYourself") steps.`}
+6. ${TRUE_FALSE_ENABLED ? `Every section SHOULD include at least one interactive step ("predictThen" or "checkYourself") unless the content genuinely doesn't support one.` : GUESS_ENABLED ? `Include one "predictThen" step when the section has a number or fact worth guessing; otherwise skip it. Do NOT write true/false ("checkYourself") steps.` : `Only use the step types listed in rule 3. Do NOT write question steps ("predictThen", "checkYourself") or "compare" steps; teach with "overview", "detail", "example" and "numberSpotlight".`}
 7. "quiz" must contain EXACTLY 1 multiple-choice question testing THIS section's specific content. It must have exactly 4 "options", a "correctAnswer" index (0-3), and an "explanation" (1 short sentence stating the specific fact that makes the answer correct). CRITICAL — write the options so the correct answer is not identifiable by format alone: - All 4 options must be similar in length (within a few words of each other). The correct answer must NOT be the longest or most detailed option — that is the single most common giveaway. - All 4 options must be similar in specificity. Do not pair one precise, qualified answer against three vague ones. - Wrong options must be plausible to someone who didn't pay attention — draw them from real-sounding facts about Blue Catfish, not obviously absurd choices. - Vary which index is correct across sections; do not default to the same position. The question must be answerable ONLY by someone who paid attention to THIS section. Do not ask about general Blue Catfish knowledge that other sections also cover — anchor it to a specific fact, number, or claim unique to this section's content.
 8. "recap" must be ONE sentence (12-20 words) summarizing this section's single most important takeaway, written to be read aloud as part of an end-of-lesson recap. Start it naturally so it flows in a list (e.g. "Blue Catfish were introduced in the 1970s for sport fishing." not "In this section we learned that...").
 9. "value" must be a STRING, even when it is purely numeric (write "19", not 19). Every stat's "value" and "label" must state a fact exactly as it appears in the source content. Do not combine numbers from one fact with the subject of another.
@@ -162,7 +174,7 @@ STRICT RULES YOU MUST FOLLOW:
 11. AUDIENCE AND VOICE: the learner is 10-14 years old and every line is read aloud by a text-to-speech voice. Use short, everyday words and sentences under 20 words. Write numbers and units the way you'd say them ("about 100 pounds", "8 to 9 percent"), never symbols or abbreviations like "~", "%", "lbs", "e.g.", or parentheses.
 12. EVERY STEP MUST STAND ON ITS OWN: learners can jump straight to any step by voice ("go to the part about mercury"), so never open a narration with "They", "This", "It", or "As we saw". Name the subject ("Blue catfish...") and the step's key idea in its first sentence, so it makes sense heard on its own and can be found by its topic.
 13. SCREEN TEXT vs. SPOKEN TEXT — the learner SEES "bullets" and HEARS "narration". They must not be the same words; the professor must never sound like they are reading the slide.
-   - "bullets": 2-3 key points (1-2 for "example"; "compare" uses "left"/"right" instead), each UNDER 8 words. Fragments, not sentences. No filler ("It is important to note", "In fact", "This means that"). No two bullets say the same thing. Each bullet is one fact from the SOURCE CONTENT, and a bullet may have a quick joke in it.
+   - "bullets": 2-3 key points (1-2 for "example"${COMPARE_ENABLED ? `; "compare" uses "left"/"right" instead` : ''}), each UNDER 8 words. Fragments, not sentences. No filler ("It is important to note", "In fact", "This means that"). No two bullets say the same thing. Each bullet is one fact from the SOURCE CONTENT, and a bullet may have a quick joke in it.
    - "narration": 4-6 spoken sentences (about 60-100 words) that EXPLAIN and BRANCH OUT from the bullets: the why or how behind them, a vivid example, or one extra detail from the SOURCE CONTENT that the bullets leave out. Cover the bullets' points in order so they can appear on screen as they are mentioned, but in fresh words; never read a bullet out word for word. Every added detail must still come from the SOURCE CONTENT.
 14. TONE — funny, goofy, a little sarcastic, like a favorite science teacher who thinks this fish is ridiculous. Examples of the voice: "Blue catfish: basically a vacuum cleaner with fins." / "Nothing in the Bay eats them. Rude." / "Spoiler: the crabs are not thrilled." Rules for the humor:
    - Aim the sarcasm at the fish, the situation, or the problem, NEVER at the learner, a group of people, or anyone's answer.
@@ -170,9 +182,9 @@ STRICT RULES YOU MUST FOLLOW:
    - Keep it kind and classroom-safe for ages 10-14. No insults, no pop-culture references that will date.
    - Quiz questions, quiz options, and "explanation" stay plain and clear (no jokes there); "feedback", "answer", "recap" and "remediation" can be warm and lightly playful.
 15. "simple" — EVERY step also gets a "simple" string: the SAME step said as plainly as possible, for a learner who just said "simpler please". Use 1-2 short sentences (under 25 words total) of everyday words a 9 year old knows. No jokes, no sarcasm, no new facts, no numbers the step doesn't already have.
-   - "overview" / "detail" / "compare" / "example" / "numberSpotlight": plainly say what the information IS (e.g. "Blue catfish get very big. Some weigh more than 100 pounds.").
-   - "predictThen": ask the SAME question more plainly (the options and the correct answer stay the same).
-${TRUE_FALSE_ENABLED ? `   - "checkYourself": say the SAME statement more plainly, so its true/false answer does not change. Do not start it with "True or false".
+   - "overview" / "detail" / ${COMPARE_ENABLED ? `"compare" / ` : ''}"example" / "numberSpotlight": plainly say what the information IS (e.g. "Blue catfish get very big. Some weigh more than 100 pounds.").
+${GUESS_ENABLED ? `   - "predictThen": ask the SAME question more plainly (the options and the correct answer stay the same).
+` : ''}${TRUE_FALSE_ENABLED ? `   - "checkYourself": say the SAME statement more plainly, so its true/false answer does not change. Do not start it with "True or false".
 ` : ''}
 Output ONLY a JSON object with key "section":
 
@@ -186,10 +198,10 @@ Output ONLY a JSON object with key "section":
     "steps": [
       { "type": "overview", "bullets": ["...", "..."], "narration": "...", "simple": "...", "stats": [{"value": "...", "label": "..."}] },
       { "type": "detail", "heading": "...", "bullets": ["...", "..."], "narration": "...", "simple": "..." },
-      { "type": "compare", "leftTitle": "...", "left": ["...", "..."], "rightTitle": "...", "right": ["...", "..."], "narration": "...", "simple": "..." },
-      { "type": "example", "bullets": ["..."], "narration": "...", "simple": "..." },
-      { "type": "numberSpotlight", "value": "...", "label": "...", "context": "...", "narration": "...", "simple": "..." },
-      { "type": "predictThen", "question": "...", "options": ["...", "...", "...", "..."], "correctIndex": 2, "answer": "...", "simple": "..." }${TRUE_FALSE_ENABLED ? `,
+${COMPARE_ENABLED ? `      { "type": "compare", "leftTitle": "...", "left": ["...", "..."], "rightTitle": "...", "right": ["...", "..."], "narration": "...", "simple": "..." },
+` : ''}      { "type": "example", "bullets": ["..."], "narration": "...", "simple": "..." },
+      { "type": "numberSpotlight", "value": "...", "label": "...", "context": "...", "narration": "...", "simple": "..." }${GUESS_ENABLED ? `,
+      { "type": "predictThen", "question": "...", "options": ["...", "...", "...", "..."], "correctIndex": 2, "answer": "...", "simple": "..." }` : ''}${TRUE_FALSE_ENABLED ? `,
       { "type": "checkYourself", "statement": "...", "isTrue": true, "feedback": "...", "simple": "..." }` : ''}
     ],
     "quiz": [
@@ -234,10 +246,10 @@ Output ONLY a JSON object with key "section":
     Array.isArray(steps) &&
     steps.length >= MIN_STEPS && steps.length <= MAX_STEPS &&
     steps[0]?.type === 'overview' &&
-    // one of each type, except "detail" (up to 3)
+    // one of each type, except "detail" (up to MAX_DETAIL)
     new Set(steps.filter((s: any) => s.type !== 'detail').map((s: any) => s.type)).size === steps.filter((s: any) => s.type !== 'detail').length &&
-    steps.filter((s: any) => s.type === 'detail').length <= 3 &&
-    (TRUE_FALSE_ENABLED || steps.every((s: any) => s.type !== 'checkYourself')) &&
+    steps.filter((s: any) => s.type === 'detail').length <= MAX_DETAIL &&
+    steps.every((s: any) => !DISABLED_STEP_TYPES.includes(s.type)) &&
     steps.every((s: any) => {
       if (typeof s.simple !== 'string' || !s.simple.trim()) return false;   // every step needs its plain version
       if (s.type === 'numberSpotlight') return typeof s.value === 'string' && typeof s.label === 'string' && typeof s.context === 'string' && isNarration(s.narration);
@@ -259,9 +271,9 @@ Output ONLY a JSON object with key "section":
     return generateSingleSection(ragContext, sectionTopic, sectionNum, attempt + 1);
   }
     
-  // Last line of defence while true/false is off (the model can ignore the prompt)
-  if (!TRUE_FALSE_ENABLED && Array.isArray(section.steps)) {
-    section.steps = section.steps.filter((st: any) => st?.type !== 'checkYourself');
+  // Last line of defence for switched-off step types (the model can ignore the prompt)
+  if (Array.isArray(section.steps)) {
+    section.steps = section.steps.filter((st: any) => !DISABLED_STEP_TYPES.includes(st?.type));
   }
 
   section.image = "";
